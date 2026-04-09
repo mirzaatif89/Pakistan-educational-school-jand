@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch Registration - Apexiums School management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .branch-list-table td:last-child,
+        .branch-list-table th:last-child {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .branch-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.2rem;
+            border-radius: 999px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .branch-actions .action-btn {
+            min-width: 42px;
+            height: 38px;
+            border: none;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+        }
+
+        .branch-actions .action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .branch-actions .action-btn i {
+            width: 14px;
+            height: 14px;
+        }
+
+        .branch-actions .btn-edit {
+            background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+            color: #0f766e;
+        }
+
+        .branch-actions .btn-edit:hover {
+            background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
+            box-shadow: 0 10px 20px rgba(8, 145, 178, 0.18);
+        }
+
+        .branch-actions .btn-delete {
+            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+            color: #be123c;
+            padding: 0 0.8rem;
+        }
+
+        .branch-actions .btn-delete:hover {
+            background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
+            box-shadow: 0 10px 20px rgba(225, 29, 72, 0.16);
+        }
+
+        @media (max-width: 768px) {
+            .branch-actions {
+                gap: 0.4rem;
+                padding: 0.15rem;
+            }
+
+            .branch-actions .action-btn {
+                min-width: 36px;
+                height: 34px;
+                padding: 0 0.65rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <i data-lucide="graduation-cap"></i> My Own School
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="revenue.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="branch_registration.html" class="nav-item active" data-branch-registration-link="true">
+                    <i data-lucide="building-2"></i>
+                    <span>Branch Registration</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Branch Registration</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Create branch login credentials. Branch users will only see students from their own campus.</p>
+                </div>
+            </header>
+
+            <div class="stats-grid">
+                <div class="card">
+                    <div class="card-title">Branch Access</div>
+                    <div class="card-value">3</div>
+                    <div class="card-trend trend-up">
+                        <i data-lucide="building-2" size="16"></i> Main + 2 sub branches
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="building-2"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">Register Branch Login</h3>
+                <form id="branchRegistrationForm">
+                    <input type="hidden" id="branchRecordId">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Campus Name</label>
+                            <select id="branchCampusName" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: #f8fafc;">
+                                <option value="">Select Campus</option>
+                                <option value="Main Branch">Main Branch</option>
+                                <option value="Branch 2">Branch 2</option>
+                                <option value="Branch 3">Branch 3</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Branch Display Name</label>
+                            <input type="text" id="branchDisplayName" placeholder="e.g. Branch 2 Office">
+                        </div>
+                        <div class="input-group">
+                            <label>Username</label>
+                            <input type="text" id="branchUsername" required placeholder="branch2_admin">
+                        </div>
+                        <div class="input-group">
+                            <label>Password</label>
+                            <input type="password" id="branchPassword" placeholder="Create password">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="save"></i> Save Branch Login
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetBranchRegistrationForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3 style="margin-bottom: 1rem;">Registered Branches</h3>
+                <table class="branch-list-table">
+                    <thead>
+                        <tr>
+                            <th>Campus</th>
+                            <th>Display Name</th>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Status</th>
+                            <th>Branch ID</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding: 1rem; color: var(--text-secondary);">Loading branches...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="successModal" class="success-overlay">
+        <div class="success-modal">
+            <div class="success-icon-wrap">
+                <i data-lucide="check-circle"></i>
+            </div>
+            <h2 id="successTitle">Success!</h2>
+            <p id="successMessage" style="color: var(--text-secondary); margin: 1rem 0 2rem;"></p>
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeSuccessModal()">Great!</button>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script>
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+</body>
+
+</html>

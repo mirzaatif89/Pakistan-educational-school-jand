@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal - EduCore</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --portal-bg: #f8fafc;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(32, 176, 164, 0.14), transparent 22rem),
+                linear-gradient(180deg, #f8fafc 0%, #eef6f5 100%);
+            min-height: 100vh;
+        }
+
+        .portal-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            border-radius: 0 0 40px 40px;
+            margin-bottom: -40px;
+            position: relative;
+        }
+
+        .portal-container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .user-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .user-card-main {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .user-avatar {
+            width: 96px;
+            height: 96px;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.3rem;
+            font-weight: 700;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .profile-meta {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.5rem 0.8rem;
+            border-radius: 999px;
+            background: #f0fdfa;
+            color: #0f766e;
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.18);
+            color: white;
+            border: none;
+            padding: 0.65rem 1rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 1.5rem;
+        }
+
+        .panel-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-row {
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: var(--radius-md);
+        }
+
+        .info-row strong {
+            display: block;
+            margin-bottom: 0.35rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .info-row span {
+            color: var(--text-secondary);
+        }
+
+        .fee-summary {
+            display: grid;
+            gap: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .fee-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.95rem 1rem;
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+        }
+
+        .fee-line strong {
+            color: var(--text-primary);
+        }
+
+        .fee-line span {
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .mini-stat {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+        }
+
+        .mini-stat-label {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .mini-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .panel-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .panel-table th,
+        .panel-table td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 0.6rem;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .panel-table th {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .empty-note {
+            margin-top: 1rem;
+            padding: 0.95rem 1rem;
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+            color: var(--text-secondary);
+        }
+
+        .section-stack {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .btn-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font: inherit;
+            color: var(--text-primary);
+            margin-top: 1rem;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .lookup-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .lookup-row input {
+            flex: 1;
+            min-width: 220px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.8rem 0.9rem;
+            font: inherit;
+            background: #fff;
+        }
+
+        .teacher-note {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-size: 0.9rem;
+        }
+
+        .portal-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
+        }
+
+        .challan-sheet {
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .challan-sheet table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .challan-sheet td,
+        .challan-sheet th {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            font-size: 0.88rem;
+            color: var(--text-primary);
+        }
+
+        .challan-sheet th {
+            background: #f8fafc;
+            text-align: left;
+        }
+
+        .challan-preview-sheet {
+            padding: 1rem;
+        }
+
+        .challan-paper {
+            padding: 10px;
+        }
+
+        .challan-copy-label {
+            text-align: right;
+            font-size: 11px;
+            font-style: italic;
+            color: #334155;
+            margin-bottom: 4px;
+        }
+
+        .challan-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+            color: #111827;
+        }
+
+        .challan-table td,
+        .challan-table th {
+            border: 1px solid #6b7280;
+            padding: 7px 8px;
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+
+        .challan-school-mark {
+            width: 90px;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .challan-school-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.04em;
+        }
+
+        .challan-school-subtitle {
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .challan-note {
+            text-align: center;
+            font-size: 11px;
+            color: #334155;
+            min-height: 28px;
+        }
+
+        .challan-label {
+            font-weight: 700;
+            background: #f3f4f6;
+            width: 18%;
+        }
+
+        .challan-value {
+            width: 15%;
+        }
+
+        .challan-value-wide {
+            width: 25%;
+        }
+
+        .challan-section-title {
+            background: #e5e7eb;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .challan-total-row td {
+            font-weight: 700;
+        }
+
+        .challan-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 18px;
+            font-size: 12px;
+            padding: 12px 4px 0;
+            color: #111827;
+        }
+
+        .print-sheet {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .portal-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .portal-header,
+            .user-card,
+            .stats-grid,
+            .panel-card:first-child,
+            .teacher-note,
+            .portal-actions {
+                display: none !important;
+            }
+
+            .portal-container {
+                max-width: 100%;
+                padding: 0;
+            }
+
+            .portal-grid {
+                display: block;
+            }
+
+            .panel-card {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .challan-sheet {
+                border: none;
+            }
+
+            .challan-preview-sheet {
+                display: none !important;
+            }
+
+            .print-sheet {
+                display: block;
+            }
+
+            .print-sheet .challan-paper + .challan-paper {
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="portal-header">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h1>Student Dashboard</h1>
+        <p>View your account, fee information, and academic profile</p>
+    </header>
+
+    <div class="portal-container">
+        <div class="user-card">
+            <div class="user-card-main">
+                <div class="user-avatar" id="avatarLetter">S</div>
+                <div>
+                    <h2 id="studentName">Loading...</h2>
+                    <p style="color: var(--text-secondary);" id="studentClass">Class: -</p>
+                    <div class="profile-meta">
+                        <div class="meta-pill">
+                            <i data-lucide="shield-check" width="16"></i>
+                            Student Account Active
+                        </div>
+                        <div class="meta-pill">
+                            <i data-lucide="hash" width="16"></i>
+                            Roll No: <span id="rollNo">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="min-width: 220px;">
+                <div style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Current Fee Status</div>
+                <div id="feeStatusBadge" class="status-badge status-pending">Pending</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Total Monthly Fee</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="feeAmount">PKR 0</div>
+            </div>
+            <div class="stat-box" style="border-left-color: #f59e0b;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Pending Amount</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #b45309;" id="pendingAmount">PKR 0</div>
+            </div>
+            <div class="stat-box" style="border-left-color: #3b82f6;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Fee Frequency</div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: #1d4ed8;" id="feeFrequency">-</div>
+            </div>
+            <div class="stat-box" style="border-left-color: #10b981;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Last Payment</div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: #047857;" id="lastPayment">-</div>
+            </div>
+        </div>
+
+        <div class="portal-grid">
+            <div class="section-stack">
+                <section class="panel-card">
+                    <h3>Personal Information</h3>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <strong>Father's Name</strong>
+                            <span id="fatherName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Form B / CNIC</strong>
+                            <span id="formB">-</span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Parent Contact</strong>
+                            <span id="contact">-</span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Gender</strong>
+                            <span id="gender">-</span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Student Code</strong>
+                            <span id="studentCode">-</span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Username</strong>
+                            <span id="studentUsername">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-card">
+                    <h3>Result Tracking</h3>
+                    <div class="lookup-row">
+                        <input type="text" id="studentResultLookup" placeholder="Enter your student ID, code, or roll number">
+                        <button type="button" class="btn-inline" id="loadStudentResultBtn">
+                            <i data-lucide="search" width="16"></i>
+                            Load Result
+                        </button>
+                    </div>
+                    <div class="mini-grid">
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Latest Term</div>
+                            <div class="mini-stat-value" id="resultTerm">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Result Status</div>
+                            <div class="mini-stat-value" id="resultStatus">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Percentage</div>
+                            <div class="mini-stat-value" id="resultPercentage">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Position / Grade</div>
+                            <div class="mini-stat-value" id="resultPosition">-</div>
+                        </div>
+                    </div>
+                    <table class="panel-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Max</th>
+                                <th>Obtained</th>
+                                <th>Best</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentResultBody"></tbody>
+                    </table>
+                    <div class="empty-note" id="studentResultEmpty">No saved result is available yet.</div>
+                    <div class="result-actions">
+                        <button type="button" class="btn-inline" id="printStudentResultBtn">
+                            <i data-lucide="printer" width="16"></i>
+                            Print Result Card
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="section-stack">
+                <section class="panel-card">
+                    <h3>Fee Details</h3>
+                    <div class="fee-summary">
+                        <div class="fee-line">
+                            <strong>Fee Status</strong>
+                            <span id="feeStatusText">-</span>
+                        </div>
+                        <div class="fee-line">
+                            <strong>Monthly Fee</strong>
+                            <span id="monthlyFeeText">PKR 0</span>
+                        </div>
+                        <div class="fee-line">
+                            <strong>Pending Fee</strong>
+                            <span id="pendingFeeText">PKR 0</span>
+                        </div>
+                        <div class="fee-line">
+                            <strong>Last Payment Date</strong>
+                            <span id="paymentDate">Not paid yet</span>
+                        </div>
+                    </div>
+                    <div class="mini-grid">
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Pending Dues</div>
+                            <div class="mini-stat-value" id="pendingDuesCard">PKR 0</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Current Status</div>
+                            <div class="mini-stat-value" id="duesStatusCard">Pending</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-card">
+                    <h3>Attendance & Exam Schedule</h3>
+                    <div class="mini-grid">
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Attendance Rate</div>
+                            <div class="mini-stat-value" id="attendanceRate">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Present Days</div>
+                            <div class="mini-stat-value" id="attendancePresent">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Absent Days</div>
+                            <div class="mini-stat-value" id="attendanceAbsent">-</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-label">Late Days</div>
+                            <div class="mini-stat-value" id="attendanceLate">-</div>
+                        </div>
+                    </div>
+                    <table class="panel-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Class</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentDateSheetBody"></tbody>
+                    </table>
+                    <div class="empty-note" id="studentDateSheetEmpty">No exam date sheet is available yet.</div>
+                    <button type="button" class="btn-inline" id="downloadDateSheetBtn">
+                        <i data-lucide="download" width="16"></i>
+                        Download Date Sheet
+                    </button>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        const isLocalhost = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.') ||
+            window.location.hostname.startsWith('10.') ||
+            window.location.hostname.startsWith('172.');
+        const BACKEND_URL = isLocalhost ? `${window.location.protocol}//${window.location.hostname}:3000` : (window.ENV_BACKEND_URL || window.location.origin);
+        const API_BASE_URL = `${BACKEND_URL}/api`;
+        const STORAGE_KEY_STUDENTS = 'eduCore_students';
+        const RESULT_ARCHIVE_KEY = 'APEXIUMS_RESULT_CARD_ARCHIVE_V2';
+        const DATE_SHEET_KEY = 'APEXIUMS_DATE_SHEET_V1';
+        const STUDENT_ATTENDANCE_KEY = 'eduCore_student_attendance';
+        const STUDENT_PROFILE_CACHE_KEY = 'eduCore_student_profile';
+        const STUDENT_RESULT_CACHE_KEY = 'eduCore_student_result_card';
+        const loggedInUser = JSON.parse(sessionStorage.getItem('loggedInUser'));
+        const authToken = sessionStorage.getItem('eduCore_token');
+
+        if (!loggedInUser || loggedInUser.role !== 'Student' || !authToken) {
+            window.location.href = 'index.html';
+        }
+
+        function formatCurrency(amount) {
+            return `PKR ${parseInt(amount || 0, 10).toLocaleString()}`;
+        }
+
+        function getStatusClass(status) {
+            if (status === 'Paid') return 'status-paid';
+            if (status === 'Late') return 'status-failed';
+            return 'status-pending';
+        }
+
+        function toNumber(value) {
+            const parsed = parseFloat(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatMark(value) {
+            return Number.isInteger(value) ? String(value) : value.toFixed(1);
+        }
+
+        function getStudentIdentityCandidates(student) {
+            return [
+                student?.id,
+                student?.studentCode,
+                student?.rollNo,
+                loggedInUser?.id
+            ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+        }
+
+        function getLatestStudentResult(student) {
+            const archive = JSON.parse(localStorage.getItem(RESULT_ARCHIVE_KEY) || '[]');
+            const candidates = getStudentIdentityCandidates(student);
+            const matches = archive.filter((record) => candidates.includes(String(record.studentLookupId || '').trim().toLowerCase()));
+            return matches.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0] || null;
+        }
+
+        function getResultByLookup(query) {
+            const normalizedQuery = String(query || '').trim().toLowerCase();
+            if (!normalizedQuery) return null;
+
+            const archive = JSON.parse(localStorage.getItem(RESULT_ARCHIVE_KEY) || '[]');
+            const matches = archive.filter((record) => {
+                const candidates = [
+                    record.studentLookupId,
+                    record.studentName
+                ].map((value) => String(value || '').trim().toLowerCase());
+
+                return candidates.includes(normalizedQuery);
+            });
+
+            return matches.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0] || null;
+        }
+
+        function applyStudentResult(result) {
+            const tbody = document.getElementById('studentResultBody');
+            const emptyState = document.getElementById('studentResultEmpty');
+
+            if (!result || !Array.isArray(result.subjects) || !result.subjects.length) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                document.getElementById('resultTerm').innerText = '-';
+                document.getElementById('resultStatus').innerText = '-';
+                document.getElementById('resultPercentage').innerText = '-';
+                document.getElementById('resultPosition').innerText = '-';
+                sessionStorage.removeItem(STUDENT_RESULT_CACHE_KEY);
+                return;
+            }
+
+            const totalMarks = result.subjects.reduce((sum, item) => sum + toNumber(item.max), 0);
+            const obtainedMarks = result.subjects.reduce((sum, item) => sum + toNumber(item.obtained), 0);
+            const percentage = totalMarks ? (obtainedMarks / totalMarks) * 100 : 0;
+            const status = percentage >= 40 ? 'Pass' : 'Fail';
+
+            document.getElementById('resultTerm').innerText = result.termTitle || '-';
+            document.getElementById('resultStatus').innerText = status;
+            document.getElementById('resultPercentage').innerText = `${formatMark(percentage)}%`;
+            document.getElementById('resultPosition').innerText = result.positionGrade || '-';
+
+            tbody.innerHTML = result.subjects.map((item) => `
+                <tr>
+                    <td>${item.subject || '-'}</td>
+                    <td>${item.max || '0'}</td>
+                    <td>${item.obtained || '0'}</td>
+                    <td>${item.best || '0'}</td>
+                </tr>
+            `).join('');
+
+            emptyState.style.display = 'none';
+            sessionStorage.setItem(STUDENT_RESULT_CACHE_KEY, JSON.stringify(result));
+        }
+
+        function loadStudentResultByLookup() {
+            const lookupValue = document.getElementById('studentResultLookup').value.trim();
+            const student = JSON.parse(sessionStorage.getItem(STUDENT_PROFILE_CACHE_KEY) || 'null') || getStudentFromLocalFallback();
+            const allowedCandidates = getStudentIdentityCandidates(student);
+            const normalizedLookup = lookupValue.toLowerCase();
+
+            if (!normalizedLookup) {
+                alert('Enter your student ID, student code, or roll number.');
+                return;
+            }
+
+            if (!allowedCandidates.includes(normalizedLookup)) {
+                alert('You can only load your own result card.');
+                return;
+            }
+
+            const result = getResultByLookup(lookupValue);
+            if (!result) {
+                alert('No saved result card was found for the entered student ID.');
+                return;
+            }
+
+            applyStudentResult(result);
+        }
+
+        function printStudentResultCard() {
+            const cachedResult = JSON.parse(sessionStorage.getItem(STUDENT_RESULT_CACHE_KEY) || 'null');
+            const student = JSON.parse(sessionStorage.getItem(STUDENT_PROFILE_CACHE_KEY) || 'null') || getStudentFromLocalFallback();
+
+            if (!cachedResult || !student) {
+                alert('No result card is loaded yet.');
+                return;
+            }
+
+            const totalMarks = cachedResult.subjects.reduce((sum, item) => sum + toNumber(item.max), 0);
+            const obtainedMarks = cachedResult.subjects.reduce((sum, item) => sum + toNumber(item.obtained), 0);
+            const percentage = totalMarks ? (obtainedMarks / totalMarks) * 100 : 0;
+            const status = percentage >= 40 ? 'Pass' : 'Fail';
+            const subjectRows = cachedResult.subjects.map((item) => `
+                <tr>
+                    <td>${item.subject || '-'}</td>
+                    <td>${item.max || '0'}</td>
+                    <td>${item.obtained || '0'}</td>
+                    <td>${item.best || '0'}</td>
+                </tr>
+            `).join('');
+
+            const printable = window.open('', '_blank');
+            if (!printable) return;
+
+            printable.document.write(`
+                <html>
+                    <head>
+                        <title>Student Result Card</title>
+                        <style>
+                            body { font-family: "Times New Roman", serif; padding: 24px; color: #111; }
+                            .sheet { border: 1px solid #222; padding: 20px; max-width: 900px; margin: 0 auto; }
+                            .head { text-align: center; margin-bottom: 16px; }
+                            .head h1 { margin: 0; font-size: 28px; }
+                            .head p { margin: 4px 0; font-size: 14px; }
+                            .term { text-align: center; font-weight: 700; text-decoration: underline; margin: 14px 0; }
+                            .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+                            .meta div { border-bottom: 1px solid #444; padding-bottom: 4px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                            th, td { border: 1px solid #444; padding: 8px; text-align: left; font-size: 14px; }
+                            th { background: #f3f4f6; }
+                            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+                            .summary div { border: 1px solid #ccc; padding: 10px; }
+                            .label { color: #555; font-size: 12px; margin-bottom: 4px; }
+                            .value { font-weight: 700; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="sheet">
+                            <div class="head">
+                                <h1>${cachedResult.schoolName || 'School Result Card'}</h1>
+                                <p>${cachedResult.campusName || ''}</p>
+                                <p>${cachedResult.schoolContact || ''}</p>
+                            </div>
+                            <div class="term">${cachedResult.termTitle || 'Result Card'}</div>
+                            <div class="meta">
+                                <div><strong>Student Name:</strong> ${student.fullName || cachedResult.studentName || '-'}</div>
+                                <div><strong>Father's Name:</strong> ${student.fatherName || cachedResult.fatherName || '-'}</div>
+                                <div><strong>Student ID / Code:</strong> ${cachedResult.studentLookupId || student.studentCode || student.id || '-'}</div>
+                                <div><strong>Class:</strong> ${student.classGrade || cachedResult.studentGrade || '-'}</div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Max</th>
+                                        <th>Obtained</th>
+                                        <th>Best</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${subjectRows}</tbody>
+                            </table>
+                            <div class="summary">
+                                <div><div class="label">Total Marks</div><div class="value">${formatMark(totalMarks)}</div></div>
+                                <div><div class="label">Obtained Marks</div><div class="value">${formatMark(obtainedMarks)}</div></div>
+                                <div><div class="label">Percentage</div><div class="value">${formatMark(percentage)}%</div></div>
+                                <div><div class="label">Status</div><div class="value">${status}</div></div>
+                            </div>
+                            <div class="summary">
+                                <div><div class="label">Position / Grade</div><div class="value">${cachedResult.positionGrade || '-'}</div></div>
+                                <div><div class="label">Teacher Remarks</div><div class="value">${cachedResult.teacherRemarks || '-'}</div></div>
+                                <div><div class="label">Teacher Signature</div><div class="value">${cachedResult.teacherSignature || '-'}</div></div>
+                                <div><div class="label">Principal Signature</div><div class="value">${cachedResult.principalSignature || '-'}</div></div>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `);
+            printable.document.close();
+            printable.focus();
+            printable.print();
+        }
+
+        function applyStudentAttendance(student) {
+            const attendanceStore = JSON.parse(localStorage.getItem(STUDENT_ATTENDANCE_KEY) || '{}');
+            const candidates = getStudentIdentityCandidates(student);
+            const attendanceKey = Object.keys(attendanceStore).find((key) => candidates.includes(String(key || '').trim().toLowerCase()));
+            const records = attendanceKey ? attendanceStore[attendanceKey] : [];
+            const normalizedRecords = Array.isArray(records) ? records : [];
+            const present = normalizedRecords.filter((item) => item === 'Present').length;
+            const absent = normalizedRecords.filter((item) => item === 'Absent').length;
+            const late = normalizedRecords.filter((item) => item === 'Late').length;
+            const total = normalizedRecords.length;
+            const rate = total ? Math.round((present / total) * 100) : 0;
+
+            document.getElementById('attendanceRate').innerText = total ? `${rate}%` : 'No record';
+            document.getElementById('attendancePresent').innerText = total ? String(present) : '-';
+            document.getElementById('attendanceAbsent').innerText = total ? String(absent) : '-';
+            document.getElementById('attendanceLate').innerText = total ? String(late) : '-';
+        }
+
+        function loadDateSheetState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(DATE_SHEET_KEY) || '{}');
+                return saved && typeof saved === 'object' ? saved : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function formatScheduleDate(value) {
+            if (!value) return '-';
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return value;
+            return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function formatScheduleTime(value) {
+            if (!value) return '-';
+            const [hours, minutes] = String(value).split(':');
+            if (hours === undefined || minutes === undefined) return value;
+            const numericHours = Number(hours);
+            const suffix = numericHours >= 12 ? 'PM' : 'AM';
+            const normalizedHour = ((numericHours + 11) % 12) + 1;
+            return `${normalizedHour}:${minutes} ${suffix}`;
+        }
+
+        function applyDateSheet(student) {
+            const state = loadDateSheetState();
+            const tbody = document.getElementById('studentDateSheetBody');
+            const emptyState = document.getElementById('studentDateSheetEmpty');
+            const className = String(student.classGrade || '').trim().toLowerCase();
+            const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
+            const filteredRows = rows.filter((row) => !className || String(row.className || '').trim().toLowerCase().includes(className));
+
+            if (!filteredRows.length) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            tbody.innerHTML = filteredRows.map((row) => `
+                <tr>
+                    <td>${row.subject || '-'}</td>
+                    <td>${row.className || '-'}</td>
+                    <td>${formatScheduleDate(row.examDate)}</td>
+                    <td>${formatScheduleTime(row.startTime)} - ${formatScheduleTime(row.endTime)}</td>
+                </tr>
+            `).join('');
+            emptyState.style.display = 'none';
+        }
+
+        function downloadDateSheet() {
+            const state = loadDateSheetState();
+            const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
+            if (!rows.length) {
+                alert('No date sheet is available to download yet.');
+                return;
+            }
+
+            const printable = window.open('', '_blank');
+            if (!printable) return;
+
+            const tableRows = rows.map((row) => `
+                <tr>
+                    <td>${row.subject || '-'}</td>
+                    <td>${row.className || '-'}</td>
+                    <td>${formatScheduleDate(row.examDate)}</td>
+                    <td>${formatScheduleTime(row.startTime)}</td>
+                    <td>${formatScheduleTime(row.endTime)}</td>
+                </tr>
+            `).join('');
+
+            printable.document.write(`
+                <html>
+                    <head>
+                        <title>Date Sheet</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 24px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                            th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                            th { background: #f3f4f6; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>${state.dateSheetSchoolName || 'School Date Sheet'}</h2>
+                        <p>${state.dateSheetExamTitle || 'Exam Schedule'}</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Class</th>
+                                    <th>Date</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </body>
+                </html>
+            `);
+            printable.document.close();
+            printable.focus();
+            printable.print();
+        }
+
+        function applyStudentData(student) {
+            if (!student) return;
+
+            const feeAmount = parseInt(student.monthlyFee || 0, 10);
+            const pendingAmount = student.feesStatus === 'Paid' ? 0 : feeAmount;
+
+            document.getElementById('studentName').innerText = student.fullName || loggedInUser.fullName || 'Student';
+            const avatar = document.getElementById('avatarLetter');
+            if (student.profileImage) {
+                avatar.innerHTML = `<img src="${student.profileImage}" alt="${student.fullName || 'Student'}">`;
+            } else {
+                avatar.textContent = (student.fullName || 'S').charAt(0).toUpperCase();
+            }
+            document.getElementById('studentClass').innerText = `Class: ${student.classGrade || '-'}`;
+            document.getElementById('rollNo').innerText = student.rollNo || '-';
+            document.getElementById('feeAmount').innerText = formatCurrency(feeAmount);
+            document.getElementById('pendingAmount').innerText = formatCurrency(pendingAmount);
+            document.getElementById('feeFrequency').innerText = student.feeFrequency || 'Monthly';
+            document.getElementById('lastPayment').innerText = student.paymentDate || 'Not paid yet';
+            document.getElementById('fatherName').innerText = student.fatherName || '-';
+            document.getElementById('formB').innerText = student.formB || '-';
+            document.getElementById('contact').innerText = student.parentPhone || '-';
+            document.getElementById('gender').innerText = student.gender || '-';
+            document.getElementById('studentCode').innerText = student.studentCode || '-';
+            document.getElementById('studentUsername').innerText = student.username || loggedInUser.username || '-';
+            document.getElementById('feeStatusText').innerText = student.feesStatus || 'Pending';
+            document.getElementById('monthlyFeeText').innerText = formatCurrency(feeAmount);
+            document.getElementById('pendingFeeText').innerText = formatCurrency(pendingAmount);
+            document.getElementById('paymentDate').innerText = student.paymentDate || 'Not paid yet';
+            document.getElementById('pendingDuesCard').innerText = formatCurrency(pendingAmount);
+            document.getElementById('duesStatusCard').innerText = student.feesStatus || 'Pending';
+            document.getElementById('studentResultLookup').value = student.studentCode || student.id || student.rollNo || '';
+
+            const feeStatusBadge = document.getElementById('feeStatusBadge');
+            feeStatusBadge.innerText = student.feesStatus || 'Pending';
+            feeStatusBadge.className = `status-badge ${getStatusClass(student.feesStatus)}`;
+
+            applyStudentResult(getLatestStudentResult(student));
+            applyStudentAttendance(student);
+            applyDateSheet(student);
+            sessionStorage.setItem(STUDENT_PROFILE_CACHE_KEY, JSON.stringify(student));
+        }
+
+        function getStudentFromLocalFallback() {
+            const students = JSON.parse(localStorage.getItem(STORAGE_KEY_STUDENTS)) || [];
+            return students.find((student) => student.id === loggedInUser.id);
+        }
+
+        async function loadStudentProfile() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/student/me`, {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Unable to load student profile.');
+                }
+
+                const student = await response.json();
+                applyStudentData(student);
+                return;
+            } catch (error) {
+                const fallbackStudent = getStudentFromLocalFallback() ||
+                    JSON.parse(sessionStorage.getItem(STUDENT_PROFILE_CACHE_KEY) || 'null');
+
+                if (fallbackStudent) {
+                    applyStudentData(fallbackStudent);
+                    return;
+                }
+
+                alert('The student profile could not be loaded. Please sign in again.');
+                logout();
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('loggedInUser');
+            sessionStorage.removeItem('eduCore_token');
+            sessionStorage.removeItem(STUDENT_PROFILE_CACHE_KEY);
+            window.location.href = 'index.html';
+        }
+
+        window.onload = () => {
+            document.getElementById('downloadDateSheetBtn').addEventListener('click', downloadDateSheet);
+            document.getElementById('loadStudentResultBtn').addEventListener('click', loadStudentResultByLookup);
+            document.getElementById('printStudentResultBtn').addEventListener('click', printStudentResultCard);
+            document.getElementById('studentResultLookup').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    loadStudentResultByLookup();
+                }
+            });
+            loadStudentProfile();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+
+</html>

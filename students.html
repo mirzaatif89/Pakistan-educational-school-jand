@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students - Apexiums School management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Specific Basic Styles for the Form Modal/Section */
+        .form-container {
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            display: none;
+            /* Hidden by default */
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .action-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: var(--transition);
+        }
+
+        .btn-edit {
+            background: #eff6ff;
+            color: var(--primary-color);
+        }
+
+        .btn-edit:hover {
+            background: #dbeafe;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .student-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .student-toolbar-left {
+            display: flex;
+            align-items: end;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .student-stat {
+            font-weight: 700;
+            color: var(--text-secondary);
+            min-width: 140px;
+            padding-bottom: 0.75rem;
+        }
+
+        .student-filter-group {
+            min-width: 260px;
+        }
+
+        .student-filter-group label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .student-filter-group input,
+        .student-filter-group select {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            background: white;
+            font: inherit;
+        }
+
+        .student-filter-group input:focus,
+        .student-filter-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .student-print-btn {
+            margin-bottom: 0.05rem;
+        }
+
+        .student-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .student-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .student-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .student-photo-field {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            background: #fcfefd;
+        }
+
+        .student-photo-preview {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .student-photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .student-photo-copy {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .login-details {
+            line-height: 1.5;
+            font-size: 0.85rem;
+            min-width: 170px;
+        }
+
+        .login-details strong {
+            color: var(--text-primary);
+        }
+
+        .student-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 170px;
+        }
+
+        .student-name-text {
+            min-width: 0;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .cell-compact {
+            line-height: 1.45;
+        }
+
+        @media (max-width: 900px) {
+            .student-toolbar,
+            .student-toolbar-left {
+                align-items: stretch;
+            }
+
+            .student-filter-group,
+            .student-stat {
+                min-width: 100%;
+            }
+
+            .student-print-btn,
+            .student-toolbar .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+
+        }
+
+        @media print {
+            body {
+                background: white !important;
+            }
+
+            .sidebar,
+            .header,
+            .form-container,
+            .student-toolbar,
+            .notification-bell,
+            .success-overlay,
+            .user-profile {
+                display: none !important;
+            }
+
+            .dashboard-container,
+            .main-content {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white !important;
+            }
+
+            .main-content::before {
+                content: "Filtered Student List";
+                display: block;
+                font-size: 22px;
+                font-weight: 700;
+                margin: 0 0 12px;
+                color: #111827;
+            }
+
+            .table-container {
+                border: none !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                width: 100% !important;
+            }
+
+            #studentsTable {
+                width: 100% !important;
+                table-layout: auto !important;
+            }
+
+            #studentsTable th,
+            #studentsTable td {
+                white-space: normal !important;
+                padding: 8px 10px !important;
+                font-size: 11px !important;
+            }
+
+            #studentsTable th:last-child,
+            #studentsTable td:last-child {
+                display: none !important;
+            }
+
+            .student-name-cell {
+                gap: 0.4rem !important;
+            }
+
+            .student-avatar {
+                width: 22px !important;
+                height: 22px !important;
+                font-size: 11px !important;
+            }
+
+            .login-details {
+                font-size: 10px !important;
+                line-height: 1.35 !important;
+            }
+
+            #noDataMessage {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <i data-lucide="graduation-cap"></i> My Own School
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item active">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="finance.html" class="nav-item" style="display: none;">
+                    <i data-lucide="receipt"></i>
+                    <span>Bills</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="revenue.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1>Student Management</h1>
+                <div class="header-actions">
+                    <div class="notification-bell" id="notificationBell">
+                        <i data-lucide="bell" size="22"></i>
+                        <span class="notification-badge" id="notifBadge">0</span>
+
+                        <div class="notif-panel" id="notificationPanel">
+                            <div class="notif-header">
+                                <h4>Notifications</h4>
+                                <button class="clear-notif" onclick="clearAllNotifications(event)">Clear All</button>
+                            </div>
+                            <div class="notif-list" id="notificationList">
+                                <!-- Notifications added via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="student-toolbar">
+                <div class="student-toolbar-left">
+                    <div class="student-stat">
+                        Total Students: <span id="totalStudentCount" style="color: var(--primary-color);">0</span>
+                    </div>
+                    <div class="student-filter-group">
+                        <label for="studentSearchInput">Search Student</label>
+                        <input type="text" id="studentSearchInput" placeholder="Search by name, roll no, or student ID">
+                    </div>
+                    <div class="student-filter-group">
+                        <label for="genderFilter">Filter By Gender</label>
+                        <select id="genderFilter">
+                            <option value="All">All Students</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="student-filter-group">
+                        <label for="campusFilter">Filter By Campus</label>
+                        <select id="campusFilter">
+                            <option value="All">All Campuses</option>
+                            <option value="Main Branch">Main Branch</option>
+                            <option value="Branch 2">Branch 2</option>
+                            <option value="Branch 3">Branch 3</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline student-print-btn" type="button" onclick="window.print()">
+                        <i data-lucide="printer"></i> Print Students
+                    </button>
+                </div>
+                <button class="btn btn-primary" onclick="toggleStudentForm()">
+                    <i data-lucide="plus"></i> Add New Student
+                </button>
+            </div>
+
+            <!-- Add/Edit Form -->
+            <div id="studentFormContainer" class="form-container">
+                <h3 style="margin-bottom: 1.5rem;" id="formTitle">Add New Student</h3>
+                <form id="studentForm">
+                    <input type="hidden" id="studentId"> <!-- Hidden ID for Editing -->
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Student ID</label>
+                            <input type="text" id="studentCode" readonly
+                                style="background-color: #f8fafc; color: var(--text-secondary); cursor: not-allowed;">
+                        </div>
+                        <div class="input-group">
+                            <label>Full Name</label>
+                            <input type="text" id="fullName" required>
+                        </div>
+                        <div class="student-photo-field">
+                            <div class="student-photo-preview" id="studentPhotoPreview">S</div>
+                            <div style="flex: 1;">
+                                <label for="studentPhoto" style="display:block; margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Profile Image</label>
+                                <input type="file" id="studentPhoto" accept="image/*">
+                                <p class="student-photo-copy">Optional. You can upload a JPG, PNG, or WebP image.</p>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Father's Name</label>
+                            <input type="text" id="fatherName" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Class</label>
+                            <select id="classGrade" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Class</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Campus Name</label>
+                            <select id="campusName" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Campus</option>
+                                <option value="Main Branch">Main Branch</option>
+                                <option value="Branch 2">Branch 2</option>
+                                <option value="Branch 3">Branch 3</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Contact (Phone)</label>
+                            <input type="tel" id="parentPhone" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Email</label>
+                            <input type="email" id="studentEmail" placeholder="student@example.com">
+                        </div>
+                        <div class="input-group">
+                            <label>Gender</label>
+                            <select id="gender" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Roll No</label>
+                            <input type="text" id="rollNo" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Form B No</label>
+                            <input type="text" id="formB">
+                        </div>
+
+                    </div>
+
+                    <div class="action-steps">
+                        <div class="action-step-btn" id="btnSetFee" onclick="toggleStepPanel('feePanel')">
+                            <i data-lucide="credit-card"></i>
+                            <span>Set Fee</span>
+                        </div>
+                        <div class="action-step-btn" id="btnCreateCreds" onclick="toggleStepPanel('credPanel')">
+                            <i data-lucide="key"></i>
+                            <span>Create Username & Password</span>
+                        </div>
+                        <button type="submit" class="action-step-btn btn-save-activate">
+                            <i data-lucide="check-circle"></i>
+                            <span>Save & Activate Student</span>
+                        </button>
+                    </div>
+
+                    <!-- Fee Panel -->
+                    <div id="feePanel" class="step-panel">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">Set Student Fee</h4>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Monthly Fee (PKR)</label>
+                                <input type="number" id="monthlyFee" placeholder="e.g. 5000">
+                            </div>
+                            <div class="input-group">
+                                <label>Fee Frequency</label>
+                                <select id="feeFrequency"
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white;">
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Credentials Panel -->
+                    <div id="credPanel" class="step-panel">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">Create Login Credentials</h4>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Username</label>
+                                <input type="text" id="username" placeholder="Assign unique username">
+                            </div>
+                            <div class="input-group">
+                                <label>Password</label>
+                                <input type="password" id="studentPassword" placeholder="Assign password">
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            These credentials will be used for login on the student portal.
+                        </p>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="toggleStudentForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Students List -->
+            <div class="table-container">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Father Name</th>
+                            <th>Class</th>
+                            <th>Campus</th>
+                            <th>Gender</th>
+                            <th>Phone</th>
+                            <th>Form B</th>
+                            <th>Login Details</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Data will be populated here by JS -->
+                    </tbody>
+                </table>
+                <div id="noDataMessage"
+                    style="text-align: center; padding: 2rem; color: var(--text-secondary); display: none;">
+                    No students found. Add one to get started!
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-overlay">
+        <div class="success-modal">
+            <div class="success-icon-wrap">
+                <i data-lucide="check-circle"></i>
+            </div>
+            <h2 id="successTitle">Success!</h2>
+            <p id="successMessage" style="color: var(--text-secondary); margin: 1rem 0 2rem;"></p>
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeSuccessModal()">Great!</button>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Init Icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

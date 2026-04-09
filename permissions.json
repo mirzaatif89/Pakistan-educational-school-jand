@@ -1,0 +1,51 @@
+{
+  "loginAccess": {
+    "student": true
+  },
+  "modules": {
+    "dashboard": {
+      "teacher": "view",
+      "student": "view"
+    },
+    "students": {
+      "teacher": "view",
+      "student": "view"
+    },
+    "teachers": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "staff": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "classes": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "fees": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "challan": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "salaries": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "exams": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "revenue": {
+      "teacher": "none",
+      "student": "none"
+    },
+    "permissions": {
+      "teacher": "none",
+      "student": "none"
+    }
+  }
+}

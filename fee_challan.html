@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Challan Generator - Apexiums School management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --challan-bg: #f4f7fb;
+            --challan-card: #ffffff;
+            --challan-border: #dfe6ee;
+            --challan-soft: #6b7a90;
+            --challan-text: #1f2d3d;
+            --challan-accent: #1e3a8a;
+            --challan-accent-soft: #dbeafe;
+        }
+
+        .challan-shell {
+            background: linear-gradient(180deg, #f8fbfd 0%, #f3f7fb 100%);
+            border: 1px solid var(--challan-border);
+            border-radius: 1.25rem;
+            padding: 1rem;
+        }
+
+        .challan-layout {
+            display: grid;
+            grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .challan-panel {
+            background: var(--challan-card);
+            border: 1px solid var(--challan-border);
+            border-radius: 1rem;
+            min-height: 100%;
+            overflow: hidden;
+        }
+
+        .challan-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem 1.25rem 0.75rem;
+        }
+
+        .challan-head h2 {
+            font-size: 1.9rem;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            color: var(--challan-text);
+            margin-bottom: 0.35rem;
+        }
+
+        .challan-head p {
+            color: var(--challan-soft);
+            font-size: 0.85rem;
+        }
+
+        .printable-tag {
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: var(--challan-accent-soft);
+            color: var(--challan-accent);
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .challan-body {
+            padding: 0.75rem 1.25rem 1.25rem;
+        }
+
+        .challan-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .challan-form.compact {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .field-block {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .field-block.full {
+            grid-column: 1 / -1;
+        }
+
+        .field-block label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--challan-text);
+        }
+
+        .field-block input,
+        .field-block select,
+        .field-block textarea {
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid #d8e0e8;
+            border-radius: 0.45rem;
+            background: #fff;
+            color: var(--challan-text);
+            padding: 0.85rem 0.9rem;
+            font: inherit;
+            transition: 0.2s ease;
+        }
+
+        .field-block textarea {
+            min-height: 112px;
+            resize: vertical;
+        }
+
+        .field-help {
+            font-size: 0.76rem;
+            color: var(--challan-soft);
+            margin-top: -0.1rem;
+        }
+
+        .field-block input:focus,
+        .field-block select:focus,
+        .field-block textarea:focus {
+            outline: none;
+            border-color: var(--challan-accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .preview-card {
+            border: 1px dashed #d7e3ec;
+            border-radius: 0.95rem;
+            padding: 0.8rem;
+            background: linear-gradient(180deg, #fff 0%, #fcfdff 100%);
+        }
+
+        .preview-sheet {
+            background: #fff;
+            border: 1px solid #bcc8d2;
+            color: #1d3550;
+        }
+
+        .preview-sheet + .preview-sheet {
+            margin-top: 0.8rem;
+        }
+
+        .challan-paper {
+            padding: 10px;
+        }
+
+        .challan-copy-label {
+            text-align: right;
+            font-size: 11px;
+            font-style: italic;
+            color: #334155;
+            margin-bottom: 4px;
+        }
+
+        .challan-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+            color: #111827;
+        }
+
+        .challan-table td,
+        .challan-table th {
+            border: 1px solid #6b7280;
+            padding: 7px 8px;
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+
+        .challan-school-mark {
+            width: 90px;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .challan-school-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.04em;
+        }
+
+        .challan-school-subtitle {
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .challan-urdu-note {
+            text-align: center;
+            font-size: 11px;
+            color: #334155;
+            min-height: 28px;
+        }
+
+        .challan-label {
+            font-weight: 700;
+            background: #f3f4f6;
+            width: 18%;
+        }
+
+        .challan-value {
+            width: 15%;
+        }
+
+        .challan-value-wide {
+            width: 25%;
+        }
+
+        .challan-section-title {
+            background: #e5e7eb;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .challan-total-row td {
+            font-weight: 700;
+        }
+
+        .challan-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 18px;
+            font-size: 12px;
+            padding: 12px 4px 0;
+            color: #111827;
+        }
+
+        .preview-meta {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .meta-line {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            font-size: 0.92rem;
+            color: var(--challan-text);
+        }
+
+        .meta-line span:first-child {
+            color: var(--challan-soft);
+            font-size: 0.78rem;
+        }
+
+        .meta-line strong {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .pill-id {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: #e8f9ef;
+            color: #21a365;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .total-due {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            margin: 1rem 0;
+            padding: 1rem 0.9rem;
+            border-radius: 0.5rem;
+            background: linear-gradient(90deg, #eefbfd 0%, #e9f8fb 100%);
+        }
+
+        .total-due span {
+            font-size: 0.86rem;
+            color: #4d6878;
+        }
+
+        .total-due strong {
+            font-size: 2rem;
+            letter-spacing: -0.05em;
+            color: #1d3550;
+        }
+
+        .preview-note {
+            margin-top: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--challan-soft);
+            line-height: 1.55;
+        }
+
+        .qr-preview-card {
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px dashed #cbd5e1;
+            border-radius: 0.9rem;
+            background: #f8fbff;
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .qr-preview-image {
+            width: 140px;
+            height: 140px;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.8rem;
+            background: #fff;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+        }
+
+        .qr-preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .qr-preview-copy h4 {
+            margin: 0 0 0.45rem;
+            color: var(--challan-text);
+        }
+
+        .qr-preview-copy p,
+        .qr-preview-copy a {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            color: var(--challan-soft);
+            word-break: break-all;
+        }
+
+        .challan-qr-cell {
+            text-align: center;
+            width: 140px;
+        }
+
+        .challan-qr-cell img {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 6px;
+        }
+
+        .challan-qr-note {
+            font-size: 10px;
+            color: #334155;
+            line-height: 1.45;
+        }
+
+        .form-actions-row {
+            display: flex;
+            gap: 0.65rem;
+            margin-top: 1rem;
+        }
+
+        .preview-print-sheet {
+            display: none;
+        }
+
+        @media (max-width: 1100px) {
+            .challan-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .challan-form {
+                grid-template-columns: 1fr;
+            }
+
+            .challan-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .form-actions-row {
+                flex-direction: column;
+            }
+
+            .qr-preview-card {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .sidebar,
+            .header,
+            .challan-shell,
+            .user-profile {
+                display: none !important;
+            }
+
+            .dashboard-container,
+            .main-content {
+                display: block;
+                padding: 0;
+                margin: 0;
+                background: #fff;
+            }
+
+            .preview-print-sheet {
+                display: block;
+                padding: 10mm;
+                font-family: 'Inter', sans-serif;
+            }
+
+            .preview-sheet {
+                border: none;
+                margin: 0;
+                break-inside: avoid;
+            }
+
+            .challan-paper {
+                padding: 0 0 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <i data-lucide="graduation-cap"></i> My Own School
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item active"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="finance.html" class="nav-item" style="display: none;"><i data-lucide="receipt"></i><span>Bills</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
+            </nav>
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info"><h4>Admin User</h4><p>Principal</p></div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Fee Challan Generator</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Screenshot jaisa compact form + live preview layout.</p>
+                </div>
+            </header>
+
+            <section class="challan-shell">
+                <div class="challan-layout">
+                    <section class="challan-panel">
+                        <div class="challan-head">
+                            <div>
+                                <h2>Challan Details</h2>
+                                <p>These inputs are reflected immediately in the preview.</p>
+                            </div>
+                        </div>
+                        <div class="challan-body">
+                            <form class="challan-form compact" id="challanForm">
+                                <div class="field-block">
+                                    <label for="challanNumber">Challan Number</label>
+                                    <input type="text" id="challanNumber" placeholder="CH-26-822">
+                                </div>
+                                <div class="field-block">
+                                    <label for="studentLookup">Student ID / Roll No</label>
+                                    <input type="text" id="studentLookup" placeholder="STD-0001 ya 20233">
+                                    <div class="field-help">Student ID ya roll number likho, data auto-fill ho jayega.</div>
+                                </div>
+                                <div class="field-block">
+                                    <label for="challanStudent">Student Name</label>
+                                    <select id="challanStudent"></select>
+                                </div>
+                                <div class="field-block">
+                                    <label for="studentSid">SID</label>
+                                    <input type="text" id="studentSid" placeholder="392">
+                                </div>
+                                <div class="field-block">
+                                    <label for="studentAdmNo">Admission No</label>
+                                    <input type="text" id="studentAdmNo" placeholder="668B">
+                                </div>
+                                <div class="field-block">
+                                    <label for="familyNo">Family No</label>
+                                    <input type="text" id="familyNo" placeholder="744">
+                                </div>
+                                <div class="field-block">
+                                    <label for="studentClass">Class / Section</label>
+                                    <input type="text" id="studentClass" placeholder="Play Group">
+                                </div>
+                                <div class="field-block">
+                                    <label for="studentRollNo">Roll Number</label>
+                                    <input type="text" id="studentRollNo" placeholder="0001">
+                                </div>
+                                <div class="field-block">
+                                    <label for="fatherName">Father Name</label>
+                                    <input type="text" id="fatherName" placeholder="Waseem Alam">
+                                </div>
+                                <div class="field-block">
+                                    <label for="fatherMobile">Father Mobile</label>
+                                    <input type="text" id="fatherMobile" placeholder="0300-0000000">
+                                </div>
+                                <div class="field-block">
+                                    <label for="challanSession">Session</label>
+                                    <select id="challanSession">
+                                        <option value="2024-2025">2024-2025</option>
+                                        <option value="2025-2026">2025-2026</option>
+                                        <option value="2026-2027">2026-2027</option>
+                                    </select>
+                                </div>
+                                <div class="field-block">
+                                    <label for="challanMonth">Challan Month</label>
+                                    <input type="text" id="challanMonth" placeholder="Mar, 2026">
+                                </div>
+                                <div class="field-block">
+                                    <label for="feeMonth">Fee Month</label>
+                                    <input type="text" id="feeMonth" placeholder="Mar, 2026">
+                                </div>
+                                <div class="field-block">
+                                    <label for="dueDate">Payment Due Date</label>
+                                    <input type="date" id="dueDate">
+                                </div>
+                                <div class="field-block">
+                                    <label for="baseAmount">Base Amount (PKR)</label>
+                                    <input type="number" id="baseAmount" min="0" placeholder="1500">
+                                </div>
+                                <div class="field-block">
+                                    <label for="additionalCharges">Additional Charges</label>
+                                    <input type="number" id="additionalCharges" min="0" value="0">
+                                </div>
+                                <div class="field-block">
+                                    <label for="discountValue">Discount</label>
+                                    <input type="text" id="discountValue" placeholder="Scholarship">
+                                </div>
+                                <div class="field-block">
+                                    <label for="particulars">Particulars</label>
+                                    <input type="text" id="particulars" placeholder="Tuition Fee">
+                                </div>
+                                <div class="field-block">
+                                    <label for="schoolName">School Name</label>
+                                    <input type="text" id="schoolName" placeholder="MY OWN SCIENCE SCHOOL JAND">
+                                </div>
+                                <div class="field-block full">
+                                    <label for="schoolAddress">Address / Campus</label>
+                                    <input type="text" id="schoolAddress" placeholder="Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900">
+                                </div>
+                                <div class="field-block full">
+                                    <label for="urduNote">Urdu Note</label>
+                                    <input type="text" id="urduNote" placeholder="نوٹ: مقررہ تاریخ کے بعد فیس قابل قبول نہیں ہوگی۔">
+                                </div>
+                                <div class="field-block full">
+                                    <label for="challanNotes">Notes / Instructions</label>
+                                    <textarea id="challanNotes" placeholder="Collect fees within 7 days."></textarea>
+                                </div>
+                            </form>
+                            <div class="form-actions-row">
+                                <button class="btn btn-outline" type="button" onclick="resetChallanForm()">
+                                    <i data-lucide="refresh-cw" size="16"></i>&nbsp;Refresh Preview
+                                </button>
+                                <button class="btn btn-primary" type="button" onclick="window.print()">
+                                    <i data-lucide="printer" size="16"></i>&nbsp;Print Challan
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="challan-panel">
+                        <div class="challan-head">
+                            <div>
+                                <h2>Live Preview</h2>
+                                <p>The preview refreshes as soon as you modify the fields.</p>
+                            </div>
+                            <span class="printable-tag">Printable</span>
+                        </div>
+                        <div class="challan-body">
+                            <div class="preview-card">
+                                <div class="preview-meta" id="challanPreviewCard"></div>
+                                <div class="qr-preview-card">
+                                    <div class="qr-preview-image" id="qrPreviewImage">QR</div>
+                                    <div class="qr-preview-copy">
+                                        <h4>QR Payment Scan</h4>
+                                        <p id="qrPreviewStatus">Select a student to generate a payment QR code.</p>
+                                        <a id="qrPreviewLink" href="#" target="_blank" rel="noopener" style="display:none;"></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <div class="preview-print-sheet" id="printSheet"></div>
+        </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const challanFormFields = ['challanNumber', 'challanStudent', 'studentSid', 'studentAdmNo', 'familyNo', 'studentClass', 'studentRollNo', 'fatherName', 'fatherMobile', 'challanSession', 'challanMonth', 'feeMonth', 'dueDate', 'baseAmount', 'additionalCharges', 'discountValue', 'particulars', 'schoolName', 'schoolAddress', 'urduNote', 'challanNotes'];
+        const printCopies = ['School Copy', 'Student Copy'];
+        let challanStudents = [];
+        let challanQrState = {
+            paymentUrl: '',
+            qrImageUrl: '',
+            status: 'Select a student to generate a payment QR code.'
+        };
+        let challanQrTimer = null;
+        let challanQrRequestId = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChallanPage();
+            if (window.lucide) window.lucide.createIcons();
+        });
+
+        function initializeChallanPage() {
+            challanStudents = [...getData(STORAGE_KEY_STUDENTS)].sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+            populateStudents();
+            setChallanDefaults();
+            challanFormFields.forEach(id => {
+                const field = document.getElementById(id);
+                if (!field) return;
+                field.addEventListener('input', handleChallanFieldUpdate);
+                field.addEventListener('change', handleStudentChange);
+            });
+            const studentLookup = document.getElementById('studentLookup');
+            if (studentLookup) {
+                studentLookup.addEventListener('input', handleStudentLookup);
+                studentLookup.addEventListener('change', handleStudentLookup);
+            }
+            triggerChallanRefresh();
+        }
+
+        function populateStudents() {
+            const select = document.getElementById('challanStudent');
+            select.innerHTML = '';
+            if (!challanStudents.length) {
+                select.innerHTML = '<option value="">No students available</option>';
+                return;
+            }
+            select.innerHTML = '<option value="">Select student</option>';
+            challanStudents.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = student.fullName || 'Unnamed Student';
+                select.appendChild(option);
+            });
+        }
+
+        function setChallanDefaults() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            document.getElementById('challanNumber').value = `CH-${String(currentYear).slice(-2)}-${String(Date.now()).slice(-3)}`;
+            document.getElementById('dueDate').value = new Date(currentYear, now.getMonth(), 7).toISOString().split('T')[0];
+            document.getElementById('challanSession').value = `${currentYear}-${currentYear + 1}`;
+            document.getElementById('challanMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
+            document.getElementById('feeMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
+            document.getElementById('particulars').value = 'Tuition Fee';
+            document.getElementById('schoolName').value = 'MY OWN SCIENCE SCHOOL JAND';
+            document.getElementById('schoolAddress').value = 'Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900';
+            document.getElementById('urduNote').value = 'نوٹ: مقررہ تاریخ کے بعد فیس قابل قبول نہیں ہوگی۔';
+            document.getElementById('challanNotes').value = 'No additional instructions.';
+        }
+
+        function handleStudentChange(event) {
+            if (event.target.id === 'challanStudent') {
+                const student = challanStudents.find(item => item.id === event.target.value);
+                applyStudentToChallan(student, true);
+            }
+            triggerChallanRefresh();
+        }
+
+        function handleStudentLookup() {
+            const lookupValue = document.getElementById('studentLookup').value.trim().toLowerCase();
+            if (!lookupValue) {
+                triggerChallanRefresh();
+                return;
+            }
+
+            const student = challanStudents.find(item =>
+                String(item.studentCode || '').toLowerCase() === lookupValue ||
+                String(item.rollNo || '').toLowerCase() === lookupValue
+            );
+
+            if (!student) {
+                triggerChallanRefresh();
+                return;
+            }
+
+            document.getElementById('challanStudent').value = student.id;
+            applyStudentToChallan(student, true);
+            triggerChallanRefresh();
+        }
+
+        function applyStudentToChallan(student, syncLookup = false) {
+            if (!student) return;
+
+            document.getElementById('studentClass').value = student.classGrade || '';
+            document.getElementById('studentRollNo').value = student.rollNo || '';
+            document.getElementById('studentSid').value = student.studentCode || student.rollNo || '';
+            document.getElementById('studentAdmNo').value = student.admissionNo || '';
+            document.getElementById('familyNo').value = student.familyNo || '';
+            document.getElementById('fatherName').value = student.fatherName || '';
+            document.getElementById('fatherMobile').value = student.phone || student.fatherMobile || '';
+            if (!document.getElementById('baseAmount').value) {
+                document.getElementById('baseAmount').value = student.monthlyFee || 0;
+            }
+
+            if (syncLookup) {
+                document.getElementById('studentLookup').value = student.studentCode || student.rollNo || '';
+            }
+        }
+
+        function resetChallanForm() {
+            document.getElementById('challanForm').reset();
+            document.getElementById('challanStudent').value = '';
+            document.getElementById('studentLookup').value = '';
+            document.getElementById('studentClass').value = '';
+            document.getElementById('studentRollNo').value = '';
+            document.getElementById('studentSid').value = '';
+            document.getElementById('studentAdmNo').value = '';
+            document.getElementById('familyNo').value = '';
+            document.getElementById('fatherName').value = '';
+            document.getElementById('fatherMobile').value = '';
+            document.getElementById('baseAmount').value = '';
+            document.getElementById('additionalCharges').value = 0;
+            setChallanDefaults();
+            triggerChallanRefresh();
+        }
+
+        function handleChallanFieldUpdate() {
+            triggerChallanRefresh();
+        }
+
+        function triggerChallanRefresh() {
+            renderChallanPreview();
+            clearTimeout(challanQrTimer);
+            challanQrTimer = setTimeout(refreshChallanQr, 250);
+        }
+
+        async function refreshChallanQr() {
+            const data = getChallanData();
+            const requestId = ++challanQrRequestId;
+
+            if (!data.studentId || !data.feeMonth || !data.challanNumber) {
+                challanQrState = {
+                    paymentUrl: '',
+                    qrImageUrl: '',
+                    status: 'Select a student to generate a payment QR code.'
+                };
+                renderQrPreviewBlock();
+                renderChallanPreview();
+                return;
+            }
+
+            challanQrState = {
+                paymentUrl: '',
+                qrImageUrl: '',
+                status: 'Generating payment QR code...'
+            };
+            renderQrPreviewBlock();
+            renderChallanPreview();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/fees/challan-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: data.studentId,
+                        studentName: data.studentName,
+                        rollNo: data.rollNo,
+                        classGrade: data.classSection,
+                        feeMonth: data.feeMonth,
+                        session: data.session,
+                        amount: data.totalDue,
+                        challanNumber: data.challanNumber
+                    })
+                });
+
+                const result = await response.json().catch(() => ({}));
+                if (requestId !== challanQrRequestId) return;
+
+                if (!response.ok || !result.success || !result.paymentUrl) {
+                    throw new Error(result.message || 'QR code could not be generated.');
+                }
+
+                challanQrState = {
+                    paymentUrl: result.paymentUrl,
+                    qrImageUrl: result.qrDataUrl || '',
+                    status: `Scanning this QR code will mark ${data.studentName}'s ${data.feeMonth} fee as paid.`
+                };
+            } catch (error) {
+                if (requestId !== challanQrRequestId) return;
+                challanQrState = {
+                    paymentUrl: '',
+                    qrImageUrl: '',
+                    status: error.message || 'QR code could not be generated.'
+                };
+            }
+
+            renderQrPreviewBlock();
+            renderChallanPreview();
+        }
+
+        function renderChallanPreview() {
+            const data = getChallanData();
+            document.getElementById('challanPreviewCard').innerHTML = buildPreviewMarkup(data);
+            document.getElementById('printSheet').innerHTML = printCopies.map(copy => buildPrintMarkup(data, copy)).join('');
+            renderQrPreviewBlock();
+        }
+
+        function renderQrPreviewBlock() {
+            const qrPreviewImage = document.getElementById('qrPreviewImage');
+            const qrPreviewStatus = document.getElementById('qrPreviewStatus');
+            const qrPreviewLink = document.getElementById('qrPreviewLink');
+            if (!qrPreviewImage || !qrPreviewStatus || !qrPreviewLink) return;
+
+            if (challanQrState.qrImageUrl) {
+                qrPreviewImage.innerHTML = `<img src="${escapeHtml(challanQrState.qrImageUrl)}" alt="Fee payment QR code">`;
+                qrPreviewLink.href = challanQrState.paymentUrl;
+                qrPreviewLink.textContent = 'Open payment link';
+                qrPreviewLink.style.display = 'inline-flex';
+            } else {
+                qrPreviewImage.textContent = 'QR';
+                qrPreviewLink.href = '#';
+                qrPreviewLink.textContent = '';
+                qrPreviewLink.style.display = 'none';
+            }
+
+            qrPreviewStatus.textContent = challanQrState.status;
+        }
+
+        function getChallanData() {
+            const selectedStudent = challanStudents.find(item => item.id === document.getElementById('challanStudent').value);
+            const baseAmount = Number(document.getElementById('baseAmount').value || 0);
+            const additionalCharges = Number(document.getElementById('additionalCharges').value || 0);
+            const discountInput = document.getElementById('discountValue').value.trim();
+            const numericDiscount = Number(discountInput);
+            const discountAmount = Number.isNaN(numericDiscount) ? 0 : numericDiscount;
+
+            return {
+                studentId: selectedStudent ? selectedStudent.id : '',
+                challanNumber: document.getElementById('challanNumber').value.trim() || '-',
+                studentName: selectedStudent ? selectedStudent.fullName : 'Student 1',
+                sid: document.getElementById('studentSid').value.trim() || '-',
+                admissionNo: document.getElementById('studentAdmNo').value.trim() || '-',
+                familyNo: document.getElementById('familyNo').value.trim() || '-',
+                classSection: document.getElementById('studentClass').value.trim() || '-',
+                rollNo: document.getElementById('studentRollNo').value.trim() || '-',
+                fatherName: document.getElementById('fatherName').value.trim() || '-',
+                fatherMobile: document.getElementById('fatherMobile').value.trim() || '-',
+                session: document.getElementById('challanSession').value.trim() || '-',
+                challanMonth: document.getElementById('challanMonth').value.trim() || '-',
+                feeMonth: document.getElementById('feeMonth').value.trim() || '-',
+                dueDate: formatDate(document.getElementById('dueDate').value),
+                baseAmount,
+                additionalCharges,
+                discountLabel: discountInput || '0',
+                discountAmount,
+                particulars: document.getElementById('particulars').value.trim() || 'Tuition Fee',
+                schoolName: document.getElementById('schoolName').value.trim() || 'MY OWN SCIENCE SCHOOL JAND',
+                schoolAddress: document.getElementById('schoolAddress').value.trim() || 'Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900',
+                urduNote: document.getElementById('urduNote').value.trim() || '',
+                notes: document.getElementById('challanNotes').value.trim() || 'No additional instructions.',
+                totalDue: Math.max(baseAmount + additionalCharges - discountAmount, 0)
+            };
+        }
+
+        function buildPreviewMarkup(data) {
+            return `
+                ${printCopies.map(copy => buildPrintMarkup(data, copy)).join('')}
+            `;
+        }
+
+        function buildPrintMarkup(data, copyLabel) {
+            return `
+                <section class="preview-sheet">
+                    <div class="challan-paper">
+                        <div class="challan-copy-label">${escapeHtml(copyLabel)}</div>
+                        <table class="challan-table">
+                            <tr>
+                                <td class="challan-school-mark">Logo</td>
+                                <td colspan="5" class="challan-school-title">${escapeHtml(data.schoolName)}</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td colspan="5" class="challan-school-subtitle">${escapeHtml(data.schoolAddress)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="6" class="challan-urdu-note">${escapeHtml(data.urduNote || data.notes)}</td>
+                            </tr>
+                            <tr>
+                                <td class="challan-label">SID</td>
+                                <td class="challan-value">${escapeHtml(data.sid)}</td>
+                                <td class="challan-label">Student Name</td>
+                                <td class="challan-value-wide">${escapeHtml(data.studentName)}</td>
+                                <td class="challan-label">Class</td>
+                                <td class="challan-value">${escapeHtml(data.classSection)}</td>
+                            </tr>
+                            <tr>
+                                <td class="challan-label">Adm No.</td>
+                                <td class="challan-value">${escapeHtml(data.admissionNo)}</td>
+                                <td class="challan-label">Father Name</td>
+                                <td class="challan-value-wide">${escapeHtml(data.fatherName)}</td>
+                                <td class="challan-label">Father Mobile</td>
+                                <td class="challan-value">${escapeHtml(data.fatherMobile)}</td>
+                            </tr>
+                            <tr>
+                                <td class="challan-label">Family No.</td>
+                                <td class="challan-value">${escapeHtml(data.familyNo)}</td>
+                                <td class="challan-label">Challan Month</td>
+                                <td class="challan-value-wide">${escapeHtml(data.challanMonth)}</td>
+                                <td class="challan-label">Due Date</td>
+                                <td class="challan-value">${escapeHtml(data.dueDate)}</td>
+                            </tr>
+                            <tr>
+                                <td class="challan-label">Fee Month</td>
+                                <td colspan="3">${escapeHtml(data.feeMonth)}</td>
+                                <td class="challan-label">Challan No.</td>
+                                <td>${escapeHtml(data.challanNumber)}</td>
+                            </tr>
+                            <tr>
+                                <th class="challan-section-title" colspan="3">Particulars</th>
+                                <th class="challan-section-title" colspan="3">Amount</th>
+                            </tr>
+                            <tr>
+                                <td colspan="3">${escapeHtml(data.particulars)}</td>
+                                <td colspan="3">${formatCurrency(data.baseAmount)}</td>
+                            </tr>
+                            ${data.additionalCharges > 0 ? `
+                            <tr>
+                                <td colspan="3">Additional Charges</td>
+                                <td colspan="3">${formatCurrency(data.additionalCharges)}</td>
+                            </tr>` : ''}
+                            ${data.discountAmount > 0 ? `
+                            <tr>
+                                <td colspan="3">Discount</td>
+                                <td colspan="3">-${formatCurrency(data.discountAmount)}</td>
+                            </tr>` : ''}
+                            <tr class="challan-total-row">
+                                <td colspan="3">Total</td>
+                                <td colspan="3">${formatCurrency(data.totalDue)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="challan-qr-note">
+                                    ${escapeHtml(challanQrState.status || `Scan this QR code to mark ${data.studentName}'s fee as paid.`)}
+                                </td>
+                                <td colspan="2" class="challan-qr-cell">
+                                    ${challanQrState.qrImageUrl
+                                        ? `<img src="${escapeHtml(challanQrState.qrImageUrl)}" alt="Fee payment QR code">`
+                                        : '<span>QR unavailable</span>'}
+                                </td>
+                            </tr>
+                        </table>
+                        <div class="challan-footer">
+                            <div>Date: ____________________</div>
+                            <div>Received: ____________________</div>
+                            <div>Signature: ____________________</div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function isDiscountNumeric(value) {
+            return !Number.isNaN(Number(value)) && value !== '';
+        }
+
+        function formatDate(value) {
+            if (!value) return '—';
+            return new Date(value).toLocaleDateString('en-GB');
+        }
+
+        function formatCurrency(value) {
+            return Number(value || 0).toLocaleString('en-PK');
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+    </script>
+</body>
+
+</html>
