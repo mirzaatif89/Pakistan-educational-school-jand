@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance Report - Apexiueum</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .report-toolbar { display:grid; grid-template-columns: 1fr 220px; gap:1rem; margin-bottom:1.5rem; align-items:end; }
+        .input-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; box-shadow: var(--shadow-sm); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section"><i data-lucide="graduation-cap"></i> Apexiueum</div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
+            </nav>
+            <a href="settings.html" class="user-profile"><div class="avatar">AD</div><div class="user-info"><h4>Admin User</h4><p>Principal</p></div></a>
+        </aside>
+        <main class="main-content">
+            <header class="header"><div><h1>Teacher Attendance Report</h1><p style="color:var(--text-secondary); margin-top:0.25rem;">Monthly attendance percentage for teachers and staff.</p></div></header>
+            <div class="report-toolbar">
+                <div class="search-bar"><i data-lucide="search" size="18" style="color: var(--text-secondary);"></i><input type="text" id="teacherReportSearch" placeholder="Search teacher or staff..."></div>
+                <div class="input-card"><label for="teacherReportMonth" style="display:block; margin-bottom:0.45rem; font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Report Month</label><input type="month" id="teacherReportMonth" style="width:100%; padding:0.75rem 1rem; border:1px solid var(--border-color); border-radius:var(--radius-md);"></div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Name</th><th>Role</th><th>Present</th><th>Late</th><th>Absent/Leave</th><th>Attendance Rate</th></tr></thead>
+                    <tbody id="teacherAttendanceReportBody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    <script src="auth.js"></script><script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('teacherReportMonth').value = new Date().toISOString().slice(0, 7);
+            await loadTeacherAttendanceFromSQL();
+            renderTeacherAttendanceReport();
+            document.getElementById('teacherReportSearch').addEventListener('input', renderTeacherAttendanceReport);
+            document.getElementById('teacherReportMonth').addEventListener('change', async () => {
+                await loadTeacherAttendanceFromSQL();
+                renderTeacherAttendanceReport();
+            });
+            if (window.lucide) window.lucide.createIcons();
+        });
+        function renderTeacherAttendanceReport() {
+            const tbody = document.getElementById('teacherAttendanceReportBody');
+            const attendanceStore = getData(STORAGE_KEY_TEACHER_ATTENDANCE) || {};
+            const roster = buildSalaryRoster();
+            const monthKey = document.getElementById('teacherReportMonth').value || new Date().toISOString().slice(0, 7);
+            const term = document.getElementById('teacherReportSearch').value.trim().toLowerCase();
+            tbody.innerHTML = '';
+            roster.filter(entry => !term || entry.searchableText.includes(term)).forEach(entry => {
+                const summary = getEmployeeAttendanceSummary(entry.id, monthKey);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${entry.fullName}</td><td>${entry.roleLabel}</td><td>${summary.present}</td><td>${summary.late}</td><td>${summary.absent + summary.leave}</td><td>${summary.countedDays ? `${summary.attendanceRate}%` : 'No record'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>

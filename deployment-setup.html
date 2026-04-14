@@ -203,7 +203,7 @@
                 <span class="step-number">1</span>
                 Backend URL Update Karo
             </h3>
-            <p>Jab aap Render pe backend deploy kar lo, to wahan se backend URL copy karo aur yahan paste karo:</p>
+                <p>After deploying the backend on Render, copy the backend URL and paste it here:</p>
             <input type="text" id="backendUrl" class="url-input" placeholder="https://your-backend.onrender.com"
                 value="https://school-management-backend.onrender.com">
             <button class="btn" onclick="updateBackendUrl()">Update script.js</button>
@@ -218,7 +218,7 @@
                 <span class="step-number">2</span>
                 GitHub Pe Push Karo
             </h3>
-            <p>Terminal mein ye commands run karo:</p>
+                <p>Run these commands in the terminal:</p>
             <div class="code-box">
                 <button class="copy-btn" onclick="copyCode('gitCommands')">Copy</button>
                 <pre id="gitCommands">git add .
@@ -284,7 +284,7 @@ git push</pre>
             successDiv.style.display = 'block';
 
             // Create download link for updated script.js
-            alert(`✅ Backend URL set to: ${url}\n\nNote: Aapko manually script.js file mein line 18 pe ye URL update karna hoga:\n\nconst BACKEND_URL = isLocalhost \n    ? 'http://localhost:3000' \n    : '${url}';`);
+            alert(`✅ Backend URL set to: ${url}\n\nNote: You still need to manually update this URL in script.js on line 18:\n\nconst BACKEND_URL = isLocalhost \n    ? 'http://localhost:3000' \n    : '${url}';`);
 
             setTimeout(() => {
                 successDiv.style.display = 'none';

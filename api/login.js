@@ -12,25 +12,29 @@ const {
 module.exports = createHandler({
     POST: async ({ res, db, body }) => {
         const { username, password } = body || {};
-        const adminEmail = process.env.ADMIN_USERNAME || 'Apexiums@school.com';
-        const adminPass = process.env.ADMIN_PASSWORD || 'Apexiums1717';
+        const adminEmail = process.env.ADMIN_USERNAME || 'Myownschool';
+        const adminPass = process.env.ADMIN_PASSWORD || 'myownschool1122';
 
         if (username === adminEmail && password === adminPass) {
+            const permissions = await loadPermissions(db);
+            const groupKey = permissions.roleGroups.Admin || 'admin';
             const token = jwt.sign({ id: 'admin', role: 'Admin' }, JWT_SECRET, { expiresIn: '1d' });
             sendJson(res, 200, {
                 success: true,
                 token,
-                user: { id: 'admin', fullName: 'Administrator', role: 'Admin', username: adminEmail }
+                user: { id: 'admin', fullName: 'Administrator', role: 'Admin', username: adminEmail, groupKey }
             });
             return;
         }
 
         if (username === PRINCIPAL_USERNAME && password === PRINCIPAL_PASSWORD) {
+            const permissions = await loadPermissions(db);
+            const groupKey = permissions.roleGroups.Principal || 'principal';
             const token = jwt.sign({ id: 'principal', role: 'Principal' }, JWT_SECRET, { expiresIn: '1d' });
             sendJson(res, 200, {
                 success: true,
                 token,
-                user: { id: 'principal', fullName: 'Principal', role: 'Principal', username: PRINCIPAL_USERNAME }
+                user: { id: 'principal', fullName: 'Principal', role: 'Principal', username: PRINCIPAL_USERNAME, groupKey }
             });
             return;
         }
@@ -50,8 +54,9 @@ module.exports = createHandler({
         }
 
         const permissions = await loadPermissions(db);
-        if (user.role === 'Student' && permissions.loginAccess.student === false) {
-            sendJson(res, 403, { success: false, message: 'Student login is currently disabled by admin.' });
+        const roleKey = String(user.role || '').toLowerCase();
+        if (permissions.loginAccess[roleKey] === false) {
+            sendJson(res, 403, { success: false, message: `${user.role} login is currently disabled by admin.` });
             return;
         }
 
@@ -87,7 +92,8 @@ module.exports = createHandler({
                 fullName: profileName,
                 role: user.role,
                 username: user.username,
-                campusName: user.campusName || ''
+                campusName: user.campusName || '',
+                groupKey: permissions.roleGroups[user.role] || roleKey
             }
         });
     }

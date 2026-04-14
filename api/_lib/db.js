@@ -120,6 +120,24 @@ function defineFeePaymentModel(db) {
     });
 }
 
+function defineStudentAttendanceModel(db) {
+    return db.define('StudentAttendance', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        studentId: { type: DataTypes.STRING, allowNull: false },
+        date: { type: DataTypes.STRING, allowNull: false },
+        status: { type: DataTypes.STRING, allowNull: false }
+    });
+}
+
+function defineTeacherAttendanceModel(db) {
+    return db.define('TeacherAttendance', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        teacherId: { type: DataTypes.STRING, allowNull: false },
+        date: { type: DataTypes.STRING, allowNull: false },
+        status: { type: DataTypes.STRING, allowNull: false }
+    });
+}
+
 function defineAppSettingModel(db) {
     return db.define('AppSetting', {
         settingKey: { type: DataTypes.STRING, primaryKey: true },
@@ -261,6 +279,8 @@ async function getDb() {
             defineUserModel(db);
             defineStaffModel(db);
             defineFeePaymentModel(db);
+            defineStudentAttendanceModel(db);
+            defineTeacherAttendanceModel(db);
             defineAppSettingModel(db);
 
             await db.sync();

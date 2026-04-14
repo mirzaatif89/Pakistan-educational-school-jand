@@ -824,6 +824,29 @@
             applyStudentResult(result);
         }
 
+        function getStudentBranchContactDetails(campusName) {
+            const normalizedCampus = String(campusName || '').trim().toLowerCase();
+
+            if (normalizedCampus.includes('ali')) {
+                return {
+                    campusLabel: 'Ali campus',
+                    contactLine: 'Address: Chapri Road Jand | Phone: 03085259900'
+                };
+            }
+
+            if (normalizedCampus.includes('fatima')) {
+                return {
+                    campusLabel: 'Fatima campus',
+                    contactLine: 'Address: Nai Abadi | Phone: 03085259900'
+                };
+            }
+
+            return {
+                campusLabel: 'Main branch',
+                contactLine: 'Address: Dekhni Road Jand | Phone: 03045259900'
+            };
+        }
+
         function printStudentResultCard() {
             const cachedResult = JSON.parse(sessionStorage.getItem(STUDENT_RESULT_CACHE_KEY) || 'null');
             const student = JSON.parse(sessionStorage.getItem(STUDENT_PROFILE_CACHE_KEY) || 'null') || getStudentFromLocalFallback();
@@ -837,6 +860,7 @@
             const obtainedMarks = cachedResult.subjects.reduce((sum, item) => sum + toNumber(item.obtained), 0);
             const percentage = totalMarks ? (obtainedMarks / totalMarks) * 100 : 0;
             const status = percentage >= 40 ? 'Pass' : 'Fail';
+            const branchDetails = getStudentBranchContactDetails(student.campusName || cachedResult.campusName);
             const subjectRows = cachedResult.subjects.map((item) => `
                 <tr>
                     <td>${item.subject || '-'}</td>
@@ -875,8 +899,8 @@
                         <div class="sheet">
                             <div class="head">
                                 <h1>${cachedResult.schoolName || 'School Result Card'}</h1>
-                                <p>${cachedResult.campusName || ''}</p>
-                                <p>${cachedResult.schoolContact || ''}</p>
+                                <p>${branchDetails.campusLabel}</p>
+                                <p>${branchDetails.contactLine}</p>
                             </div>
                             <div class="term">${cachedResult.termTitle || 'Result Card'}</div>
                             <div class="meta">

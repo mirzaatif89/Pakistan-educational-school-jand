@@ -142,7 +142,7 @@ npm start
    ```
 
 5. **Test Karo**
-   - Login karo: `Apexiums@school.com` / `Apexiums1717`
+- Login karo: `Myownschool` / `myownschool1122`
    - Students add karo
    - Teachers add karo
    - Sab features test karo

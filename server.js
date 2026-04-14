@@ -39,12 +39,160 @@ let sequelize;
 let startupPromise = null;
 let isInitialized = false;
 
+const MODULE_KEYS = [
+    'dashboard',
+    'students',
+    'teachers',
+    'staff',
+    'classes',
+    'fees',
+    'fee_challan',
+    'teacher_salaries',
+    'student_attendance',
+    'teacher_attendance',
+    'student_attendance_report',
+    'teacher_attendance_report',
+    'exams',
+    'revenue',
+    'settings',
+    'permissions',
+    'branch_registration',
+    'email',
+    'aboutme',
+    'student_portal',
+    'teacher_portal',
+    'staff_portal',
+    'principal_portal'
+];
+const ACCESS_LEVELS = ['none', 'view', 'edit', 'manage'];
+
+function buildModuleSet(defaultAccess = 'none', overrides = {}) {
+    return MODULE_KEYS.reduce((acc, key) => {
+        const requested = overrides[key];
+        acc[key] = ACCESS_LEVELS.includes(requested) ? requested : defaultAccess;
+        return acc;
+    }, {});
+}
+
 const defaultPermissions = {
     loginAccess: {
-        student: true
+        admin: true,
+        principal: true,
+        branch: true,
+        teacher: true,
+        student: true,
+        staff: true
     },
-    modules: {}
+    roleGroups: {
+        Admin: 'admin',
+        Principal: 'principal',
+        Branch: 'branch_manager',
+        Teacher: 'teacher',
+        Student: 'student',
+        Staff: 'staff'
+    },
+    groups: {
+        admin: {
+            name: 'System Administrators',
+            homePage: 'dashboard.html',
+            permissions: buildModuleSet('manage')
+        },
+        principal: {
+            name: 'Principal Group',
+            homePage: 'principal_portal.html',
+            permissions: buildModuleSet('none', {
+                principal_portal: 'manage',
+                dashboard: 'view',
+                students: 'view',
+                teachers: 'view',
+                staff: 'view',
+                classes: 'view',
+                exams: 'view',
+                revenue: 'view',
+                aboutme: 'view'
+            })
+        },
+        branch_manager: {
+            name: 'Branch Managers',
+            homePage: 'students.html',
+            permissions: buildModuleSet('none', {
+                students: 'manage',
+                dashboard: 'view',
+                classes: 'view',
+                aboutme: 'view'
+            })
+        },
+        teacher: {
+            name: 'Teachers',
+            homePage: 'teacher_portal.html',
+            permissions: buildModuleSet('none', {
+                teacher_portal: 'manage',
+                students: 'view',
+                classes: 'view',
+                student_attendance: 'edit',
+                student_attendance_report: 'view',
+                exams: 'edit',
+                aboutme: 'view'
+            })
+        },
+        student: {
+            name: 'Students',
+            homePage: 'student_portal.html',
+            permissions: buildModuleSet('none', {
+                student_portal: 'manage',
+                fees: 'view',
+                fee_challan: 'view',
+                exams: 'view',
+                aboutme: 'view'
+            })
+        },
+        staff: {
+            name: 'Staff',
+            homePage: 'staff_portal.html',
+            permissions: buildModuleSet('none', {
+                staff_portal: 'manage',
+                aboutme: 'view'
+            })
+        }
+    }
 };
+
+function normalizePermissionsConfig(input = {}) {
+    const raw = input && typeof input === 'object' ? input : {};
+    const groupsInput = raw.groups && typeof raw.groups === 'object' ? raw.groups : {};
+    const groups = Object.entries({
+        ...defaultPermissions.groups,
+        ...groupsInput
+    }).reduce((acc, [key, groupValue]) => {
+        const baseGroup = defaultPermissions.groups[key] || {
+            name: key,
+            homePage: 'dashboard.html',
+            permissions: buildModuleSet('none')
+        };
+        const nextGroup = groupValue && typeof groupValue === 'object' ? groupValue : {};
+        acc[key] = {
+            name: String(nextGroup.name || baseGroup.name || key),
+            homePage: String(nextGroup.homePage || baseGroup.homePage || 'dashboard.html'),
+            permissions: buildModuleSet('none', {
+                ...baseGroup.permissions,
+                ...(nextGroup.permissions || {})
+            })
+        };
+        return acc;
+    }, {});
+
+    return {
+        loginAccess: {
+            ...defaultPermissions.loginAccess,
+            ...(raw.loginAccess || {})
+        },
+        roleGroups: {
+            ...defaultPermissions.roleGroups,
+            ...(raw.roleGroups || {})
+        },
+        groups
+    };
+}
 
 function isPasswordHash(value) {
     return typeof value === 'string' && /^\$2[aby]\$/.test(value);
@@ -233,30 +381,14 @@ function readPermissions() {
         const raw = fs.readFileSync(PERMISSIONS_FILE, 'utf8');
         const saved = JSON.parse(raw);
 
-        return {
-            ...defaultPermissions,
-            ...saved,
-            loginAccess: {
-                ...defaultPermissions.loginAccess,
-                ...(saved.loginAccess || {})
-            },
-            modules: saved.modules || {}
-        };
+        return normalizePermissionsConfig(saved);
     } catch (error) {
         return defaultPermissions;
     }
 }
 
 function writePermissions(data) {
-    const nextPermissions = {
-        ...defaultPermissions,
-        ...data,
-        loginAccess: {
-            ...defaultPermissions.loginAccess,
-            ...(data.loginAccess || {})
-        },
-        modules: data.modules || {}
-    };
+    const nextPermissions = normalizePermissionsConfig(data);
 
     fs.writeFileSync(PERMISSIONS_FILE, JSON.stringify(nextPermissions, null, 2), 'utf8');
     return nextPermissions;
@@ -273,7 +405,7 @@ function getEmailConfig() {
     const pass = process.env.SMTP_PASS || '';
     const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
     const fromEmail = process.env.SMTP_FROM_EMAIL || user;
-    const fromName = process.env.SMTP_FROM_NAME || 'My Own School';
+    const fromName = process.env.SMTP_FROM_NAME || 'Apexiueum';
 
     return {
         configured: Boolean(host && port && user && pass && fromEmail),
@@ -391,24 +523,28 @@ app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const adminEmail = process.env.ADMIN_USERNAME || 'Apexiums@school.com';
-        const adminPass = process.env.ADMIN_PASSWORD || 'Apexiums1717';
+        const adminEmail = process.env.ADMIN_USERNAME || 'Myownschool';
+        const adminPass = process.env.ADMIN_PASSWORD || 'myownschool1122';
 
         if (username === adminEmail && password === adminPass) {
+            const permissions = readPermissions();
+            const groupKey = permissions.roleGroups.Admin || 'admin';
             const token = jwt.sign({ id: 'admin', role: 'Admin' }, JWT_SECRET, { expiresIn: '1d' });
             return res.json({
                 success: true,
                 token,
-                user: { id: 'admin', fullName: 'Administrator', role: 'Admin', username: adminEmail }
+                user: { id: 'admin', fullName: 'Administrator', role: 'Admin', username: adminEmail, groupKey }
             });
         }
 
         if (username === PRINCIPAL_USERNAME && password === PRINCIPAL_PASSWORD) {
+            const permissions = readPermissions();
+            const groupKey = permissions.roleGroups.Principal || 'principal';
             const token = jwt.sign({ id: 'principal', role: 'Principal' }, JWT_SECRET, { expiresIn: '1d' });
             return res.json({
                 success: true,
                 token,
-                user: { id: 'principal', fullName: 'Principal', role: 'Principal', username: PRINCIPAL_USERNAME }
+                user: { id: 'principal', fullName: 'Principal', role: 'Principal', username: PRINCIPAL_USERNAME, groupKey }
             });
         }
 
@@ -434,9 +570,9 @@ app.post('/api/login', async (req, res) => {
 
         if (user) {
             const permissions = readPermissions();
-
-            if (user.role === 'Student' && permissions.loginAccess.student === false) {
-                return res.status(403).json({ success: false, message: 'Student login is currently disabled by admin.' });
+            const roleKey = String(user.role || '').toLowerCase();
+            if (permissions.loginAccess[roleKey] === false) {
+                return res.status(403).json({ success: false, message: `${user.role} login is currently disabled by admin.` });
             }
 
             const isMatch = await bcrypt.compare(password, user.password);
@@ -464,7 +600,8 @@ app.post('/api/login', async (req, res) => {
                         fullName: profileName,
                         role: user.role,
                         username: user.username,
-                        campusName: user.campusName || ''
+                        campusName: user.campusName || '',
+                        groupKey: permissions.roleGroups[user.role] || roleKey
                     }
                 });
             }
@@ -634,6 +771,66 @@ app.post('/api/students', async (req, res) => {
     }
 });
 
+app.get('/api/student-attendance', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const records = await sequelize.models.StudentAttendance.findAll({
+            order: [['date', 'ASC']]
+        });
+        res.json({
+            success: true,
+            attendance: buildStudentAttendanceStore(records)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/student-attendance', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const StudentAttendance = sequelize.models.StudentAttendance;
+        const payload = Array.isArray(req.body) ? req.body : [req.body];
+
+        for (const item of payload) {
+            const studentId = String(item?.studentId || '').trim();
+            const date = String(item?.date || '').trim();
+            const status = normalizeAttendanceStatus(item?.status);
+
+            if (!studentId || !date) {
+                return res.status(400).json({ success: false, message: 'studentId and date are required.' });
+            }
+
+            const recordId = `${studentId}_${date}`;
+
+            if (status === 'Not Marked') {
+                await StudentAttendance.destroy({ where: { id: recordId } });
+                continue;
+            }
+
+            await StudentAttendance.upsert({
+                id: recordId,
+                studentId,
+                date,
+                status
+            });
+        }
+
+        const records = await StudentAttendance.findAll({
+            order: [['date', 'ASC']]
+        });
+
+        res.json({
+            success: true,
+            attendance: buildStudentAttendanceStore(records)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.delete('/api/students/:id', async (req, res) => {
     if (!sequelize) return res.status(503).json({ error: 'Database offline' });
 
@@ -661,6 +858,66 @@ app.delete('/api/students/:id', async (req, res) => {
         res.json({ success: true, message: 'Student deleted successfully.' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/teacher-attendance', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const records = await sequelize.models.TeacherAttendance.findAll({
+            order: [['date', 'ASC']]
+        });
+        res.json({
+            success: true,
+            attendance: buildTeacherAttendanceStore(records)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/teacher-attendance', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const TeacherAttendance = sequelize.models.TeacherAttendance;
+        const payload = Array.isArray(req.body) ? req.body : [req.body];
+
+        for (const item of payload) {
+            const teacherId = String(item?.teacherId || '').trim();
+            const date = String(item?.date || '').trim();
+            const status = normalizeAttendanceStatus(item?.status);
+
+            if (!teacherId || !date) {
+                return res.status(400).json({ success: false, message: 'teacherId and date are required.' });
+            }
+
+            const recordId = `${teacherId}_${date}`;
+
+            if (status === 'Not Marked') {
+                await TeacherAttendance.destroy({ where: { id: recordId } });
+                continue;
+            }
+
+            await TeacherAttendance.upsert({
+                id: recordId,
+                teacherId,
+                date,
+                status
+            });
+        }
+
+        const records = await TeacherAttendance.findAll({
+            order: [['date', 'ASC']]
+        });
+
+        res.json({
+            success: true,
+            attendance: buildTeacherAttendanceStore(records)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -707,6 +964,30 @@ app.post('/api/fees/challan-token', async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.get('/api/fees/payments', async (req, res) => {
+    if (!sequelize) {
+        return res.status(503).json({ success: false, message: 'Database offline' });
+    }
+
+    try {
+        const FeePayment = sequelize.models.FeePayment;
+        const payments = await FeePayment.findAll({
+            where: { status: 'Paid' },
+            order: [['paidAt', 'DESC']]
+        });
+
+        return res.json({
+            success: true,
+            payments
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Fee payments could not be loaded.'
+        });
     }
 });
 
@@ -1111,6 +1392,78 @@ function defineFeePaymentModel(db) {
     });
 }
 
+function defineStudentAttendanceModel(db) {
+    return db.define('StudentAttendance', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        studentId: { type: DataTypes.STRING, allowNull: false },
+        date: { type: DataTypes.STRING, allowNull: false },
+        status: { type: DataTypes.STRING, allowNull: false }
+    });
+}
+
+function defineTeacherAttendanceModel(db) {
+    return db.define('TeacherAttendance', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        teacherId: { type: DataTypes.STRING, allowNull: false },
+        date: { type: DataTypes.STRING, allowNull: false },
+        status: { type: DataTypes.STRING, allowNull: false }
+    });
+}
+
+function normalizeAttendanceStatus(status) {
+    if (status === 'P') return 'Present';
+    if (status === 'A') return 'Absent';
+    if (status === 'Present' || status === 'Late' || status === 'Absent') return status;
+    return 'Not Marked';
+}
+
+function buildStudentAttendanceStore(records) {
+    return records.reduce((store, record) => {
+        const studentId = String(record.studentId || '').trim();
+        const date = String(record.date || '').trim();
+        const status = normalizeAttendanceStatus(record.status);
+
+        if (!studentId || !date || status === 'Not Marked') {
+            return store;
+        }
+
+        if (!Array.isArray(store[studentId])) {
+            store[studentId] = [];
+        }
+
+        store[studentId].push({ date, status });
+        store[studentId].sort((a, b) => a.date.localeCompare(b.date));
+        return store;
+    }, {});
+}
+
+function buildTeacherAttendanceStore(records) {
+    return records.reduce((store, record) => {
+        const teacherId = String(record.teacherId || '').trim();
+        const date = String(record.date || '').trim();
+        const status = normalizeAttendanceStatus(record.status);
+
+        if (!teacherId || !date || status === 'Not Marked') {
+            return store;
+        }
+
+        const monthKey = date.slice(0, 7);
+        const dayIndex = Number(date.slice(8, 10)) - 1;
+        const recordKey = `${teacherId}_${monthKey}`;
+
+        if (!Array.isArray(store[recordKey])) {
+            const daysInMonth = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)), 0).getDate();
+            store[recordKey] = Array(daysInMonth).fill('Not Marked');
+        }
+
+        if (dayIndex >= 0 && dayIndex < store[recordKey].length) {
+            store[recordKey][dayIndex] = status;
+        }
+
+        return store;
+    }, {});
+}
+
 function getRequestBaseUrl(req) {
     return `${req.protocol}://${req.get('host')}`;
 }
@@ -1402,6 +1755,8 @@ async function startServer() {
         defineUserModel(sequelize);
         defineStaffModel(sequelize);
         defineFeePaymentModel(sequelize);
+        defineStudentAttendanceModel(sequelize);
+        defineTeacherAttendanceModel(sequelize);
 
         // Avoid Sequelize's repeated ALTER-based index churn on MySQL.
         // Missing legacy columns are handled separately in ensureLegacySchema().

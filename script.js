@@ -6,6 +6,7 @@ const STORAGE_KEY_SETTINGS = 'eduCore_settings';
 const STORAGE_KEY_NOTIFICATIONS = 'eduCore_notifications';
 const STORAGE_KEY_AUTH = 'eduCore_auth';
 const STORAGE_KEY_TEACHER_ATTENDANCE = 'eduCore_teacher_attendance';
+const STORAGE_KEY_STUDENT_ATTENDANCE_CACHE = 'eduCore_student_attendance';
 const STORAGE_KEY_STAFF = 'eduCore_staff';
 const STORAGE_KEY_TEACHER_SALARIES = 'eduCore_teacher_salaries';
 const STORAGE_KEY_USERS = 'eduCore_users'; // New Key for student/teacher credentials
@@ -63,6 +64,11 @@ async function parseJsonResponse(response, fallbackMessage = 'The server returne
 
 // Helper to sync local data to SQL
 async function syncToSQL(endpoint, data) {
+    const result = await syncToSQLDetailed(endpoint, data);
+    return result.success;
+}
+
+async function syncToSQLDetailed(endpoint, data) {
     try {
         const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
             method: 'POST',
@@ -76,10 +82,10 @@ async function syncToSQL(endpoint, data) {
             throw new Error(result?.message || result?.error || 'Server sync failed.');
         }
 
-        return true;
+        return { success: true, result };
     } catch (e) {
         console.warn(`SQL sync failed for ${endpoint}: ${e.message}`);
-        return false;
+        return { success: false, error: e.message };
     }
 }
 
@@ -124,15 +130,103 @@ async function initialSQLSync() {
             }
             if (typeof renderStaff === 'function') renderStaff();
         }
+
+        await Promise.all([
+            loadStudentAttendanceFromSQL(),
+            loadTeacherAttendanceFromSQL()
+        ]);
     } catch (e) {
         console.warn("SQL Server Connection Failed: Ensure 'node server.js' is running and MySQL is active.");
         console.log("SQL Initial Sync skipped (server offline). Using LocalStorage fallback.");
     }
 }
 
+function normalizeAttendanceStatus(status) {
+    if (status === 'P') return 'Present';
+    if (status === 'A') return 'Absent';
+    if (status === 'Present' || status === 'Late' || status === 'Absent' || status === 'Leave') return status;
+    return 'Not Marked';
+}
+
+function normalizeStudentAttendanceStore(store) {
+    const source = store && typeof store === 'object' ? store : {};
+    return Object.fromEntries(Object.entries(source).map(([studentId, records]) => [
+        studentId,
+        (Array.isArray(records) ? records : [])
+            .filter(item => item && item.date)
+            .map(item => ({ date: item.date, status: normalizeAttendanceStatus(item.status) }))
+    ]));
+}
+
+function normalizeTeacherAttendanceStore(store) {
+    const source = store && typeof store === 'object' ? store : {};
+    return Object.fromEntries(Object.entries(source).map(([recordKey, monthRecord]) => [
+        recordKey,
+        (Array.isArray(monthRecord) ? monthRecord : []).map(normalizeAttendanceStatus)
+    ]));
+}
+
+async function loadStudentAttendanceFromSQL() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/student-attendance`);
+        const result = await parseJsonResponse(response, 'Student attendance load failed.');
+        if (!response.ok || result?.success === false) {
+            throw new Error(result?.message || 'Student attendance load failed.');
+        }
+
+        const attendance = normalizeStudentAttendanceStore(result?.attendance);
+        localStorage.setItem(STORAGE_KEY_STUDENT_ATTENDANCE_CACHE, JSON.stringify(attendance));
+        return attendance;
+    } catch (error) {
+        console.warn(`Student attendance load failed: ${error.message}`);
+        return normalizeStudentAttendanceStore(getData(STORAGE_KEY_STUDENT_ATTENDANCE_CACHE));
+    }
+}
+
+async function loadTeacherAttendanceFromSQL() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/teacher-attendance`);
+        const result = await parseJsonResponse(response, 'Teacher attendance load failed.');
+        if (!response.ok || result?.success === false) {
+            throw new Error(result?.message || 'Teacher attendance load failed.');
+        }
+
+        const attendance = normalizeTeacherAttendanceStore(result?.attendance);
+        localStorage.setItem(STORAGE_KEY_TEACHER_ATTENDANCE, JSON.stringify(attendance));
+        return attendance;
+    } catch (error) {
+        console.warn(`Teacher attendance load failed: ${error.message}`);
+        return normalizeTeacherAttendanceStore(getData(STORAGE_KEY_TEACHER_ATTENDANCE));
+    }
+}
+
+async function saveStudentAttendanceToSQLRecord(studentId, date, status) {
+    const normalizedStatus = normalizeAttendanceStatus(status);
+    const result = await syncToSQLDetailed('student-attendance', [{ studentId, date, status: normalizedStatus }]);
+    if (result.success && result.result?.attendance) {
+        localStorage.setItem(
+            STORAGE_KEY_STUDENT_ATTENDANCE_CACHE,
+            JSON.stringify(normalizeStudentAttendanceStore(result.result.attendance))
+        );
+    }
+    return result;
+}
+
+async function saveTeacherAttendanceToSQLRecord(teacherId, date, status) {
+    const normalizedStatus = normalizeAttendanceStatus(status);
+    const result = await syncToSQLDetailed('teacher-attendance', [{ teacherId, date, status: normalizedStatus }]);
+    if (result.success && result.result?.attendance) {
+        localStorage.setItem(
+            STORAGE_KEY_TEACHER_ATTENDANCE,
+            JSON.stringify(normalizeTeacherAttendanceStore(result.result.attendance))
+        );
+    }
+    return result;
+}
+
 // === FORCE RESET AUTH TO REQUESTED CREDENTIALS ===
 (function forceResetAuth() {
-    const creds = { email: 'Apexiums@school.com', password: 'Apexiums1717' };
+    const creds = { email: 'apexiumstechnologies@gmail.com', password: 'myownschool1122' };
     localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(creds));
     // Clear any previous login failure states in session if they exist
     sessionStorage.removeItem('login_attempts');
@@ -144,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initialSQLSync();
     ensureBranchRegistrationNav();
     ensureEmailNav();
+    ensureAttendanceNav();
     applyBranchScopedStudentsView();
 
     // === INIT ICONS ===
@@ -250,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Store JWT and User Info
                     sessionStorage.setItem('eduCore_token', result.token);
                     sessionStorage.setItem('loggedInUser', JSON.stringify(result.user));
+                    sessionStorage.removeItem('eduCore_permissions_config');
 
                     // Track login for statistics
                     const loginTracking = JSON.parse(localStorage.getItem('EDUCORE_LOGIN_TRACKING')) || { count: 0, lastLogin: null };
@@ -306,19 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderStudents(); // Initial Load
         studentForm.addEventListener('submit', handleStudentFormSubmit);
-        const studentPhotoInput = document.getElementById('studentPhoto');
-        if (studentPhotoInput) {
-            studentPhotoInput.addEventListener('change', handleStudentPhotoSelection);
-        }
-        const fullNameInput = document.getElementById('fullName');
-        if (fullNameInput) {
-            fullNameInput.addEventListener('input', () => {
-                const preview = document.getElementById('studentPhotoPreview');
-                if (preview && !preview.querySelector('img')) {
-                    setStudentPhotoPreview('', fullNameInput.value);
-                }
-            });
-        }
         const studentSearch = document.getElementById('studentSearchInput');
         const genderFilter = document.getElementById('genderFilter');
         const campusFilter = document.getElementById('campusFilter');
@@ -476,7 +559,7 @@ function mergeStudentRecords(incomingStudents) {
             studentCode,
             profileImage: student.profileImage || localStudent.profileImage || '',
             gender: student.gender || localStudent.gender || '',
-            campusName: student.campusName || localStudent.campusName || 'Main Branch',
+        campusName: student.campusName || localStudent.campusName || 'Main Campus',
             plainPassword: student.plainPassword || localStudent.plainPassword ||
                 (localStudent.password && !isHashedPassword(localStudent.password) ? localStudent.password : '')
         };
@@ -630,6 +713,8 @@ function normalizeOptionalIdentityValue(value, mode = 'text') {
 
 function validateTeacherIdentityInputs({ teacherId = '', username = '', email = '' }) {
     const teachers = getData(STORAGE_KEY_TEACHERS);
+    const students = getData(STORAGE_KEY_STUDENTS);
+    const staffMembers = getData(STORAGE_KEY_STAFF);
     const normalizedUsername = normalizeOptionalIdentityValue(username);
     const normalizedEmail = normalizeOptionalIdentityValue(email, 'email');
 
@@ -642,6 +727,14 @@ function validateTeacherIdentityInputs({ teacherId = '', username = '', email = 
         return 'This teacher username is already assigned to another teacher.';
     }
 
+    const crossRoleUsernameConflict = [...students, ...staffMembers].find(account =>
+        normalizeOptionalIdentityValue(account.username) === normalizedUsername
+    );
+
+    if (crossRoleUsernameConflict) {
+        return 'This username is already used by another account.';
+    }
+
     if (normalizedEmail) {
         const emailConflict = teachers.find(teacher =>
             teacher.id !== teacherId &&
@@ -650,6 +743,14 @@ function validateTeacherIdentityInputs({ teacherId = '', username = '', email = 
 
         if (emailConflict) {
             return 'This teacher email is already assigned to another teacher.';
+        }
+
+        const crossRoleEmailConflict = [...students, ...staffMembers].find(account =>
+            normalizeOptionalIdentityValue(account.email, 'email') === normalizedEmail
+        );
+
+        if (crossRoleEmailConflict) {
+            return 'This email is already used by another account.';
         }
     }
 
@@ -913,6 +1014,68 @@ function ensureEmailNav() {
     if (window.lucide) window.lucide.createIcons();
 }
 
+function ensureAttendanceNav() {
+    const navLinks = document.querySelector('.nav-links');
+    const loggedInUser = getLoggedInUser();
+    if (!navLinks || !loggedInUser || loggedInUser.role !== 'Admin') return;
+    if (navLinks.querySelector('[data-attendance-nav]')) return;
+
+    const permissionsLink = navLinks.querySelector('a[href="permissions.html"]');
+    const currentPage = (window.location.pathname.split('/').pop() || '').toLowerCase();
+    const isAttendancePage = currentPage === 'student_attendance.html' || currentPage === 'teacher_attendance.html';
+    const isAttendanceReportPage = currentPage === 'student_attendance_report.html' || currentPage === 'teacher_attendance_report.html';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `nav-dropdown${(isAttendancePage || isAttendanceReportPage) ? ' open' : ''}`;
+    wrapper.dataset.attendanceNav = 'true';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = `nav-item nav-dropdown-toggle${(isAttendancePage || isAttendanceReportPage) ? ' active' : ''}`;
+    toggle.innerHTML = `
+        <span class="nav-item-main">
+            <i data-lucide="clipboard-check"></i>
+            <span>Attendance</span>
+        </span>
+        <i data-lucide="chevron-down" class="dropdown-chevron"></i>
+    `;
+    toggle.addEventListener('click', () => {
+        wrapper.classList.toggle('open');
+    });
+
+    const submenu = document.createElement('div');
+    submenu.className = 'nav-submenu';
+    submenu.innerHTML = `
+        <a href="student_attendance.html" class="nav-subitem${currentPage === 'student_attendance.html' ? ' active' : ''}">
+            <i data-lucide="users"></i>
+            <span>Student Attendance</span>
+        </a>
+        <a href="teacher_attendance.html" class="nav-subitem${currentPage === 'teacher_attendance.html' ? ' active' : ''}">
+            <i data-lucide="user-check"></i>
+            <span>Teacher Attendance</span>
+        </a>
+        <a href="student_attendance_report.html" class="nav-subitem${currentPage === 'student_attendance_report.html' ? ' active' : ''}">
+            <i data-lucide="file-bar-chart-2"></i>
+            <span>Student Attendance Report</span>
+        </a>
+        <a href="teacher_attendance_report.html" class="nav-subitem${currentPage === 'teacher_attendance_report.html' ? ' active' : ''}">
+            <i data-lucide="file-check-2"></i>
+            <span>Teacher Attendance Report</span>
+        </a>
+    `;
+
+    wrapper.appendChild(toggle);
+    wrapper.appendChild(submenu);
+
+    if (permissionsLink) {
+        permissionsLink.insertAdjacentElement('beforebegin', wrapper);
+    } else {
+        navLinks.appendChild(wrapper);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
 function applyBranchScopedStudentsView() {
     const loggedInUser = getLoggedInUser();
     if (!loggedInUser || loggedInUser.role !== 'Branch' || !window.location.pathname.toLowerCase().includes('students.html')) {
@@ -1040,7 +1203,7 @@ async function handleBranchRegistrationSubmit(event) {
 
 function editBranch(branch) {
     document.getElementById('branchRecordId').value = branch.id || '';
-    document.getElementById('branchCampusName').value = branch.campusName || 'Main Branch';
+    document.getElementById('branchCampusName').value = branch.campusName || 'Main Campus';
     document.getElementById('branchDisplayName').value = branch.fullName || '';
     document.getElementById('branchUsername').value = branch.username || '';
     document.getElementById('branchPassword').value = branch.plainPassword || '';
@@ -1059,7 +1222,7 @@ function resetBranchRegistrationForm() {
 
     form.reset();
     document.getElementById('branchRecordId').value = '';
-    document.getElementById('branchCampusName').value = 'Main Branch';
+    document.getElementById('branchCampusName').value = 'Main Campus';
 
     const submitButton = document.querySelector('#branchRegistrationForm button[type="submit"]');
     if (submitButton) {
@@ -1181,7 +1344,7 @@ async function loadEmailStatus() {
         statusEl.textContent = result.configured ? 'SMTP Connected' : 'SMTP Not Configured';
         statusEl.className = `status-pill ${result.configured ? 'smtp-live' : 'smtp-offline'}`;
         senderEl.textContent = result.configured
-            ? `${result.fromName || 'My Own School'} <${result.fromEmail}>`
+            ? `${result.fromName || 'Apexiueum'} <${result.fromEmail}>`
             : 'Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_EMAIL in .env';
     } catch (error) {
         statusEl.textContent = 'SMTP Check Failed';
@@ -1746,7 +1909,6 @@ function toggleStudentForm(editMode = false) {
             document.getElementById('studentId').value = '';
             const studentCodeField = document.getElementById('studentCode');
             if (studentCodeField) studentCodeField.value = generateStudentCode();
-            setStudentPhotoPreview('');
             title.innerText = 'Add New Student';
         } else {
             title.innerText = 'Edit Student Details';
@@ -1809,23 +1971,11 @@ async function handleStudentFormSubmit(e) {
         return;
     }
 
-    const studentPhotoInput = document.getElementById('studentPhoto');
-    let profileImage = existingStudent?.profileImage || '';
-
-    if (studentPhotoInput && studentPhotoInput.files && studentPhotoInput.files[0]) {
-        try {
-            profileImage = await readFileAsDataUrl(studentPhotoInput.files[0]);
-        } catch (error) {
-            alert(error.message);
-            return;
-        }
-    }
-
     const newStudent = {
         id: isEdit ? idField.value : generateUniqueRecordId('STU'),
         studentCode: document.getElementById('studentCode').value || generateStudentCode(),
         fullName: document.getElementById('fullName').value,
-        profileImage,
+        profileImage: existingStudent?.profileImage || '',
         fatherName: document.getElementById('fatherName').value,
         classGrade: document.getElementById('classGrade').value,
         campusName: document.getElementById('campusName').value,
@@ -1898,7 +2048,7 @@ function renderStudents(term = '') {
             (s.studentCode && s.studentCode.toLowerCase().includes(term))
         ) &&
         (selectedGender === 'All' || (s.gender || '').toLowerCase() === selectedGender.toLowerCase()) &&
-        (selectedCampus === 'All' || (s.campusName || 'Main Branch').toLowerCase() === selectedCampus.toLowerCase())
+        (selectedCampus === 'All' || (s.campusName || 'Main Campus').toLowerCase() === selectedCampus.toLowerCase())
     );
 
     // Update total count display - Use filtered results length as requested
@@ -1925,7 +2075,7 @@ function renderStudents(term = '') {
                 </div></td>
                 <td class="cell-compact">${s.fatherName || '-'}</td>
                 <td class="cell-compact">${s.classGrade}</td>
-                <td class="cell-compact">${s.campusName || 'Main Branch'}</td>
+                    <td class="cell-compact">${s.campusName || 'Main Campus'}</td>
                 <td>${s.gender || '-'}</td>
                 <td>${s.parentPhone}</td>
                 <td>${s.formB || '-'}</td>
@@ -1950,10 +2100,9 @@ function editStudent(s) {
     document.getElementById('studentId').value = s.id;
     document.getElementById('studentCode').value = s.studentCode || '';
     document.getElementById('fullName').value = s.fullName;
-    setStudentPhotoPreview(s.profileImage || '', s.fullName || '');
     document.getElementById('fatherName').value = s.fatherName || '';
     document.getElementById('classGrade').value = s.classGrade;
-    document.getElementById('campusName').value = s.campusName || 'Main Branch';
+    document.getElementById('campusName').value = s.campusName || 'Main Campus';
     document.getElementById('parentPhone').value = s.parentPhone;
     if (document.getElementById('studentEmail')) document.getElementById('studentEmail').value = s.email || '';
     document.getElementById('gender').value = s.gender || '';
@@ -1963,7 +2112,6 @@ function editStudent(s) {
     if (document.getElementById('feeFrequency')) document.getElementById('feeFrequency').value = s.feeFrequency || 'Monthly';
     if (document.getElementById('username')) document.getElementById('username').value = s.username || '';
     if (document.getElementById('studentPassword')) document.getElementById('studentPassword').value = getVisibleStudentPassword(s);
-    if (document.getElementById('studentPhoto')) document.getElementById('studentPhoto').value = '';
 }
 
 async function deleteStudent(id) {
@@ -2015,7 +2163,6 @@ function toggleTeacherForm(editMode = false) {
     const container = document.getElementById('teacherFormContainer');
     const form = document.getElementById('teacherForm');
     const title = document.getElementById('teacherFormTitle');
-    const profilePhotoInput = document.getElementById('tProfilePhoto');
 
     if (container.style.display === 'block' && !editMode) {
         container.style.display = 'none';
@@ -2030,12 +2177,10 @@ function toggleTeacherForm(editMode = false) {
         if (!editMode) {
             form.reset();
             document.getElementById('teacherId').value = '';
-            if (profilePhotoInput) profilePhotoInput.required = true;
             const teacherCodeField = document.getElementById('teacherCode');
             if (teacherCodeField) teacherCodeField.value = generateEntityCode(STORAGE_KEY_TEACHERS, 'TCH');
             title.innerText = 'Add New Teacher';
         } else {
-            if (profilePhotoInput) profilePhotoInput.required = false;
             title.innerText = 'Edit Teacher Details';
         }
     }
@@ -2076,31 +2221,11 @@ async function handleTeacherFormSubmit(e) {
 
     const teachers = getData(STORAGE_KEY_TEACHERS);
     const existingTeacher = isEdit ? teachers.find(t => t.id === idField.value) : null;
-    const profilePhotoInput = document.getElementById('tProfilePhoto');
 
     let idCardFront = existingTeacher?.idCardFront || null;
     let idCardBack = existingTeacher?.idCardBack || null;
     let cvFile = existingTeacher?.cvFile || null;
     let profileImage = existingTeacher?.profileImage || '';
-
-    if (profilePhotoInput?.files?.[0]) {
-        const selectedFile = profilePhotoInput.files[0];
-        if (!selectedFile.type.startsWith('image/')) {
-            alert('Please upload an image file for the teacher profile picture.');
-            profilePhotoInput.value = '';
-            return;
-        }
-
-        try {
-            profileImage = await readFileAsDataUrl(selectedFile);
-        } catch (error) {
-            alert(error.message);
-            return;
-        }
-    } else if (!profileImage) {
-        alert('Teacher profile picture is required.');
-        return;
-    }
 
     try {
         idCardFront = await getOptionalFilePayload('tIdCardFront', idCardFront);
@@ -2147,10 +2272,10 @@ async function handleTeacherFormSubmit(e) {
     }
 
     saveData(STORAGE_KEY_TEACHERS, teachers, { skipSync: true });
-    const teacherSavedToDb = await syncToSQL('teachers', [newTeacher]);
+    const teacherSyncResult = await syncToSQLDetailed('teachers', [newTeacher]);
 
-    if (!teacherSavedToDb) {
-        alert('Teacher local storage me save ho gaya, lekin database sync fail ho gaya. Server aur MySQL check karein.');
+    if (!teacherSyncResult.success) {
+        alert(teacherSyncResult.error || 'The teacher was saved to local storage, but database sync failed. Check the server and MySQL connection.');
     }
 
     pushNotification('Staff Updated', `Teacher account for "${newTeacher.fullName}" saved and activated.`, 'book');
@@ -2269,10 +2394,6 @@ function editTeacher(t) {
     document.getElementById('tGender').value = t.gender || '';
     document.getElementById('tSubject').value = t.subject;
     document.getElementById('tSalary').value = t.salary || '0';
-    if (document.getElementById('tProfilePhoto')) {
-        document.getElementById('tProfilePhoto').required = false;
-        document.getElementById('tProfilePhoto').value = '';
-    }
     if (document.getElementById('tBankName')) document.getElementById('tBankName').value = t.bankName || '';
     if (document.getElementById('tBankAccountTitle')) document.getElementById('tBankAccountTitle').value = t.bankAccountTitle || '';
     if (document.getElementById('tBankAccountNumber')) document.getElementById('tBankAccountNumber').value = t.bankAccountNumber || '';
@@ -2337,9 +2458,9 @@ function viewTeacherAttendance(teacher, monthKey = null) {
     if (!modal || !grid) return;
 
     // Default to current month if not specified (Format: YYYY-MM)
-    const date = new Date();
+    const today = new Date();
     if (!monthKey) {
-        monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     }
 
     title.innerText = `Attendance: ${teacher.fullName} (${monthKey})`;
@@ -2351,13 +2472,21 @@ function viewTeacherAttendance(teacher, monthKey = null) {
     // Structure: { "teacherID_YYYY-MM": [P, P, A, ...] }
     const recordKey = `${teacher.id}_${monthKey}`;
 
-    let monthRecord = allAttendance[recordKey];
+    const legacyRecordKey = `teacher_${teacher.id}_${monthKey}`;
+    const [viewYear, viewMonth] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+    const normalizeTeacherAttendanceStatus = (status) => {
+        if (status === 'P') return 'Present';
+        if (status === 'A') return 'Absent';
+        return status || 'Not Marked';
+    };
+    let monthRecord = Array.isArray(allAttendance[recordKey]) ? allAttendance[recordKey] : allAttendance[legacyRecordKey];
+    monthRecord = Array.isArray(monthRecord)
+        ? monthRecord.map(normalizeTeacherAttendanceStatus)
+        : Array(daysInMonth).fill('Not Marked');
 
-    // If no record, init with defaults (Absent)
-    const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-    if (!monthRecord) {
-        monthRecord = Array(daysInMonth).fill('A');
-        // We don't save yet unless modified, or we can save init state. Let's save on modify.
+    while (monthRecord.length < daysInMonth) {
+        monthRecord.push('Not Marked');
     }
 
     // Calculate Today's Date Components for Validation
@@ -2367,14 +2496,18 @@ function viewTeacherAttendance(teacher, monthKey = null) {
     const currentDay = now.getDate();
 
     // Check if the viewed month is strictly the current month
-    const [viewYear, viewMonth] = monthKey.split('-').map(Number);
     const isCurrentMonth = (viewYear === currentYear && viewMonth === currentMonth);
 
     // Render Grid
     monthRecord.forEach((status, index) => {
         const day = index + 1;
-        const isPresent = status === 'P';
-        const statusClass = isPresent ? 'status-present' : 'status-absent';
+        const statusClass = status === 'Present'
+            ? 'status-present'
+            : status === 'Late'
+                ? 'status-late'
+                : status === 'Absent'
+                    ? 'status-absent'
+                    : '';
 
         // "One day valid": Is this cell for Today?
         const isToday = isCurrentMonth && (day === currentDay);
@@ -2386,7 +2519,7 @@ function viewTeacherAttendance(teacher, monthKey = null) {
         if (isToday) {
             cell.style.cursor = 'pointer';
             cell.style.border = '2px solid var(--primary-color)'; // Highlight today
-            cell.title = "Mark Attendance";
+            cell.title = 'Mark Attendance';
             cell.onclick = () => toggleTeacherAttendanceDay(teacher.id, monthKey, index);
         } else {
             cell.style.cursor = 'default';
@@ -2407,24 +2540,42 @@ function viewTeacherAttendance(teacher, monthKey = null) {
     };
 }
 
-function toggleTeacherAttendanceDay(teacherId, monthKey, dayIndex) {
+async function toggleTeacherAttendanceDay(teacherId, monthKey, dayIndex) {
     const recordKey = `${teacherId}_${monthKey}`;
     let allAttendance = getData(STORAGE_KEY_TEACHER_ATTENDANCE) || {};
-    let monthRecord = allAttendance[recordKey];
+    const legacyRecordKey = `teacher_${teacherId}_${monthKey}`;
+    const normalizeTeacherAttendanceStatus = (status) => {
+        if (status === 'P') return 'Present';
+        if (status === 'A') return 'Absent';
+        return status || 'Not Marked';
+    };
+    let monthRecord = Array.isArray(allAttendance[recordKey]) ? allAttendance[recordKey] : allAttendance[legacyRecordKey];
 
     // If starting fresh
-    if (!monthRecord) {
-        const date = new Date(); // Simplified for current month context
-        const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-        monthRecord = Array(daysInMonth).fill('A');
+    const [year, month] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    monthRecord = Array.isArray(monthRecord)
+        ? monthRecord.map(normalizeTeacherAttendanceStatus)
+        : Array(daysInMonth).fill('Not Marked');
+
+    while (monthRecord.length < daysInMonth) {
+        monthRecord.push('Not Marked');
     }
 
-    // Toggle
-    monthRecord[dayIndex] = monthRecord[dayIndex] === 'P' ? 'A' : 'P';
+    const statusCycle = ['Not Marked', 'Present', 'Late', 'Absent'];
+    const currentStatus = normalizeTeacherAttendanceStatus(monthRecord[dayIndex]);
+    const currentIndex = statusCycle.indexOf(currentStatus);
+    monthRecord[dayIndex] = statusCycle[(currentIndex + 1) % statusCycle.length];
 
     // Save
     allAttendance[recordKey] = monthRecord;
+    delete allAttendance[legacyRecordKey];
     saveData(STORAGE_KEY_TEACHER_ATTENDANCE, allAttendance);
+    const dateKey = `${monthKey}-${String(dayIndex + 1).padStart(2, '0')}`;
+    const syncResult = await saveTeacherAttendanceToSQLRecord(teacherId, dateKey, monthRecord[dayIndex]);
+    if (!syncResult.success) {
+        alert(syncResult.error || 'Teacher attendance could not be saved to the database.');
+    }
 
     // Refresh View
     const teachers = getData(STORAGE_KEY_TEACHERS);
@@ -2817,7 +2968,7 @@ function loadSettings() {
 
     if (auth) {
         const authData = JSON.parse(auth);
-        if (document.getElementById('sContactEmail')) document.getElementById('sContactEmail').value = authData.email || 'Apexiums@school.com';
+        if (document.getElementById('sContactEmail')) document.getElementById('sContactEmail').value = authData.email || 'apexiumstechnologies@gmail.com';
     }
 }
 
@@ -2826,7 +2977,7 @@ function handleSettingsSubmit(e) {
 
     // 1. Get current values from storage for verification
     const storedAuth = localStorage.getItem(STORAGE_KEY_AUTH);
-    const currentAuth = storedAuth ? JSON.parse(storedAuth) : { email: 'Apexiums@school.com', password: 'Apexiums1717' };
+    const currentAuth = storedAuth ? JSON.parse(storedAuth) : { email: 'apexiumstechnologies@gmail.com', password: 'myownschool1122' };
 
     // 2. Get verification inputs
     const vEmail = document.getElementById('vOldEmail').value;
@@ -2977,6 +3128,58 @@ function getSalaryPaymentRecord(salaries, entityType, entityId, monthKey) {
         (entityType === 'teacher' ? salaries[`${entityId}_${monthKey}`] : null);
 }
 
+function getTeacherAttendanceMonthRecord(attendanceStore, employeeId, monthKey) {
+    const directKey = `${employeeId}_${monthKey}`;
+    const legacyKey = `teacher_${employeeId}_${monthKey}`;
+    const rawRecord = Array.isArray(attendanceStore[directKey])
+        ? attendanceStore[directKey]
+        : (Array.isArray(attendanceStore[legacyKey]) ? attendanceStore[legacyKey] : []);
+
+    return rawRecord.map(normalizeAttendanceStatus);
+}
+
+function getEmployeeAttendanceSummary(employeeId, monthKey) {
+    const attendanceStore = getData(STORAGE_KEY_TEACHER_ATTENDANCE) || {};
+    const monthlyRecords = getTeacherAttendanceMonthRecord(attendanceStore, employeeId, monthKey)
+        .filter((status) => status === 'Present' || status === 'Late' || status === 'Absent' || status === 'Leave');
+
+    const present = monthlyRecords.filter((status) => status === 'Present').length;
+    const late = monthlyRecords.filter((status) => status === 'Late').length;
+    const absent = monthlyRecords.filter((status) => status === 'Absent').length;
+    const leave = monthlyRecords.filter((status) => status === 'Leave').length;
+    const countedDays = present + late + absent + leave;
+    const payableDays = present + late;
+    const attendanceRate = countedDays ? Math.round((payableDays / countedDays) * 100) : 0;
+
+    return {
+        present,
+        late,
+        absent,
+        leave,
+        countedDays,
+        payableDays,
+        attendanceRate
+    };
+}
+
+function getSalaryBreakdown(entry, monthKey) {
+    const grossSalary = parseInt(entry.salary || 0, 10) || 0;
+    const attendance = getEmployeeAttendanceSummary(entry.id, monthKey);
+    const deductionDays = attendance.absent + attendance.leave;
+    const dailyRate = attendance.countedDays ? grossSalary / attendance.countedDays : 0;
+    const deductionAmount = Math.round(dailyRate * deductionDays);
+    const netSalary = Math.max(grossSalary - deductionAmount, 0);
+
+    return {
+        grossSalary,
+        dailyRate,
+        deductionDays,
+        deductionAmount,
+        netSalary,
+        attendance
+    };
+}
+
 function buildSalaryRoster() {
     const teachers = getData(STORAGE_KEY_TEACHERS).map((teacher) => ({
         id: teacher.id,
@@ -3010,9 +3213,11 @@ function getMonthlySalarySummary(monthKey) {
     let transferred = 0;
 
     roster.forEach((entry) => {
-        expected += entry.salary;
-        if (getSalaryPaymentRecord(salaries, entry.entityType, entry.id, monthKey)) {
-            transferred += entry.salary;
+        const breakdown = getSalaryBreakdown(entry, monthKey);
+        expected += breakdown.netSalary;
+        const payment = getSalaryPaymentRecord(salaries, entry.entityType, entry.id, monthKey);
+        if (payment) {
+            transferred += payment.amount || breakdown.netSalary;
         }
     });
 
@@ -3028,6 +3233,8 @@ function toggleSalaryPayment(entityId, monthKey, entityType = 'teacher') {
     const salaries = getTeacherSalaries();
     const key = getSalaryPaymentKey(entityType, entityId, monthKey);
     const legacyTeacherKey = `${entityId}_${monthKey}`;
+    const rosterEntry = buildSalaryRoster().find((entry) => entry.id === entityId && entry.entityType === entityType);
+    const breakdown = rosterEntry ? getSalaryBreakdown(rosterEntry, monthKey) : { netSalary: 0 };
 
     if (salaries[key] || (entityType === 'teacher' && salaries[legacyTeacherKey])) {
         delete salaries[key];
@@ -3039,7 +3246,8 @@ function toggleSalaryPayment(entityId, monthKey, entityType = 'teacher') {
             paid: true,
             date: now.toLocaleDateString(),
             time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            entityType
+            entityType,
+            amount: breakdown.netSalary
         };
         pushNotification('Salary Update', 'Salary transfer recorded successfully.', 'success');
     }

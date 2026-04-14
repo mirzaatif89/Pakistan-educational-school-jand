@@ -1,29 +1,57 @@
 (function () {
     const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const publicPages = new Set(['index.html', '']);
-    const adminPages = new Set([
-        'dashboard.html',
-        'students.html',
-        'teachers.html',
-        'staff.html',
-        'classes.html',
-        'fees.html',
-        'fee_challan.html',
-        'teacher_salaries.html',
-        'finance.html',
-        'exams.html',
-        'revenue.html',
-        'aboutme.html',
-        'settings.html',
-        'permissions.html',
-        'branch_registration.html',
-        'email.html'
-    ]);
-    const teacherPages = new Set(['teacher_portal.html']);
-    const studentPages = new Set(['student_portal.html']);
-    const staffPages = new Set(['staff_portal.html']);
-    const principalPages = new Set(['principal_portal.html']);
-    const branchPages = new Set(['students.html']);
+    const pageRegistry = {
+        'dashboard.html': { moduleKey: 'dashboard', defaultHome: 'dashboard.html' },
+        'students.html': { moduleKey: 'students', defaultHome: 'students.html' },
+        'teachers.html': { moduleKey: 'teachers', defaultHome: 'dashboard.html' },
+        'staff.html': { moduleKey: 'staff', defaultHome: 'dashboard.html' },
+        'classes.html': { moduleKey: 'classes', defaultHome: 'dashboard.html' },
+        'fees.html': { moduleKey: 'fees', defaultHome: 'dashboard.html' },
+        'fee_challan.html': { moduleKey: 'fee_challan', defaultHome: 'dashboard.html' },
+        'teacher_salaries.html': { moduleKey: 'teacher_salaries', defaultHome: 'dashboard.html' },
+        'student_attendance.html': { moduleKey: 'student_attendance', defaultHome: 'dashboard.html' },
+        'teacher_attendance.html': { moduleKey: 'teacher_attendance', defaultHome: 'dashboard.html' },
+        'student_attendance_report.html': { moduleKey: 'student_attendance_report', defaultHome: 'dashboard.html' },
+        'teacher_attendance_report.html': { moduleKey: 'teacher_attendance_report', defaultHome: 'dashboard.html' },
+        'exams.html': { moduleKey: 'exams', defaultHome: 'dashboard.html' },
+        'revenue.html': { moduleKey: 'revenue', defaultHome: 'dashboard.html' },
+        'settings.html': { moduleKey: 'settings', defaultHome: 'dashboard.html' },
+        'permissions.html': { moduleKey: 'permissions', defaultHome: 'dashboard.html' },
+        'branch_registration.html': { moduleKey: 'branch_registration', defaultHome: 'dashboard.html' },
+        'email.html': { moduleKey: 'email', defaultHome: 'dashboard.html' },
+        'aboutme.html': { moduleKey: 'aboutme', defaultHome: 'dashboard.html' },
+        'student_portal.html': { moduleKey: 'student_portal', defaultHome: 'student_portal.html' },
+        'teacher_portal.html': { moduleKey: 'teacher_portal', defaultHome: 'teacher_portal.html' },
+        'staff_portal.html': { moduleKey: 'staff_portal', defaultHome: 'staff_portal.html' },
+        'principal_portal.html': { moduleKey: 'principal_portal', defaultHome: 'principal_portal.html' }
+    };
+
+    const defaultPermissions = {
+        loginAccess: {
+            admin: true,
+            principal: true,
+            branch: true,
+            teacher: true,
+            student: true,
+            staff: true
+        },
+        roleGroups: {
+            Admin: 'admin',
+            Principal: 'principal',
+            Branch: 'branch_manager',
+            Teacher: 'teacher',
+            Student: 'student',
+            Staff: 'staff'
+        },
+        groups: {
+            admin: {
+                name: 'System Administrators',
+                homePage: 'dashboard.html',
+                permissions: {}
+            }
+        }
+    };
 
     const rawUser = sessionStorage.getItem('loggedInUser');
     const authToken = sessionStorage.getItem('eduCore_token');
@@ -35,91 +63,162 @@
         loggedInUser = null;
     }
 
-    function redirectToAllowedHome(role) {
-        if (role === 'Admin') {
-            window.location.replace('dashboard.html');
-            return;
+    function normalizePermissionsConfig(input = {}) {
+        const raw = input && typeof input === 'object' ? input : {};
+        return {
+            loginAccess: {
+                ...defaultPermissions.loginAccess,
+                ...(raw.loginAccess || {})
+            },
+            roleGroups: {
+                ...defaultPermissions.roleGroups,
+                ...(raw.roleGroups || {})
+            },
+            groups: raw.groups && typeof raw.groups === 'object'
+                ? raw.groups
+                : defaultPermissions.groups
+        };
+    }
+
+    function getApiBaseUrl() {
+        const isLocalhost = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.') ||
+            window.location.hostname.startsWith('10.') ||
+            window.location.hostname.startsWith('172.') ||
+            window.location.protocol === 'file:';
+
+        const backendUrl = isLocalhost
+            ? (window.location.protocol === 'file:' ? 'http://localhost:3000' : `${window.location.protocol}//${window.location.hostname}:3000`)
+            : (window.ENV_BACKEND_URL || window.location.origin);
+
+        return `${backendUrl}/api`;
+    }
+
+    function getUserGroupKey(user, permissions) {
+        if (!user) return '';
+        return user.groupKey || permissions.roleGroups[user.role] || String(user.role || '').toLowerCase();
+    }
+
+    function getGroupConfig(user, permissions) {
+        const groupKey = getUserGroupKey(user, permissions);
+        return permissions.groups[groupKey] || null;
+    }
+
+    function getHomePage(user, permissions) {
+        const group = getGroupConfig(user, permissions);
+        const registryEntry = pageRegistry[currentPage];
+        if (group && group.homePage) return group.homePage;
+        if (registryEntry && registryEntry.defaultHome) return registryEntry.defaultHome;
+
+        if (user?.role === 'Admin') return 'dashboard.html';
+        if (user?.role === 'Teacher') return 'teacher_portal.html';
+        if (user?.role === 'Student') return 'student_portal.html';
+        if (user?.role === 'Branch') return 'students.html';
+        if (user?.role === 'Staff') return 'staff_portal.html';
+        if (user?.role === 'Principal') return 'principal_portal.html';
+        return 'index.html';
+    }
+
+    function getModuleAccess(user, permissions, pageName = currentPage) {
+        if (user?.role === 'Admin') return 'manage';
+        const registryEntry = pageRegistry[pageName];
+        if (!registryEntry) return 'view';
+        const group = getGroupConfig(user, permissions);
+        return group?.permissions?.[registryEntry.moduleKey] || 'none';
+    }
+
+    function canAccessPage(user, permissions, pageName = currentPage) {
+        if (publicPages.has(pageName)) return true;
+        if (!user || !authToken) return false;
+
+        const roleKey = String(user.role || '').toLowerCase();
+        if (permissions.loginAccess[roleKey] === false) {
+            return false;
         }
 
-        if (role === 'Teacher') {
-            window.location.replace('teacher_portal.html');
-            return;
-        }
+        if (user.role === 'Admin') return true;
+        return getModuleAccess(user, permissions, pageName) !== 'none';
+    }
 
-        if (role === 'Student') {
-            window.location.replace('student_portal.html');
-            return;
-        }
-
-        if (role === 'Branch') {
-            window.location.replace('students.html');
-            return;
-        }
-
-        if (role === 'Staff') {
-            window.location.replace('staff_portal.html');
-            return;
-        }
-
-        if (role === 'Principal') {
-            window.location.replace('principal_portal.html');
-            return;
-        }
-
-        window.location.replace('index.html');
+    function redirectToAllowedHome(user, permissions) {
+        window.location.replace(getHomePage(user, permissions));
     }
 
     function forceLoginRedirect() {
         sessionStorage.removeItem('loggedInUser');
         sessionStorage.removeItem('eduCore_token');
         sessionStorage.removeItem('eduCore_student_profile');
+        sessionStorage.removeItem('eduCore_permissions_config');
         window.location.replace('index.html');
     }
 
-    if (publicPages.has(currentPage)) {
-        if (loggedInUser && authToken) {
-            redirectToAllowedHome(loggedInUser.role);
+    async function fetchPermissionsConfig() {
+        const cached = sessionStorage.getItem('eduCore_permissions_config');
+        if (cached) {
+            try {
+                return normalizePermissionsConfig(JSON.parse(cached));
+            } catch (error) {
+                sessionStorage.removeItem('eduCore_permissions_config');
+            }
         }
-        return;
+
+        try {
+            const response = await fetch(`${getApiBaseUrl()}/permissions`);
+            const data = await response.json();
+            const normalized = normalizePermissionsConfig(data);
+            sessionStorage.setItem('eduCore_permissions_config', JSON.stringify(normalized));
+            return normalized;
+        } catch (error) {
+            return normalizePermissionsConfig(defaultPermissions);
+        }
     }
 
-    if (!loggedInUser || !authToken) {
-        forceLoginRedirect();
-        return;
+    function applyNavPermissions(user, permissions) {
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('.nav-links a[href]');
+            navLinks.forEach((link) => {
+                const href = String(link.getAttribute('href') || '').toLowerCase();
+                if (!href || href === '#') return;
+                if (href === 'settings.html' || href === 'aboutme.html') return;
+                if (!pageRegistry[href]) return;
+                if (!canAccessPage(user, permissions, href)) {
+                    link.style.display = 'none';
+                }
+            });
+        });
     }
 
-    if (currentPage === 'students.html' && (loggedInUser.role === 'Admin' || loggedInUser.role === 'Branch')) {
-        return;
-    }
+    window.eduCoreAuth = {
+        pageRegistry,
+        defaultPermissions,
+        normalizePermissionsConfig,
+        getUserGroupKey,
+        getGroupConfig,
+        getModuleAccess,
+        canAccessPage
+    };
 
-    if (adminPages.has(currentPage) && loggedInUser.role !== 'Admin') {
-        redirectToAllowedHome(loggedInUser.role);
-        return;
-    }
+    (async () => {
+        const permissions = await fetchPermissionsConfig();
+        applyNavPermissions(loggedInUser, permissions);
 
-    if (teacherPages.has(currentPage) && loggedInUser.role !== 'Teacher') {
-        redirectToAllowedHome(loggedInUser.role);
-        return;
-    }
+        if (publicPages.has(currentPage)) {
+            if (loggedInUser && authToken) {
+                redirectToAllowedHome(loggedInUser, permissions);
+            }
+            return;
+        }
 
-    if (studentPages.has(currentPage) && loggedInUser.role !== 'Student') {
-        redirectToAllowedHome(loggedInUser.role);
-        return;
-    }
+        if (!loggedInUser || !authToken) {
+            forceLoginRedirect();
+            return;
+        }
 
-    if (staffPages.has(currentPage) && loggedInUser.role !== 'Staff') {
-        redirectToAllowedHome(loggedInUser.role);
-        return;
-    }
-
-    if (principalPages.has(currentPage) && loggedInUser.role !== 'Principal') {
-        redirectToAllowedHome(loggedInUser.role);
-        return;
-    }
-
-    if (branchPages.has(currentPage) && loggedInUser.role !== 'Branch') {
-        redirectToAllowedHome(loggedInUser.role);
-    }
+        if (!canAccessPage(loggedInUser, permissions, currentPage)) {
+            redirectToAllowedHome(loggedInUser, permissions);
+        }
+    })();
 })();
 
 function logoutUser(event) {
@@ -127,5 +226,6 @@ function logoutUser(event) {
     sessionStorage.removeItem('loggedInUser');
     sessionStorage.removeItem('eduCore_token');
     sessionStorage.removeItem('eduCore_student_profile');
+    sessionStorage.removeItem('eduCore_permissions_config');
     window.location.href = 'index.html';
 }

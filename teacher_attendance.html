@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance - Apexiueum</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .attendance-toolbar { display: grid; grid-template-columns: 1.3fr 0.8fr; gap: 1rem; margin-bottom: 1.5rem; align-items: end; }
+        .attendance-chip { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 0.8rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
+        .chip-present { background: #dcfce7; color: #166534; }
+        .chip-absent { background: #fee2e2; color: #991b1b; }
+        .chip-late { background: #fef3c7; color: #92400e; }
+        .chip-leave { background: #dbeafe; color: #1d4ed8; }
+        .chip-empty { background: #e2e8f0; color: #475569; }
+        .attendance-actions { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
+        .attendance-actions .btn { padding: 0.45rem 0.8rem; font-size: 0.82rem; }
+        .input-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; box-shadow: var(--shadow-sm); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section"><i data-lucide="graduation-cap"></i> Apexiueum</div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
+            </nav>
+            <a href="settings.html" class="user-profile"><div class="avatar">AD</div><div class="user-info"><h4>Admin User</h4><p>Principal</p></div></a>
+        </aside>
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Teacher And Staff Attendance</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.25rem;">Select a date and mark attendance for teachers and staff.</p>
+                </div>
+            </header>
+            <div class="attendance-toolbar">
+                <div class="search-bar">
+                    <i data-lucide="search" size="18" style="color: var(--text-secondary);"></i>
+                    <input type="text" id="teacherAttendanceSearch" placeholder="Search teachers or staff...">
+                </div>
+                <div class="input-card">
+                    <label for="teacherAttendanceDate" style="display:block; margin-bottom:0.45rem; font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Attendance Date</label>
+                    <input type="date" id="teacherAttendanceDate" style="width:100%; padding:0.75rem 1rem; border:1px solid var(--border-color); border-radius:var(--radius-md);">
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Name</th><th>Role</th><th>Campus</th><th>Selected Date Status</th><th style="text-align:right;">Actions</th></tr></thead>
+                    <tbody id="teacherAttendanceTableBody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const TEACHER_ATTENDANCE_KEY = 'eduCore_teacher_attendance';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('teacherAttendanceDate').value = new Date().toISOString().slice(0, 10);
+            await loadTeacherAttendanceFromSQL();
+            renderTeacherAttendancePage();
+            document.getElementById('teacherAttendanceSearch').addEventListener('input', renderTeacherAttendancePage);
+            document.getElementById('teacherAttendanceDate').addEventListener('change', async () => {
+                await loadTeacherAttendanceFromSQL();
+                renderTeacherAttendancePage();
+            });
+            if (window.lucide) window.lucide.createIcons();
+        });
+
+        function getTeacherAttendanceStore() {
+            return JSON.parse(localStorage.getItem(TEACHER_ATTENDANCE_KEY) || '{}');
+        }
+
+        function saveTeacherAttendanceStore(store) {
+            localStorage.setItem(TEACHER_ATTENDANCE_KEY, JSON.stringify(store));
+        }
+
+        function normalizeTeacherAttendanceStatus(status) {
+            if (status === 'P') return 'Present';
+            if (status === 'A') return 'Absent';
+            if (status === 'Leave') return 'Leave';
+            return status || 'Not Marked';
+        }
+
+        function getSelectedTeacherDateKey() {
+            return document.getElementById('teacherAttendanceDate').value || new Date().toISOString().slice(0, 10);
+        }
+
+        function getTeacherMonthRecord(store, teacherId, monthKey) {
+            const legacyKey = `teacher_${teacherId}_${monthKey}`;
+            const directKey = `${teacherId}_${monthKey}`;
+            const rawRecord = Array.isArray(store[directKey]) ? store[directKey] : (Array.isArray(store[legacyKey]) ? store[legacyKey] : []);
+            return rawRecord.map(normalizeTeacherAttendanceStatus);
+        }
+
+        function getTeacherStatusForDate(teacherId, dateKey) {
+            const store = getTeacherAttendanceStore();
+            const [year, month, day] = dateKey.split('-').map(Number);
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+            const monthRecord = getTeacherMonthRecord(store, teacherId, monthKey);
+            return monthRecord[day - 1] || 'Not Marked';
+        }
+
+        async function setTeacherAttendance(teacherId, status) {
+            const dateKey = getSelectedTeacherDateKey();
+            const [year, month, day] = dateKey.split('-').map(Number);
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const store = getTeacherAttendanceStore();
+            const recordKey = `${teacherId}_${monthKey}`;
+            const monthRecord = getTeacherMonthRecord(store, teacherId, monthKey);
+
+            while (monthRecord.length < daysInMonth) {
+                monthRecord.push('');
+            }
+
+            monthRecord[day - 1] = status;
+            store[recordKey] = monthRecord;
+            delete store[`teacher_${teacherId}_${monthKey}`];
+            saveTeacherAttendanceStore(store);
+            const syncResult = await saveTeacherAttendanceToSQLRecord(teacherId, dateKey, status);
+            if (!syncResult.success) {
+                alert(syncResult.error || 'Teacher attendance database me save nahi ho saki.');
+            }
+            renderTeacherAttendancePage();
+        }
+
+        function renderTeacherAttendancePage() {
+            const tbody = document.getElementById('teacherAttendanceTableBody');
+            const term = document.getElementById('teacherAttendanceSearch').value.trim().toLowerCase();
+            const dateKey = getSelectedTeacherDateKey();
+            const teachers = getData(STORAGE_KEY_TEACHERS).map((teacher) => ({
+                id: teacher.id,
+                fullName: teacher.fullName || '-',
+                roleLabel: `Teacher${teacher.subject ? ` - ${teacher.subject}` : ''}`,
+                campusName: teacher.campusName || 'Main Campus'
+            }));
+            const staffMembers = getData(STORAGE_KEY_STAFF).map((member) => ({
+                id: member.id,
+                fullName: member.fullName || '-',
+                roleLabel: member.designation || 'Staff',
+                campusName: member.campusName || 'Main Campus'
+            }));
+            const employees = [...teachers, ...staffMembers].filter((employee) => (`${employee.fullName || ''} ${employee.roleLabel || ''} ${employee.campusName || ''}`).toLowerCase().includes(term));
+
+            tbody.innerHTML = '';
+
+            employees.forEach((employee) => {
+                const status = getTeacherStatusForDate(employee.id, dateKey);
+                const statusClass = status === 'Present'
+                    ? 'chip-present'
+                    : status === 'Absent'
+                        ? 'chip-absent'
+                        : status === 'Late'
+                            ? 'chip-late'
+                            : status === 'Leave'
+                                ? 'chip-leave'
+                                : 'chip-empty';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${employee.fullName || '-'}</td>
+                    <td>${employee.roleLabel || '-'}</td>
+                    <td>${employee.campusName || 'Main Campus'}</td>
+                    <td><span class="attendance-chip ${statusClass}">${status}</span></td>
+                    <td><div class="attendance-actions">
+                        <button class="btn btn-outline" onclick="setTeacherAttendance('${employee.id}', 'Present')">Present</button>
+                        <button class="btn btn-outline" onclick="setTeacherAttendance('${employee.id}', 'Late')">Late</button>
+                        <button class="btn btn-outline" onclick="setTeacherAttendance('${employee.id}', 'Leave')">Leave</button>
+                        <button class="btn btn-outline" onclick="setTeacherAttendance('${employee.id}', 'Absent')">Absent</button>
+                    </div></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+</body>
+</html>

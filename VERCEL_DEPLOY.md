@@ -18,8 +18,8 @@ DB_NAME=school_system
 DB_USER=your-mysql-user
 DB_PASSWORD=your-mysql-password
 JWT_SECRET=your-jwt-secret
-ADMIN_USERNAME=Apexiums@school.com
-ADMIN_PASSWORD=Apexiums1717
+ADMIN_USERNAME=Myownschool
+ADMIN_PASSWORD=myownschool1122
 PRINCIPAL_USERNAME=principal@school.com
 PRINCIPAL_PASSWORD=Principal123
 SMTP_HOST=
@@ -28,7 +28,7 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM_EMAIL=
-SMTP_FROM_NAME=My Own School
+SMTP_FROM_NAME=Apexiueum
 ```
 
 ## Deploy Steps

@@ -113,6 +113,17 @@
             font-weight: 500;
             margin-bottom: 0.2rem;
         }
+
+        .salary-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .salary-meta small {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 
@@ -122,7 +133,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo-section">
-                <i data-lucide="graduation-cap"></i> My Own School
+                <i data-lucide="graduation-cap"></i> Apexiueum
             </div>
 
             <nav class="nav-links">
@@ -266,7 +277,8 @@
                         <tr>
                             <th>Employee Name</th>
                             <th>Role</th>
-                            <th>Monthly Salary</th>
+                            <th>Salary Breakdown</th>
+                            <th>Attendance</th>
                             <th>Status</th>
                             <th>Transfer Date</th>
                             <th style="text-align: right;">Actions</th>
@@ -337,9 +349,11 @@
             filtered.forEach(entry => {
                 const payment = getSalaryPaymentRecord(salaryRecords, entry.entityType, entry.id, monthKey);
                 const isPaid = !!payment;
-                const salaryAmount = parseInt(entry.salary) || 0;
+                const breakdown = getSalaryBreakdown(entry, monthKey);
+                const salaryAmount = breakdown.netSalary;
+                const transferredAmount = payment?.amount || salaryAmount;
 
-                if (isPaid) totalTransferred += salaryAmount;
+                if (isPaid) totalTransferred += transferredAmount;
 
                 const tr = document.createElement('tr');
                 tr.className = 'salary-row';
@@ -356,7 +370,19 @@
                         </div>
                     </td>
                     <td style="font-weight:600; color:var(--text-primary);">${entry.roleLabel}</td>
-                    <td style="font-weight:700; color:var(--text-primary);">PKR ${salaryAmount.toLocaleString()}</td>
+                    <td>
+                        <div class="salary-meta">
+                            <div style="font-weight:700; color:var(--text-primary);">Net: PKR ${salaryAmount.toLocaleString()}</div>
+                            <small>Gross: PKR ${breakdown.grossSalary.toLocaleString()}</small>
+                            <small>Deduction: PKR ${breakdown.deductionAmount.toLocaleString()} (${breakdown.deductionDays} absent/leave)</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="salary-meta">
+                            <div style="font-weight:700; color:var(--text-primary);">${breakdown.attendance.attendanceRate}%</div>
+                            <small>P: ${breakdown.attendance.present} | L: ${breakdown.attendance.late} | A: ${breakdown.attendance.absent} | Lv: ${breakdown.attendance.leave}</small>
+                        </div>
+                    </td>
                     <td>
                         <span class="${isPaid ? 'status-paid-badge' : 'status-unpaid-badge'}">
                             ${isPaid ? 'Transferred' : 'Pending'}
@@ -366,7 +392,7 @@
                         ${isPaid ? `
                             <div class="payment-date-info">
                                 <span>${payment.date}</span>
-                                <span>at ${payment.time}</span>
+                                <span>at ${payment.time} | PKR ${(payment.amount || salaryAmount).toLocaleString()}</span>
                             </div>
                         ` : '<span style="color:var(--text-secondary); font-style:italic;">--</span>'}
                     </td>

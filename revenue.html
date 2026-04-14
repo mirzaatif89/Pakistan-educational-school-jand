@@ -127,7 +127,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo-section">
-                <i data-lucide="graduation-cap"></i> My Own School
+                <i data-lucide="graduation-cap"></i> Apexiueum
             </div>
 
             <nav class="nav-links">
@@ -269,6 +269,36 @@
                 </div>
             </div>
 
+            <div class="revenue-stats" style="margin-top: 1.5rem;">
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+                        <i data-lucide="badge-dollar-sign"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Net Expected After Salaries</p>
+                        <h3 id="netExpectedRevenue">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(34, 197, 94, 0.12); color: #15803d;">
+                        <i data-lucide="landmark"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Net Collected After Transfers</p>
+                        <h3 id="netCollectedRevenue">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(245, 158, 11, 0.12); color: #b45309;">
+                        <i data-lucide="scale"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Remaining Balance</p>
+                        <h3 id="netPendingRevenue">PKR 0</h3>
+                    </div>
+                </div>
+            </div>
+
             <div class="class-revenue-list" style="margin-top: 2rem;">
                 <h3 style="margin-bottom: 1.5rem;">Collection by Class</h3>
                 <div id="classBreakdownContainer">
@@ -288,14 +318,38 @@
             "July", "August", "September", "October", "November", "December"
         ];
 
+        let revenueRefreshTimer = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             // Display current month
             const currentMonth = monthsNames[new Date().getMonth()];
             const monthDisplay = document.getElementById('currentMonthDisplay');
             if (monthDisplay) monthDisplay.innerText = currentMonth + ' ' + new Date().getFullYear();
 
+            attachRevenueLiveUpdates();
             updateRevenueReport();
+            setTimeout(updateRevenueReport, 400);
+            setTimeout(updateRevenueReport, 1200);
         });
+
+        function scheduleRevenueRefresh(delay = 150) {
+            clearTimeout(revenueRefreshTimer);
+            revenueRefreshTimer = setTimeout(() => {
+                updateRevenueReport();
+            }, delay);
+        }
+
+        function attachRevenueLiveUpdates() {
+            window.addEventListener('storage', () => scheduleRevenueRefresh(50));
+            window.addEventListener('focus', () => scheduleRevenueRefresh(50));
+            window.addEventListener('pageshow', () => scheduleRevenueRefresh(50));
+
+            if (typeof socket !== 'undefined' && socket) {
+                socket.on('students_update', () => scheduleRevenueRefresh());
+                socket.on('teachers_update', () => scheduleRevenueRefresh());
+                socket.on('staff_update', () => scheduleRevenueRefresh());
+            }
+        }
 
         // Define standard class mapping (same as fees.html)
         const feeClasses = [
@@ -315,7 +369,7 @@
         ];
 
         function getStandardClassName(rawClass) {
-            if (!rawClass) return null;
+            if (!rawClass) return 'Unassigned Class';
             const normalized = rawClass.toLowerCase().trim();
 
             for (const cls of feeClasses) {
@@ -323,16 +377,79 @@
                     return cls.name;
                 }
             }
-            return null; // Return null for invalid classes
+            return rawClass.trim();
         }
 
-        function updateRevenueReport() {
+        function getCurrentMonthMeta() {
+            const now = new Date();
+            return {
+                monthName: monthsNames[now.getMonth()],
+                monthShort: now.toLocaleString('en-US', { month: 'short' }),
+                monthIndex: now.getMonth(),
+                year: now.getFullYear(),
+                monthKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+            };
+        }
+
+        function normalizeFeeMonthToKey(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const parsed = new Date(raw.replace(',', ' 1,'));
+            if (!Number.isNaN(parsed.getTime())) {
+                return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+            }
+
+            const lowered = raw.toLowerCase();
+            const monthIndex = monthsNames.findIndex(month =>
+                lowered === month.toLowerCase() || lowered.startsWith(month.toLowerCase().slice(0, 3))
+            );
+
+            if (monthIndex === -1) return '';
+
+            const yearMatch = lowered.match(/\b(20\d{2})\b/);
+            const year = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+            return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+        }
+
+        async function fetchCollectedFeePayments() {
+            const endpoints = [`${API_BASE_URL}/fees/payments`, `${API_BASE_URL}/fees`];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint);
+                    const result = await parseJsonResponse(response, 'Fee payments could not be loaded.');
+
+                    if (!response.ok || result?.success === false) {
+                        throw new Error(result?.message || 'Fee payments could not be loaded.');
+                    }
+
+                    return Array.isArray(result?.payments) ? result.payments : [];
+                } catch (error) {
+                    console.warn(`Revenue page could not load backend fee payments from ${endpoint}:`, error.message);
+                }
+            }
+
+            return [];
+        }
+
+        async function updateRevenueReport() {
             // Always use current month for real-time data
-            const currentMonth = monthsNames[new Date().getMonth()];
-            const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            const currentMonthMeta = getCurrentMonthMeta();
             const students = getData(STORAGE_KEY_STUDENTS);
             const monthlyFeesData = JSON.parse(localStorage.getItem(STORAGE_KEY_MONTHLY_FEES)) || {};
-            const salarySummary = getMonthlySalarySummary(currentMonthKey);
+            const salarySummary = getMonthlySalarySummary(currentMonthMeta.monthKey);
+            const feePayments = await fetchCollectedFeePayments();
+
+            const backendCollectedMap = new Map();
+            feePayments.forEach(payment => {
+                if (!payment || !payment.studentId) return;
+                if (normalizeFeeMonthToKey(payment.feeMonth) !== currentMonthMeta.monthKey) return;
+
+                const paidAmount = Number(payment.amount || 0);
+                const previousAmount = backendCollectedMap.get(payment.studentId) || 0;
+                backendCollectedMap.set(payment.studentId, Math.max(previousAmount, paidAmount));
+            });
 
             let totalExpected = 0;
             let totalCollected = 0;
@@ -341,32 +458,38 @@
 
             students.forEach(s => {
                 const standardClass = getStandardClassName(s.classGrade);
-
-                // Skip students with invalid class names
-                if (!standardClass) return;
-
                 const fee = parseInt(s.monthlyFee) || 0;
-                const isPaid = (monthlyFeesData[s.id] && monthlyFeesData[s.id][currentMonth] === 'Paid');
+                const isPaidLocally = (monthlyFeesData[s.id] && monthlyFeesData[s.id][currentMonthMeta.monthName] === 'Paid');
+                const collectedAmount = backendCollectedMap.has(s.id)
+                    ? backendCollectedMap.get(s.id)
+                    : (isPaidLocally ? fee : 0);
 
                 totalExpected += fee;
-                if (isPaid) {
-                    totalCollected += fee;
+                if (collectedAmount > 0) {
+                    totalCollected += collectedAmount;
                 }
 
                 if (!classCollection[standardClass]) {
                     classCollection[standardClass] = { expected: 0, collected: 0 };
                 }
                 classCollection[standardClass].expected += fee;
-                if (isPaid) classCollection[standardClass].collected += fee;
+                if (collectedAmount > 0) classCollection[standardClass].collected += collectedAmount;
             });
 
             // Update UI Stats
+            const netExpected = totalExpected - salarySummary.expected;
+            const netCollected = totalCollected - salarySummary.transferred;
+            const remainingBalance = netCollected + salarySummary.pending;
+
             document.getElementById('expectedRevenue').innerText = 'PKR ' + totalExpected.toLocaleString();
             document.getElementById('collectedRevenue').innerText = 'PKR ' + totalCollected.toLocaleString();
-            document.getElementById('pendingRevenue').innerText = 'PKR ' + (totalExpected - totalCollected).toLocaleString();
+            document.getElementById('pendingRevenue').innerText = 'PKR ' + Math.max(totalExpected - totalCollected, 0).toLocaleString();
             document.getElementById('salaryBudget').innerText = 'PKR ' + salarySummary.expected.toLocaleString();
             document.getElementById('transferredSalaries').innerText = 'PKR ' + salarySummary.transferred.toLocaleString();
             document.getElementById('pendingSalaries').innerText = 'PKR ' + salarySummary.pending.toLocaleString();
+            document.getElementById('netExpectedRevenue').innerText = 'PKR ' + netExpected.toLocaleString();
+            document.getElementById('netCollectedRevenue').innerText = 'PKR ' + netCollected.toLocaleString();
+            document.getElementById('netPendingRevenue').innerText = 'PKR ' + remainingBalance.toLocaleString();
 
             // Render Class Bars (sorted by class order)
             const barContainer = document.getElementById('classBreakdownContainer');
@@ -376,11 +499,15 @@
             const sortedClasses = feeClasses
                 .map(c => c.name)
                 .filter(name => classCollection[name] && classCollection[name].expected > 0);
+            const customClasses = Object.keys(classCollection)
+                .filter(name => !sortedClasses.includes(name) && classCollection[name].expected > 0)
+                .sort((a, b) => a.localeCompare(b));
+            const displayClasses = [...sortedClasses, ...customClasses];
 
-            if (sortedClasses.length === 0) {
+            if (displayClasses.length === 0) {
                 barContainer.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-secondary);">No revenue data available for this month.</p>';
             } else {
-                sortedClasses.forEach(className => {
+                displayClasses.forEach(className => {
                     const data = classCollection[className];
                     const pct = data.expected > 0 ? (data.collected / data.expected) * 100 : 0;
 

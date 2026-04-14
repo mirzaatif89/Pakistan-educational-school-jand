@@ -324,6 +324,69 @@ ul {
     height: 20px;
 }
 
+.nav-dropdown {
+    margin-bottom: 0.5rem;
+}
+
+.nav-dropdown-toggle {
+    width: 100%;
+    justify-content: space-between;
+    border: 0;
+    background: transparent;
+    text-align: left;
+}
+
+.nav-dropdown-toggle .nav-item-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-dropdown-toggle .dropdown-chevron {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s ease;
+}
+
+.nav-dropdown.open .dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.nav-submenu {
+    display: none;
+    margin-top: 0.35rem;
+    margin-left: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.nav-dropdown.open .nav-submenu {
+    display: block;
+}
+
+.nav-subitem {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.35rem;
+    transition: var(--transition);
+    font-size: 0.92rem;
+}
+
+.nav-subitem:hover,
+.nav-subitem.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.nav-subitem svg {
+    width: 16px;
+    height: 16px;
+}
+
 .user-profile {
     display: flex;
     align-items: center;
@@ -1061,6 +1124,11 @@ tbody tr:hover {
 .status-present {
     background: #dcfce7;
     color: #166534;
+}
+
+.status-late {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .status-absent {

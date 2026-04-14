@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Report - Apexiueum</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .report-toolbar { display:grid; grid-template-columns: 1fr 220px; gap:1rem; margin-bottom:1.5rem; align-items:end; }
+        .input-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; box-shadow: var(--shadow-sm); }
+        .month-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap:0.75rem; }
+        .month-day { border:1px solid var(--border-color); border-radius:0.75rem; padding:0.8rem; background:#fff; }
+        .month-day strong { display:block; margin-bottom:0.25rem; }
+        .chip-present { color:#166534; } .chip-absent { color:#991b1b; } .chip-late { color:#92400e; } .chip-empty { color:#64748b; }
+        .detail-panel { display:none; margin-top:1.5rem; }
+        .detail-panel.active { display:block; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section"><i data-lucide="graduation-cap"></i> Apexiueum</div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
+            </nav>
+            <a href="settings.html" class="user-profile"><div class="avatar">AD</div><div class="user-info"><h4>Admin User</h4><p>Principal</p></div></a>
+        </aside>
+        <main class="main-content">
+            <header class="header"><div><h1>Student Attendance Report</h1><p style="color:var(--text-secondary); margin-top:0.25rem;">Monthly attendance percentage and full month detail for each student.</p></div></header>
+            <div class="report-toolbar">
+                <div class="search-bar"><i data-lucide="search" size="18" style="color: var(--text-secondary);"></i><input type="text" id="studentReportSearch" placeholder="Search students..."></div>
+                <div class="input-card"><label for="studentReportMonth" style="display:block; margin-bottom:0.45rem; font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Report Month</label><input type="month" id="studentReportMonth" style="width:100%; padding:0.75rem 1rem; border:1px solid var(--border-color); border-radius:var(--radius-md);"></div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Student</th><th>Class</th><th>Present</th><th>Late</th><th>Absent</th><th>Attendance Rate</th><th style="text-align:right;">Detail</th></tr></thead>
+                    <tbody id="studentAttendanceReportBody"></tbody>
+                </table>
+            </div>
+            <div class="table-container detail-panel" id="studentMonthDetailPanel">
+                <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; margin-bottom:1rem;">
+                    <div><h3 id="studentMonthDetailTitle">Monthly Attendance</h3><p id="studentMonthDetailMeta" style="color:var(--text-secondary);"></p></div>
+                    <button class="btn btn-outline" onclick="closeStudentMonthDetail()">Close</button>
+                </div>
+                <div class="month-grid" id="studentMonthDetailGrid"></div>
+            </div>
+        </main>
+    </div>
+    <script src="auth.js"></script><script src="script.js"></script>
+    <script>
+        const STUDENT_ATTENDANCE_KEY = 'eduCore_student_attendance';
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('studentReportMonth').value = new Date().toISOString().slice(0, 7);
+            await loadStudentAttendanceFromSQL();
+            renderStudentAttendanceReport();
+            document.getElementById('studentReportSearch').addEventListener('input', renderStudentAttendanceReport);
+            document.getElementById('studentReportMonth').addEventListener('change', async () => {
+                await loadStudentAttendanceFromSQL();
+                renderStudentAttendanceReport();
+            });
+            if (window.lucide) window.lucide.createIcons();
+        });
+        function getSelectedStudentReportMonth() { return document.getElementById('studentReportMonth').value || new Date().toISOString().slice(0, 7); }
+        function getStudentMonthlyRecords(studentId, monthKey) { return (JSON.parse(localStorage.getItem(STUDENT_ATTENDANCE_KEY) || '{}')[studentId] || []).filter(item => item.date.startsWith(monthKey)); }
+        function renderStudentAttendanceReport() {
+            const tbody = document.getElementById('studentAttendanceReportBody');
+            const monthKey = getSelectedStudentReportMonth();
+            const term = document.getElementById('studentReportSearch').value.trim().toLowerCase();
+            const students = getData(STORAGE_KEY_STUDENTS).filter(student => (`${student.fullName || ''} ${student.classGrade || ''}`).toLowerCase().includes(term));
+            tbody.innerHTML = '';
+            students.forEach(student => {
+                const records = getStudentMonthlyRecords(student.id, monthKey);
+                const present = records.filter(r => r.status === 'Present').length;
+                const late = records.filter(r => r.status === 'Late').length;
+                const absent = records.filter(r => r.status === 'Absent').length;
+                const total = present + late + absent;
+                const rate = total ? Math.round(((present + late) / total) * 100) : 0;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${student.fullName || '-'}</td><td>${student.classGrade || '-'}</td><td>${present}</td><td>${late}</td><td>${absent}</td><td>${total ? `${rate}%` : 'No record'}</td><td style="text-align:right;"><button class="btn btn-outline" onclick="openStudentMonthDetail('${student.id}')">View Month</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+        function openStudentMonthDetail(studentId) {
+            const students = getData(STORAGE_KEY_STUDENTS);
+            const student = students.find(item => item.id === studentId);
+            const monthKey = getSelectedStudentReportMonth();
+            const records = getStudentMonthlyRecords(studentId, monthKey);
+            const recordMap = new Map(records.map(item => [item.date, item.status]));
+            const grid = document.getElementById('studentMonthDetailGrid');
+            const panel = document.getElementById('studentMonthDetailPanel');
+            const totalDays = new Date(Number(monthKey.slice(0,4)), Number(monthKey.slice(5,7)), 0).getDate();
+            document.getElementById('studentMonthDetailTitle').textContent = student ? student.fullName : 'Monthly Attendance';
+            document.getElementById('studentMonthDetailMeta').textContent = monthKey;
+            grid.innerHTML = '';
+            for (let day = 1; day <= totalDays; day += 1) {
+                const dateKey = `${monthKey}-${String(day).padStart(2, '0')}`;
+                const status = recordMap.get(dateKey) || 'Not Marked';
+                const statusClass = status === 'Present' ? 'chip-present' : status === 'Absent' ? 'chip-absent' : status === 'Late' ? 'chip-late' : 'chip-empty';
+                const card = document.createElement('div');
+                card.className = 'month-day';
+                card.innerHTML = `<strong>Day ${day}</strong><span class="${statusClass}">${status}</span>`;
+                grid.appendChild(card);
+            }
+            panel.classList.add('active');
+        }
+        function closeStudentMonthDetail() { document.getElementById('studentMonthDetailPanel').classList.remove('active'); }
+    </script>
+</body>
+</html>

@@ -444,7 +444,7 @@
     <div class="dashboard-container">
         <aside class="sidebar">
             <div class="logo-section">
-                <i data-lucide="graduation-cap"></i> My Own School
+                <i data-lucide="graduation-cap"></i> Apexiueum
             </div>
             <nav class="nav-links">
                 <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
@@ -472,7 +472,7 @@
             <header class="header">
                 <div>
                     <h1>Fee Challan Generator</h1>
-                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Screenshot jaisa compact form + live preview layout.</p>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Compact form with a live preview layout.</p>
                 </div>
             </header>
 
@@ -493,8 +493,8 @@
                                 </div>
                                 <div class="field-block">
                                     <label for="studentLookup">Student ID / Roll No</label>
-                                    <input type="text" id="studentLookup" placeholder="STD-0001 ya 20233">
-                                    <div class="field-help">Student ID ya roll number likho, data auto-fill ho jayega.</div>
+                                    <input type="text" id="studentLookup" placeholder="STD-0001 or 20233">
+                                    <div class="field-help">Enter a student ID or roll number to auto-fill the form.</div>
                                 </div>
                                 <div class="field-block">
                                     <label for="challanStudent">Student Name</label>
@@ -570,11 +570,11 @@
                                 </div>
                                 <div class="field-block full">
                                     <label for="schoolAddress">Address / Campus</label>
-                                    <input type="text" id="schoolAddress" placeholder="Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900">
+                                    <input type="text" id="schoolAddress" placeholder="Main branch - Address: Dekhni Road Jand. Phone: 03045259900">
                                 </div>
                                 <div class="field-block full">
-                                    <label for="urduNote">Urdu Note</label>
-                                    <input type="text" id="urduNote" placeholder="نوٹ: مقررہ تاریخ کے بعد فیس قابل قبول نہیں ہوگی۔">
+                                    <label for="urduNote">Important Note</label>
+                                    <input type="text" id="urduNote" placeholder="Note: Fees will not be accepted after the due date.">
                                 </div>
                                 <div class="field-block full">
                                     <label for="challanNotes">Notes / Instructions</label>
@@ -624,6 +624,20 @@
     <script src="auth.js"></script>
     <script src="script.js"></script>
     <script>
+        const CHALLAN_BRANCH_CONTACTS = {
+            main: {
+                campusLabel: 'Main branch',
+                addressLine: 'Address: Dekhni Road Jand. Phone: 03045259900'
+            },
+            ali: {
+                campusLabel: 'Ali campus',
+                addressLine: 'Address: Chapri Road Jand. Phone: 03085259900'
+            },
+            fatima: {
+                campusLabel: 'Fatima campus',
+                addressLine: 'Address: Nai Abadi. Phone: 03085259900'
+            }
+        };
         const challanFormFields = ['challanNumber', 'challanStudent', 'studentSid', 'studentAdmNo', 'familyNo', 'studentClass', 'studentRollNo', 'fatherName', 'fatherMobile', 'challanSession', 'challanMonth', 'feeMonth', 'dueDate', 'baseAmount', 'additionalCharges', 'discountValue', 'particulars', 'schoolName', 'schoolAddress', 'urduNote', 'challanNotes'];
         const printCopies = ['School Copy', 'Student Copy'];
         let challanStudents = [];
@@ -674,6 +688,18 @@
             });
         }
 
+        function getChallanBranchContactDetails(campusName) {
+            const normalizedCampus = String(campusName || '').trim().toLowerCase();
+            if (normalizedCampus.includes('ali')) return CHALLAN_BRANCH_CONTACTS.ali;
+            if (normalizedCampus.includes('fatima')) return CHALLAN_BRANCH_CONTACTS.fatima;
+            return CHALLAN_BRANCH_CONTACTS.main;
+        }
+
+        function applyBranchDetailsToChallan(campusName) {
+            const branchDetails = getChallanBranchContactDetails(campusName);
+            document.getElementById('schoolAddress').value = `${branchDetails.campusLabel} - ${branchDetails.addressLine}`;
+        }
+
         function setChallanDefaults() {
             const now = new Date();
             const currentYear = now.getFullYear();
@@ -684,8 +710,8 @@
             document.getElementById('feeMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
             document.getElementById('particulars').value = 'Tuition Fee';
             document.getElementById('schoolName').value = 'MY OWN SCIENCE SCHOOL JAND';
-            document.getElementById('schoolAddress').value = 'Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900';
-            document.getElementById('urduNote').value = 'نوٹ: مقررہ تاریخ کے بعد فیس قابل قبول نہیں ہوگی۔';
+            applyBranchDetailsToChallan('Main branch');
+            document.getElementById('urduNote').value = 'Note: Fees will not be accepted after the due date.';
             document.getElementById('challanNotes').value = 'No additional instructions.';
         }
 
@@ -729,6 +755,7 @@
             document.getElementById('familyNo').value = student.familyNo || '';
             document.getElementById('fatherName').value = student.fatherName || '';
             document.getElementById('fatherMobile').value = student.phone || student.fatherMobile || '';
+            applyBranchDetailsToChallan(student.campusName);
             if (!document.getElementById('baseAmount').value) {
                 document.getElementById('baseAmount').value = student.monthlyFee || 0;
             }
@@ -894,7 +921,7 @@
                 discountAmount,
                 particulars: document.getElementById('particulars').value.trim() || 'Tuition Fee',
                 schoolName: document.getElementById('schoolName').value.trim() || 'MY OWN SCIENCE SCHOOL JAND',
-                schoolAddress: document.getElementById('schoolAddress').value.trim() || 'Address: Main Campus: Dakhi Road Jand. Phone: 0304-5259900',
+                schoolAddress: document.getElementById('schoolAddress').value.trim() || `${CHALLAN_BRANCH_CONTACTS.main.campusLabel} - ${CHALLAN_BRANCH_CONTACTS.main.addressLine}`,
                 urduNote: document.getElementById('urduNote').value.trim() || '',
                 notes: document.getElementById('challanNotes').value.trim() || 'No additional instructions.',
                 totalDue: Math.max(baseAmount + additionalCharges - discountAmount, 0)

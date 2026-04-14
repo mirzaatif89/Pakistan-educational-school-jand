@@ -1,98 +1,299 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Permissions - Apexiums School management</title>
+    <title>Permissions - Apexiueum</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .permissions-grid { display:grid; gap:1.25rem; }
+        .permissions-card { background:var(--surface-color); border:1px solid var(--border-color); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:1.25rem; }
+        .permissions-card h3 { margin-bottom:0.4rem; }
+        .permissions-card p { color:var(--text-secondary); margin-bottom:1rem; }
+        .role-map-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; }
+        .role-map-item, .login-item { display:flex; flex-direction:column; gap:0.45rem; }
+        .role-map-item select, .group-header input, .group-header select { width:100%; padding:0.75rem 0.9rem; border:1px solid var(--border-color); border-radius:var(--radius-md); }
+        .group-list { display:grid; gap:1rem; }
+        .group-box { border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:1rem; background:#fff; }
+        .group-header { display:grid; grid-template-columns:1.2fr 1fr; gap:1rem; margin-bottom:1rem; }
+        .module-table { width:100%; border-collapse:collapse; }
+        .module-table th, .module-table td { padding:0.7rem 0.6rem; border-bottom:1px solid var(--border-color); text-align:left; }
+        .module-table select { width:100%; padding:0.55rem 0.7rem; border:1px solid var(--border-color); border-radius:var(--radius-md); }
+        .page-meta { color:var(--text-secondary); font-size:0.82rem; }
+        .permissions-toolbar { display:flex; justify-content:space-between; gap:1rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap; }
+        .save-status { color:var(--text-secondary); font-size:0.9rem; }
+        .toggle-row { display:flex; gap:1rem; flex-wrap:wrap; }
+        .login-item label { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; background:#fff; border:1px solid var(--border-color); padding:0.85rem 1rem; border-radius:var(--radius-md); }
+        @media (max-width: 768px) {
+            .group-header { grid-template-columns:1fr; }
+        }
+    </style>
 </head>
-
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
-            <div class="logo-section">
-                <i data-lucide="graduation-cap"></i> My Own School
-            </div>
-
+            <div class="logo-section"><i data-lucide="graduation-cap"></i> Apexiueum</div>
             <nav class="nav-links">
-                <a href="dashboard.html" class="nav-item">
-                    <i data-lucide="layout-dashboard"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="students.html" class="nav-item">
-                    <i data-lucide="users"></i>
-                    <span>Students</span>
-                </a>
-                <a href="teachers.html" class="nav-item">
-                    <i data-lucide="book-open"></i>
-                    <span>Teachers</span>
-                </a>
-                <a href="staff.html" class="nav-item">
-                    <i data-lucide="briefcase"></i>
-                    <span>Staff</span>
-                </a>
-                <a href="classes.html" class="nav-item">
-                    <i data-lucide="school"></i>
-                    <span>Classes</span>
-                </a>
-                <a href="fees.html" class="nav-item">
-                    <i data-lucide="credit-card"></i>
-                    <span>Fees</span>
-                </a>
-                <a href="fee_challan.html" class="nav-item">
-                    <i data-lucide="file-text"></i>
-                    <span>Fee Challan</span>
-                </a>
-                <a href="teacher_salaries.html" class="nav-item">
-                    <i data-lucide="wallet"></i>
-                    <span>Salaries</span>
-                </a>
-                <a href="finance.html" class="nav-item" style="display: none;">
-                    <i data-lucide="receipt"></i>
-                    <span>Bills</span>
-                </a>
-                <a href="exams.html" class="nav-item">
-                    <i data-lucide="clipboard-list"></i>
-                    <span>Exams</span>
-                </a>
-                <a href="revenue.html" class="nav-item">
-                    <i data-lucide="trending-up"></i>
-                    <span>Revenue</span>
-                </a>
-                <a href="permissions.html" class="nav-item active">
-                    <i data-lucide="shield"></i>
-                    <span>Permissions</span>
-                </a>
-                <a href="aboutme.html" class="nav-item">
-                    <i data-lucide="info"></i>
-                    <span>About Us</span>
-                </a>
-                <a href="#" class="nav-item" onclick="logoutUser(event)">
-                    <i data-lucide="log-out"></i>
-                    <span>Logout</span>
-                </a>
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item active"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
             </nav>
-
-            <a href="settings.html" class="user-profile">
-                <div class="avatar">AD</div>
-                <div class="user-info">
-                    <h4>Admin User</h4>
-                    <p>Principal</p>
-                </div>
-            </a>
+            <a href="settings.html" class="user-profile"><div class="avatar">AD</div><div class="user-info"><h4>Admin User</h4><p>Principal</p></div></a>
         </aside>
 
-        <main class="main-content"></main>
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Groups & Permissions</h1>
+                    <p style="color:var(--text-secondary); margin-top:0.25rem;">Manage Django-style role mapping and group permissions from here.</p>
+                </div>
+            </header>
+
+            <div class="permissions-grid">
+                <section class="permissions-card">
+                    <div class="permissions-toolbar">
+                        <div>
+                            <h3>Role Mapping</h3>
+                            <p>Assign a default group to each role.</p>
+                        </div>
+                        <div class="save-status" id="permissionsStatus">Loading permissions...</div>
+                    </div>
+                    <div class="role-map-grid" id="roleGroupContainer"></div>
+                </section>
+
+                <section class="permissions-card">
+                    <h3>Login Access</h3>
+                    <p>Enable or disable login access for each role.</p>
+                    <div class="toggle-row" id="loginAccessContainer"></div>
+                </section>
+
+                <section class="permissions-card">
+                    <div class="permissions-toolbar">
+                        <div>
+                            <h3>Group Permissions</h3>
+                            <p>Set page and module access using `none`, `view`, `edit`, and `manage`.</p>
+                        </div>
+                        <button class="btn btn-primary" id="savePermissionsBtn">Save Permissions</button>
+                    </div>
+                    <div class="group-list" id="groupList"></div>
+                </section>
+            </div>
+        </main>
     </div>
 
     <script src="auth.js"></script>
     <script src="script.js"></script>
     <script>
-        lucide.createIcons();
+        const ROLE_OPTIONS = ['Admin', 'Principal', 'Branch', 'Teacher', 'Student', 'Staff'];
+        const ACCESS_OPTIONS = ['none', 'view', 'edit', 'manage'];
+        const MODULE_DEFINITIONS = [
+            { key: 'dashboard', label: 'Dashboard', page: 'dashboard.html' },
+            { key: 'students', label: 'Students', page: 'students.html' },
+            { key: 'teachers', label: 'Teachers', page: 'teachers.html' },
+            { key: 'staff', label: 'Staff', page: 'staff.html' },
+            { key: 'classes', label: 'Classes', page: 'classes.html' },
+            { key: 'fees', label: 'Fees', page: 'fees.html' },
+            { key: 'fee_challan', label: 'Fee Challan', page: 'fee_challan.html' },
+            { key: 'teacher_salaries', label: 'Teacher Salaries', page: 'teacher_salaries.html' },
+            { key: 'student_attendance', label: 'Student Attendance', page: 'student_attendance.html' },
+            { key: 'teacher_attendance', label: 'Teacher Attendance', page: 'teacher_attendance.html' },
+            { key: 'student_attendance_report', label: 'Student Attendance Report', page: 'student_attendance_report.html' },
+            { key: 'teacher_attendance_report', label: 'Teacher Attendance Report', page: 'teacher_attendance_report.html' },
+            { key: 'exams', label: 'Exams', page: 'exams.html' },
+            { key: 'revenue', label: 'Revenue', page: 'revenue.html' },
+            { key: 'settings', label: 'Settings', page: 'settings.html' },
+            { key: 'permissions', label: 'Permissions', page: 'permissions.html' },
+            { key: 'branch_registration', label: 'Branch Registration', page: 'branch_registration.html' },
+            { key: 'email', label: 'Email', page: 'email.html' },
+            { key: 'aboutme', label: 'About Us', page: 'aboutme.html' },
+            { key: 'student_portal', label: 'Student Portal', page: 'student_portal.html' },
+            { key: 'teacher_portal', label: 'Teacher Portal', page: 'teacher_portal.html' },
+            { key: 'staff_portal', label: 'Staff Portal', page: 'staff_portal.html' },
+            { key: 'principal_portal', label: 'Principal Portal', page: 'principal_portal.html' }
+        ];
+
+        let permissionsState = null;
+
+        function getPermissionsApiUrl() {
+            const isLocalhost = window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.protocol === 'file:';
+            const backendUrl = isLocalhost
+                ? (window.location.protocol === 'file:' ? 'http://localhost:3000' : `${window.location.protocol}//${window.location.hostname}:3000`)
+                : (window.ENV_BACKEND_URL || window.location.origin);
+            return `${backendUrl}/api/permissions`;
+        }
+
+        function normalizeConfig(input) {
+            return window.eduCoreAuth.normalizePermissionsConfig(input || {});
+        }
+
+        function setStatus(message) {
+            document.getElementById('permissionsStatus').textContent = message;
+        }
+
+        function renderRoleGroups() {
+            const container = document.getElementById('roleGroupContainer');
+            const groupKeys = Object.keys(permissionsState.groups);
+            container.innerHTML = ROLE_OPTIONS.map((role) => `
+                <div class="role-map-item">
+                    <strong>${role}</strong>
+                    <select data-role-group="${role}">
+                        ${groupKeys.map((groupKey) => `<option value="${groupKey}" ${permissionsState.roleGroups[role] === groupKey ? 'selected' : ''}>${permissionsState.groups[groupKey].name}</option>`).join('')}
+                    </select>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('select[data-role-group]').forEach((select) => {
+                select.addEventListener('change', (event) => {
+                    permissionsState.roleGroups[event.target.dataset.roleGroup] = event.target.value;
+                });
+            });
+        }
+
+        function renderLoginAccess() {
+            const container = document.getElementById('loginAccessContainer');
+            container.innerHTML = ROLE_OPTIONS.map((role) => {
+                const key = role.toLowerCase();
+                return `
+                    <div class="login-item">
+                        <label>
+                            <span>${role} Login</span>
+                            <input type="checkbox" data-login-role="${key}" ${permissionsState.loginAccess[key] !== false ? 'checked' : ''}>
+                        </label>
+                    </div>
+                `;
+            }).join('');
+
+            container.querySelectorAll('input[data-login-role]').forEach((input) => {
+                input.addEventListener('change', (event) => {
+                    permissionsState.loginAccess[event.target.dataset.loginRole] = event.target.checked;
+                });
+            });
+        }
+
+        function renderGroups() {
+            const groupList = document.getElementById('groupList');
+            groupList.innerHTML = Object.entries(permissionsState.groups).map(([groupKey, group]) => `
+                <div class="group-box">
+                    <div class="group-header">
+                        <div>
+                            <label style="display:block; margin-bottom:0.45rem; font-weight:600;">Group Name</label>
+                            <input type="text" data-group-name="${groupKey}" value="${group.name}">
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:0.45rem; font-weight:600;">Home Page</label>
+                            <select data-group-home="${groupKey}">
+                                ${MODULE_DEFINITIONS.map((module) => `<option value="${module.page}" ${group.homePage === module.page ? 'selected' : ''}>${module.label}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <table class="module-table">
+                        <thead>
+                            <tr><th>Module</th><th>Page</th><th>Access</th></tr>
+                        </thead>
+                        <tbody>
+                            ${MODULE_DEFINITIONS.map((module) => `
+                                <tr>
+                                    <td>${module.label}</td>
+                                    <td><span class="page-meta">${module.page}</span></td>
+                                    <td>
+                                        <select data-group-permission="${groupKey}" data-module-key="${module.key}">
+                                            ${ACCESS_OPTIONS.map((access) => `<option value="${access}" ${group.permissions[module.key] === access ? 'selected' : ''}>${access}</option>`).join('')}
+                                        </select>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `).join('');
+
+            groupList.querySelectorAll('input[data-group-name]').forEach((input) => {
+                input.addEventListener('input', (event) => {
+                    permissionsState.groups[event.target.dataset.groupName].name = event.target.value.trim() || event.target.dataset.groupName;
+                    renderRoleGroups();
+                });
+            });
+
+            groupList.querySelectorAll('select[data-group-home]').forEach((select) => {
+                select.addEventListener('change', (event) => {
+                    permissionsState.groups[event.target.dataset.groupHome].homePage = event.target.value;
+                });
+            });
+
+            groupList.querySelectorAll('select[data-group-permission]').forEach((select) => {
+                select.addEventListener('change', (event) => {
+                    const { groupPermission, moduleKey } = event.target.dataset;
+                    permissionsState.groups[groupPermission].permissions[moduleKey] = event.target.value;
+                });
+            });
+        }
+
+        async function loadPermissionsConfig() {
+            setStatus('Loading permissions...');
+            const response = await fetch(getPermissionsApiUrl());
+            const data = await response.json();
+            permissionsState = normalizeConfig(data);
+            sessionStorage.setItem('eduCore_permissions_config', JSON.stringify(permissionsState));
+            renderRoleGroups();
+            renderLoginAccess();
+            renderGroups();
+            setStatus('Permissions loaded');
+        }
+
+        async function savePermissionsConfig() {
+            setStatus('Saving permissions...');
+            const response = await fetch(getPermissionsApiUrl(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(permissionsState)
+            });
+            const result = await response.json();
+            if (!response.ok || result.success === false) {
+                throw new Error(result.message || 'Permissions save failed.');
+            }
+
+            permissionsState = normalizeConfig(result.permissions);
+            sessionStorage.setItem('eduCore_permissions_config', JSON.stringify(permissionsState));
+            renderRoleGroups();
+            renderLoginAccess();
+            renderGroups();
+            setStatus('Permissions saved');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('savePermissionsBtn').addEventListener('click', async () => {
+                try {
+                    await savePermissionsConfig();
+                    alert('Permissions have been saved.');
+                } catch (error) {
+                    setStatus('Save failed');
+                    alert(error.message);
+                }
+            });
+
+            try {
+                await loadPermissionsConfig();
+            } catch (error) {
+                setStatus('Load failed');
+                alert(error.message || 'Permissions could not be loaded.');
+            }
+
+            if (window.lucide) window.lucide.createIcons();
+        });
     </script>
 </body>
-
 </html>

@@ -9,12 +9,160 @@ const JWT_SECRET = process.env.JWT_SECRET || 'eduCore_secret_key_2026';
 const PRINCIPAL_USERNAME = process.env.PRINCIPAL_USERNAME || 'principal@school.com';
 const PRINCIPAL_PASSWORD = process.env.PRINCIPAL_PASSWORD || 'Principal123';
 const PERMISSIONS_FILE = path.join(process.cwd(), 'permissions.json');
+const MODULE_KEYS = [
+    'dashboard',
+    'students',
+    'teachers',
+    'staff',
+    'classes',
+    'fees',
+    'fee_challan',
+    'teacher_salaries',
+    'student_attendance',
+    'teacher_attendance',
+    'student_attendance_report',
+    'teacher_attendance_report',
+    'exams',
+    'revenue',
+    'settings',
+    'permissions',
+    'branch_registration',
+    'email',
+    'aboutme',
+    'student_portal',
+    'teacher_portal',
+    'staff_portal',
+    'principal_portal'
+];
+const ACCESS_LEVELS = ['none', 'view', 'edit', 'manage'];
+
+function buildModuleSet(defaultAccess = 'none', overrides = {}) {
+    return MODULE_KEYS.reduce((acc, key) => {
+        const requested = overrides[key];
+        acc[key] = ACCESS_LEVELS.includes(requested) ? requested : defaultAccess;
+        return acc;
+    }, {});
+}
+
 const defaultPermissions = {
     loginAccess: {
-        student: true
+        admin: true,
+        principal: true,
+        branch: true,
+        teacher: true,
+        student: true,
+        staff: true
     },
-    modules: {}
+    roleGroups: {
+        Admin: 'admin',
+        Principal: 'principal',
+        Branch: 'branch_manager',
+        Teacher: 'teacher',
+        Student: 'student',
+        Staff: 'staff'
+    },
+    groups: {
+        admin: {
+            name: 'System Administrators',
+            homePage: 'dashboard.html',
+            permissions: buildModuleSet('manage')
+        },
+        principal: {
+            name: 'Principal Group',
+            homePage: 'principal_portal.html',
+            permissions: buildModuleSet('none', {
+                principal_portal: 'manage',
+                dashboard: 'view',
+                students: 'view',
+                teachers: 'view',
+                staff: 'view',
+                classes: 'view',
+                exams: 'view',
+                revenue: 'view',
+                aboutme: 'view'
+            })
+        },
+        branch_manager: {
+            name: 'Branch Managers',
+            homePage: 'students.html',
+            permissions: buildModuleSet('none', {
+                students: 'manage',
+                dashboard: 'view',
+                classes: 'view',
+                aboutme: 'view'
+            })
+        },
+        teacher: {
+            name: 'Teachers',
+            homePage: 'teacher_portal.html',
+            permissions: buildModuleSet('none', {
+                teacher_portal: 'manage',
+                students: 'view',
+                classes: 'view',
+                student_attendance: 'edit',
+                student_attendance_report: 'view',
+                exams: 'edit',
+                aboutme: 'view'
+            })
+        },
+        student: {
+            name: 'Students',
+            homePage: 'student_portal.html',
+            permissions: buildModuleSet('none', {
+                student_portal: 'manage',
+                fees: 'view',
+                fee_challan: 'view',
+                exams: 'view',
+                aboutme: 'view'
+            })
+        },
+        staff: {
+            name: 'Staff',
+            homePage: 'staff_portal.html',
+            permissions: buildModuleSet('none', {
+                staff_portal: 'manage',
+                aboutme: 'view'
+            })
+        }
+    }
 };
+
+function normalizePermissionsConfig(input = {}) {
+    const raw = input && typeof input === 'object' ? input : {};
+    const groupsInput = raw.groups && typeof raw.groups === 'object' ? raw.groups : {};
+    const groups = Object.entries({
+        ...defaultPermissions.groups,
+        ...groupsInput
+    }).reduce((acc, [key, groupValue]) => {
+        const baseGroup = defaultPermissions.groups[key] || {
+            name: key,
+            homePage: 'dashboard.html',
+            permissions: buildModuleSet('none')
+        };
+        const nextGroup = groupValue && typeof groupValue === 'object' ? groupValue : {};
+        acc[key] = {
+            name: String(nextGroup.name || baseGroup.name || key),
+            homePage: String(nextGroup.homePage || baseGroup.homePage || 'dashboard.html'),
+            permissions: buildModuleSet('none', {
+                ...baseGroup.permissions,
+                ...(nextGroup.permissions || {})
+            })
+        };
+        return acc;
+    }, {});
+
+    return {
+        loginAccess: {
+            ...defaultPermissions.loginAccess,
+            ...(raw.loginAccess || {})
+        },
+        roleGroups: {
+            ...defaultPermissions.roleGroups,
+            ...(raw.roleGroups || {})
+        },
+        groups
+    };
+}
 
 function isPasswordHash(value) {
     return typeof value === 'string' && /^\$2[aby]\$/.test(value);
@@ -111,15 +259,7 @@ async function loadPermissions(db) {
     if (existing) {
         try {
             const saved = JSON.parse(existing.settingValue);
-            return {
-                ...defaultPermissions,
-                ...saved,
-                loginAccess: {
-                    ...defaultPermissions.loginAccess,
-                    ...(saved.loginAccess || {})
-                },
-                modules: saved.modules || {}
-            };
+            return normalizePermissionsConfig(saved);
         } catch (error) {
             return defaultPermissions;
         }
@@ -129,15 +269,7 @@ async function loadPermissions(db) {
         try {
             const raw = fs.readFileSync(PERMISSIONS_FILE, 'utf8');
             const saved = JSON.parse(raw);
-            const normalized = {
-                ...defaultPermissions,
-                ...saved,
-                loginAccess: {
-                    ...defaultPermissions.loginAccess,
-                    ...(saved.loginAccess || {})
-                },
-                modules: saved.modules || {}
-            };
+            const normalized = normalizePermissionsConfig(saved);
             await AppSetting.upsert({
                 settingKey: 'permissions',
                 settingValue: JSON.stringify(normalized)
@@ -152,15 +284,7 @@ async function loadPermissions(db) {
 }
 
 async function savePermissions(db, data) {
-    const nextPermissions = {
-        ...defaultPermissions,
-        ...data,
-        loginAccess: {
-            ...defaultPermissions.loginAccess,
-            ...(data.loginAccess || {})
-        },
-        modules: data.modules || {}
-    };
+    const nextPermissions = normalizePermissionsConfig(data);
 
     await db.models.AppSetting.upsert({
         settingKey: 'permissions',
@@ -177,7 +301,7 @@ function getEmailConfig() {
     const pass = process.env.SMTP_PASS || '';
     const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
     const fromEmail = process.env.SMTP_FROM_EMAIL || user;
-    const fromName = process.env.SMTP_FROM_NAME || 'My Own School';
+    const fromName = process.env.SMTP_FROM_NAME || 'Apexiueum';
 
     return {
         configured: Boolean(host && port && user && pass && fromEmail),
@@ -405,5 +529,6 @@ module.exports = {
     renderFeePaymentPage,
     savePermissions,
     syncAuthUsers,
-    upsertAuthUser
+    upsertAuthUser,
+    normalizePermissionsConfig
 };
