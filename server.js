@@ -552,7 +552,7 @@ app.post('/api/login', async (req, res) => {
                     role: user.role,
                     username: user.username,
                     campusName: user.campusName || '',
-                    groupKey: permissions.roleGroups[user.role] || roleKey
+                    groupKey: user.groupKey || permissions.roleGroups[user.role] || roleKey
                 };
                 registerActiveSession(req, sessionId, responseUser);
                 return res.json({
@@ -723,6 +723,48 @@ app.delete('/api/special-notices/:id', async (req, res) => {
             deleted: deletedCount > 0,
             notices
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/reset-data', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Admin access required.' });
+    }
+
+    if (!sequelize) {
+        return res.status(503).json({ success: false, message: 'Database offline' });
+    }
+
+    try {
+        const models = sequelize.models;
+        const resetOrder = [
+            'FeePayment',
+            'StudentAttendance',
+            'TeacherAttendance',
+            'SpecialNotice',
+            'Student',
+            'Teacher',
+            'Staff',
+            'User'
+        ];
+
+        for (const modelName of resetOrder) {
+            if (models[modelName]) {
+                await models[modelName].destroy({ where: {} });
+            }
+        }
+
+        writePermissions(defaultPermissions);
+        activeSessions.clear();
+
+        io.emit('students_update', []);
+        io.emit('teachers_update', []);
+        io.emit('staff_update', []);
+        io.emit('special_notices_update', []);
+
+        res.json({ success: true, message: 'System data has been reset.' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -1180,9 +1222,9 @@ app.get('/api/teachers', async (req, res) => {
         const teachers = await sequelize.models.Teacher.findAll({
             attributes: [
                 'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
-                'email', 'address', 'qualification', 'campusName', 'gender', 'subject', 'salary',
+                'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
                 'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role'
+                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
             ]
         });
         res.json(teachers);
@@ -1232,16 +1274,17 @@ app.post('/api/teachers', async (req, res) => {
                 password: item.password,
                 fullName: item.fullName,
                 campusName: item.campusName,
-                plainPassword: item.plainPassword
+                plainPassword: item.plainPassword,
+                groupKey: item.groupKey || 'teacher'
             });
         }
 
         const allTeachers = await Teacher.findAll({
             attributes: [
                 'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
-                'email', 'address', 'qualification', 'campusName', 'gender', 'subject', 'salary',
+                'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
                 'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role'
+                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
             ]
         });
         io.emit('teachers_update', allTeachers);
@@ -1276,9 +1319,9 @@ app.delete('/api/teachers/:id', async (req, res) => {
         const allTeachers = await Teacher.findAll({
             attributes: [
                 'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
-                'email', 'address', 'qualification', 'campusName', 'gender', 'subject', 'salary',
+                'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
                 'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role'
+                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
             ]
         });
         io.emit('teachers_update', allTeachers);
@@ -1315,7 +1358,8 @@ app.post('/api/staff', async (req, res) => {
                 email: normalizeOptionalEmail(item.email),
                 password: item.password,
                 fullName: item.fullName,
-                plainPassword: item.plainPassword
+                plainPassword: item.plainPassword,
+                groupKey: item.groupKey || 'staff'
             });
         }
 
@@ -1428,6 +1472,7 @@ function defineTeacherModel(db) {
         qualification: DataTypes.STRING,
         campusName: DataTypes.STRING,
         gender: DataTypes.STRING,
+        designation: DataTypes.STRING,
         subject: DataTypes.STRING,
         salary: DataTypes.STRING,
         idCardFront: DataTypes.TEXT('long'),
@@ -1441,6 +1486,7 @@ function defineTeacherModel(db) {
         username: { type: DataTypes.STRING, unique: true },
         password: DataTypes.STRING,
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, defaultValue: 'Teacher' }
     });
 }
@@ -1455,6 +1501,7 @@ function defineUserModel(db) {
         username: { type: DataTypes.STRING, unique: true, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, allowNull: false },
         isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
     });
@@ -1483,6 +1530,7 @@ function defineStaffModel(db) {
         username: { type: DataTypes.STRING, unique: true, allowNull: true },
         password: DataTypes.STRING,
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, defaultValue: 'Staff' }
     });
 }
@@ -1696,6 +1744,7 @@ async function upsertAuthUser(User, payload) {
         password: payload.password,
         plainPassword: payload.plainPassword || null,
         role: payload.role,
+        groupKey: payload.groupKey || null,
         isActive: true
     });
 }
@@ -1723,7 +1772,7 @@ async function syncAuthUsers() {
     }
 
     const teachers = await Teacher.findAll({
-        attributes: ['id', 'fullName', 'campusName', 'email', 'username', 'password', 'plainPassword']
+        attributes: ['id', 'fullName', 'campusName', 'email', 'username', 'password', 'plainPassword', 'groupKey']
     });
     for (const teacher of teachers) {
         await upsertAuthUser(User, {
@@ -1735,13 +1784,14 @@ async function syncAuthUsers() {
             username: teacher.username,
             password: teacher.password,
             plainPassword: teacher.plainPassword || null,
+            groupKey: teacher.groupKey || 'teacher',
             role: 'Teacher'
         });
     }
 
     const Staff = sequelize.models.Staff;
     const staffMembers = await Staff.findAll({
-        attributes: ['id', 'fullName', 'email', 'username', 'password', 'plainPassword']
+        attributes: ['id', 'fullName', 'email', 'username', 'password', 'plainPassword', 'groupKey']
     });
     for (const member of staffMembers) {
         await upsertAuthUser(User, {
@@ -1752,6 +1802,7 @@ async function syncAuthUsers() {
             username: member.username,
             password: member.password,
             plainPassword: member.plainPassword || null,
+            groupKey: member.groupKey || 'staff',
             role: 'Staff'
         });
     }
@@ -1800,6 +1851,7 @@ async function ensureLegacySchema() {
         username: { type: DataTypes.STRING, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: false },
         isActive: { type: DataTypes.BOOLEAN, allowNull: true }
     });
@@ -1817,6 +1869,7 @@ async function ensureLegacySchema() {
         qualification: { type: DataTypes.STRING, allowNull: true },
         campusName: { type: DataTypes.STRING, allowNull: true },
         gender: { type: DataTypes.STRING, allowNull: true },
+        designation: { type: DataTypes.STRING, allowNull: true },
         subject: { type: DataTypes.STRING, allowNull: true },
         salary: { type: DataTypes.STRING, allowNull: true },
         idCardFront: { type: DataTypes.TEXT('long'), allowNull: true },
@@ -1830,6 +1883,7 @@ async function ensureLegacySchema() {
         username: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING, allowNull: true },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: true }
     });
 
@@ -1854,6 +1908,7 @@ async function ensureLegacySchema() {
         username: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING, allowNull: true },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: true }
     });
 }

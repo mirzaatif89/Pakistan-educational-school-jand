@@ -207,7 +207,13 @@
                         </div>
                         <div class="input-group">
                             <label>Password</label>
-                            <input type="password" id="branchPassword" placeholder="Create password">
+                            <div class="password-field">
+                                <input type="password" id="branchPassword" placeholder="Create password">
+                                <button type="button" class="password-toggle" data-toggle-password="branchPassword"
+                                    aria-label="Show password" aria-pressed="false">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

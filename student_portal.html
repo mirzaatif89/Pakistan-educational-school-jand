@@ -1019,7 +1019,8 @@
                         <style>
                             body { font-family: "Times New Roman", serif; padding: 24px; color: #111; }
                             .sheet { border: 1px solid #222; padding: 20px; max-width: 900px; margin: 0 auto; }
-                            .head { text-align: center; margin-bottom: 16px; }
+                            .head { display: grid; grid-template-columns: 86px 1fr 86px; align-items: center; gap: 14px; text-align: center; margin-bottom: 16px; }
+                            .print-logo { width: 72px; height: 72px; object-fit: contain; margin: 0 auto; }
                             .head h1 { margin: 0; font-size: 28px; }
                             .head p { margin: 4px 0; font-size: 14px; }
                             .term { text-align: center; font-weight: 700; text-decoration: underline; margin: 14px 0; }
@@ -1037,9 +1038,13 @@
                     <body>
                         <div class="sheet">
                             <div class="head">
-                                <h1>${cachedResult.schoolName || 'School Result Card'}</h1>
-                                <p>${branchDetails.campusLabel}</p>
-                                <p>${branchDetails.contactLine}</p>
+                                <img class="print-logo" src="images/logo.jpeg" alt="School logo">
+                                <div>
+                                    <h1>${cachedResult.schoolName || 'School Result Card'}</h1>
+                                    <p>${branchDetails.campusLabel}</p>
+                                    <p>${branchDetails.contactLine}</p>
+                                </div>
+                                <img class="print-logo" src="images/logo.jpeg" alt="School logo">
                             </div>
                             <div class="term">${cachedResult.termTitle || 'Result Card'}</div>
                             <div class="meta">
@@ -1077,7 +1082,7 @@
             `);
             printable.document.close();
             printable.focus();
-            printable.print();
+            printable.setTimeout(() => printable.print(), 350);
         }
 
         function applyStudentAttendance(student) {
@@ -1286,14 +1291,24 @@
                         <title>Date Sheet</title>
                         <style>
                             body { font-family: Arial, sans-serif; padding: 24px; }
+                            .print-header { display: grid; grid-template-columns: 78px 1fr 78px; align-items: center; gap: 14px; text-align: center; margin-bottom: 16px; }
+                            .print-logo { width: 68px; height: 68px; object-fit: contain; margin: 0 auto; }
+                            .print-header h2 { margin: 0; }
+                            .print-header p { margin: 5px 0 0; }
                             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
                             th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
                             th { background: #f3f4f6; }
                         </style>
                     </head>
                     <body>
-                        <h2>${state.dateSheetSchoolName || 'School Date Sheet'}</h2>
-                        <p>${state.dateSheetExamTitle || 'Exam Schedule'}</p>
+                        <div class="print-header">
+                            <img class="print-logo" src="images/logo.jpeg" alt="School logo">
+                            <div>
+                                <h2>${state.dateSheetSchoolName || 'School Date Sheet'}</h2>
+                                <p>${state.dateSheetExamTitle || 'Exam Schedule'}</p>
+                            </div>
+                            <img class="print-logo" src="images/logo.jpeg" alt="School logo">
+                        </div>
                         <table>
                             <thead>
                                 <tr>
@@ -1311,7 +1326,7 @@
             `);
             printable.document.close();
             printable.focus();
-            printable.print();
+            printable.setTimeout(() => printable.print(), 350);
         }
 
         function applyStudentData(student) {
@@ -1387,7 +1402,7 @@
                     return;
                 }
 
-                alert('The student profile could not be loaded. Please sign in again.');
+                await showAppAlert('The student profile could not be loaded. Please sign in again.');
                 logout();
             }
         }

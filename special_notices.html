@@ -84,10 +84,21 @@
         }
 
         .notice-preview-header {
+            display: grid;
+            grid-template-columns: 82px 1fr 82px;
+            align-items: center;
+            gap: 1rem;
             text-align: center;
             border-bottom: 2px solid #0f766e;
             padding-bottom: 1rem;
             margin-bottom: 1.5rem;
+        }
+
+        .notice-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            margin: 0 auto;
         }
 
         .notice-preview-header h2 {
@@ -253,8 +264,12 @@
                 <div class="table-container">
                     <div class="notice-preview" id="noticePreview">
                         <div class="notice-preview-header">
-                            <h2>Apexiums School System</h2>
-                            <p>Official Special Notice</p>
+                            <img class="notice-logo" src="images/logo.jpeg" alt="School logo">
+                            <div>
+                                <h2>Apexiums School System</h2>
+                                <p>Official Special Notice</p>
+                            </div>
+                            <img class="notice-logo" src="images/logo.jpeg" alt="School logo">
                         </div>
                         <div class="notice-preview-title" id="previewTitle">Notice Title</div>
                         <div class="notice-preview-message" id="previewMessage">Write a notice to preview the printable format.</div>
@@ -341,7 +356,8 @@
                     <style>
                         body { font-family: Arial, sans-serif; color: #111827; padding: 36px; }
                         .sheet { border: 1px solid #64748b; padding: 32px; min-height: 82vh; }
-                        .head { text-align: center; border-bottom: 2px solid #0f766e; padding-bottom: 16px; margin-bottom: 28px; }
+                        .head { display: grid; grid-template-columns: 82px 1fr 82px; align-items: center; gap: 16px; text-align: center; border-bottom: 2px solid #0f766e; padding-bottom: 16px; margin-bottom: 28px; }
+                        .logo { width: 72px; height: 72px; object-fit: contain; margin: 0 auto; }
                         h1 { color: #0f766e; margin: 0 0 6px; font-size: 24px; }
                         h2 { text-align: center; margin: 0 0 24px; font-size: 22px; }
                         .message { white-space: pre-wrap; line-height: 1.8; font-size: 16px; }
@@ -350,7 +366,11 @@
                 </head>
                 <body>
                     <div class="sheet">
-                        <div class="head"><h1>Apexiums School System</h1><div>Official Special Notice</div></div>
+                        <div class="head">
+                            <img class="logo" src="images/logo.jpeg" alt="School logo">
+                            <div><h1>Apexiums School System</h1><div>Official Special Notice</div></div>
+                            <img class="logo" src="images/logo.jpeg" alt="School logo">
+                        </div>
                         <h2>${escapeHtml(draft.title)}</h2>
                         <div class="message">${escapeHtml(draft.message)}</div>
                         <div class="foot"><span>Date: ${new Date().toLocaleDateString('en-GB')}</span><span>Authorized Signature: __________</span></div>
@@ -411,7 +431,7 @@
         }
 
         async function deleteSpecialNotice(id) {
-            if (!confirm('Delete this special notice?')) return;
+            if (!(await showAppConfirm('Delete this special notice?'))) return;
             specialNotices = specialNotices.filter((notice) => notice.id !== id);
             localStorage.setItem(STORAGE_KEY_SPECIAL_NOTICES, JSON.stringify(specialNotices));
             renderNoticeHistory();

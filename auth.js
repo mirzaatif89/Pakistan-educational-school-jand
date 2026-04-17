@@ -1,3 +1,114 @@
+(function installAppPopups() {
+    if (window.showAppAlert && window.showAppConfirm) return;
+
+    const nativeAlert = window.alert ? window.alert.bind(window) : null;
+    let activePopup = null;
+
+    function escapePopupText(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    function ensurePopupElement() {
+        if (activePopup) return activePopup;
+        if (!document.body) return null;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'app-popup-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = `
+            <div class="app-popup-modal">
+                <div class="app-popup-icon"><i data-lucide="check-circle-2"></i></div>
+                <h2 class="app-popup-title">Message</h2>
+                <div class="app-popup-message"></div>
+                <div class="app-popup-actions"></div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        activePopup = overlay;
+        return activePopup;
+    }
+
+    function closePopup(resolve, value) {
+        const popup = ensurePopupElement();
+        if (popup) popup.classList.remove('active');
+        if (resolve) resolve(value);
+    }
+
+    function showAppDialog({ message, title = 'Message', confirm = false, confirmText = 'OK', cancelText = 'Cancel' }) {
+        const popup = ensurePopupElement();
+        if (!popup) {
+            if (nativeAlert) nativeAlert(message);
+            return Promise.resolve(confirm ? false : undefined);
+        }
+
+        popup.querySelector('.app-popup-title').textContent = title;
+        popup.querySelector('.app-popup-message').innerHTML = escapePopupText(message);
+        popup.querySelector('.app-popup-actions').innerHTML = confirm
+            ? `<button type="button" class="app-popup-button secondary" data-popup-cancel>${escapePopupText(cancelText)}</button><button type="button" class="app-popup-button" data-popup-confirm>${escapePopupText(confirmText)}</button>`
+            : `<button type="button" class="app-popup-button" data-popup-confirm>${escapePopupText(confirmText)}</button>`;
+        popup.classList.add('active');
+
+        if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+
+        const confirmButton = popup.querySelector('[data-popup-confirm]');
+        const cancelButton = popup.querySelector('[data-popup-cancel]');
+        confirmButton.focus();
+
+        return new Promise((resolve) => {
+            const cleanup = () => {
+                confirmButton.removeEventListener('click', handleConfirm);
+                if (cancelButton) cancelButton.removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleKeydown);
+            };
+
+            const handleConfirm = () => {
+                cleanup();
+                closePopup(resolve, confirm ? true : undefined);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                closePopup(resolve, false);
+            };
+
+            const handleKeydown = (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleConfirm();
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    handleCancel();
+                }
+            };
+
+            confirmButton.addEventListener('click', handleConfirm);
+            if (cancelButton) cancelButton.addEventListener('click', handleCancel);
+            document.addEventListener('keydown', handleKeydown);
+        });
+    }
+
+    window.showAppAlert = (message, title = 'Message') => showAppDialog({ message, title, confirmText: 'OK' });
+    window.showAppConfirm = (message, title = 'Confirm Action') => showAppDialog({
+        message,
+        title,
+        confirm: true,
+        confirmText: 'Confirm',
+        cancelText: 'Cancel'
+    });
+    window.alert = (message) => {
+        window.showAppAlert(message);
+    };
+})();
+
 (function () {
     const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const publicPages = new Set(['index.html', '']);

@@ -189,8 +189,14 @@
                         <div class="date-sheet-preview" id="dateSheetPreview">
                             <div class="date-sheet-frame">
                                 <div class="date-sheet-header">
-                                    <h2 id="previewDateSheetSchoolName">MY OWN Science School</h2>
-                                    <p id="previewDateSheetCampus">Main Campus</p>
+                                    <div class="date-sheet-header-top">
+                                        <img class="date-sheet-logo" src="images/logo.jpeg" alt="School logo">
+                                        <div>
+                                            <h2 id="previewDateSheetSchoolName">MY OWN Science School</h2>
+                                            <p id="previewDateSheetCampus">Main Campus</p>
+                                        </div>
+                                        <img class="date-sheet-logo" src="images/logo.jpeg" alt="School logo">
+                                    </div>
                                     <h3 id="previewDateSheetExamTitle">Mid Term Examination 2026</h3>
                                     <div class="date-sheet-meta">
                                         <span>Session: <strong id="previewDateSheetSession">2025-26</strong></span>
@@ -817,6 +823,20 @@
             border-bottom: 2px solid #2a2a2a;
             padding-bottom: 1rem;
             margin-bottom: 1rem;
+        }
+
+        .date-sheet-header-top {
+            display: grid;
+            grid-template-columns: 82px 1fr 82px;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .date-sheet-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            margin: 0 auto;
         }
 
         .date-sheet-header h2,

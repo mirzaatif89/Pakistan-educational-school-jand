@@ -483,7 +483,7 @@
             promoteSelectedBtn.dataset.currentClass = classId;
         }
 
-        function promoteCurrentClass() {
+        async function promoteCurrentClass() {
             const currentClassId = document.getElementById('promoteClassBtn').dataset.currentClass;
             const currentClass = classList.find(item => item.id === currentClassId);
             const nextClass = getNextClass(currentClassId);
@@ -500,7 +500,7 @@
                 return;
             }
 
-            const shouldPromote = confirm(`Promote ${matchingStudents.length} student(s) from ${currentClass.name} to ${nextClass.name}?`);
+            const shouldPromote = await showAppConfirm(`Promote ${matchingStudents.length} student(s) from ${currentClass.name} to ${nextClass.name}?`);
             if (!shouldPromote) return;
 
             students = students.map(student => {
@@ -589,7 +589,7 @@
             if (window.lucide) window.lucide.createIcons();
         }
 
-        function promoteSelectedStudents() {
+        async function promoteSelectedStudents() {
             const currentClassId = document.getElementById('promoteSelectedBtn').dataset.currentClass;
             const currentClass = classList.find(item => item.id === currentClassId);
             const nextClass = getNextClass(currentClassId);
@@ -604,7 +604,7 @@
             let students = getData(STORAGE_KEY_STUDENTS);
             const selectedStudents = students.filter(student => selectedIds.includes(student.id));
 
-            const shouldPromote = confirm(`Promote ${selectedStudents.length} selected student(s) from ${currentClass.name} to ${nextClass.name}?`);
+            const shouldPromote = await showAppConfirm(`Promote ${selectedStudents.length} selected student(s) from ${currentClass.name} to ${nextClass.name}?`);
             if (!shouldPromote) return;
 
             students = students.map(student => {

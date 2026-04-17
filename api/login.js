@@ -93,7 +93,7 @@ module.exports = createHandler({
                 role: user.role,
                 username: user.username,
                 campusName: user.campusName || '',
-                groupKey: permissions.roleGroups[user.role] || roleKey
+                groupKey: user.groupKey || permissions.roleGroups[user.role] || roleKey
             }
         });
     }

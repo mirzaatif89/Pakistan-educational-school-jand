@@ -537,7 +537,13 @@
                             </div>
                             <div class="input-group">
                                 <label>Password</label>
-                                <input type="password" id="studentPassword" placeholder="Assign password">
+                                <div class="password-field">
+                                    <input type="password" id="studentPassword" placeholder="Assign password">
+                                    <button type="button" class="password-toggle" data-toggle-password="studentPassword"
+                                        aria-label="Show password" aria-pressed="false">
+                                        <i data-lucide="eye"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">

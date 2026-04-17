@@ -396,6 +396,18 @@
                             </select>
                         </div>
                         <div class="input-group">
+                            <label>Designation</label>
+                            <select id="tDesignation" required
+                                style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: #f8fafc;">
+                                <option value="Teacher" data-group-key="teacher">Teacher</option>
+                                <option value="Senior Teacher" data-group-key="teacher">Senior Teacher</option>
+                                <option value="Coordinator" data-group-key="teacher">Coordinator</option>
+                                <option value="Principal" data-group-key="principal">Principal</option>
+                                <option value="Branch Manager" data-group-key="branch_manager">Branch Manager</option>
+                                <option value="System Administrator" data-group-key="admin">System Administrator</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
                             <label>Subject</label>
                             <input type="text" id="tSubject" required>
                         </div>
@@ -471,7 +483,13 @@
                             </div>
                             <div class="input-group">
                                 <label>Password</label>
-                                <input type="password" id="tPassword" placeholder="Assign password">
+                                <div class="password-field">
+                                    <input type="password" id="tPassword" placeholder="Assign password">
+                                    <button type="button" class="password-toggle" data-toggle-password="tPassword"
+                                        aria-label="Show password" aria-pressed="false">
+                                        <i data-lucide="eye"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">

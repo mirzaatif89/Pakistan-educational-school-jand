@@ -10,9 +10,9 @@ const {
 
 const teacherAttributes = [
     'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
-    'email', 'address', 'qualification', 'campusName', 'gender', 'subject', 'salary',
+    'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
     'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-    'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role'
+    'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
 ];
 
 module.exports = createHandler({
@@ -48,7 +48,8 @@ module.exports = createHandler({
                 password: item.password,
                 fullName: item.fullName,
                 campusName: item.campusName,
-                plainPassword: item.plainPassword
+                plainPassword: item.plainPassword,
+                groupKey: item.groupKey || 'teacher'
             });
         }
 

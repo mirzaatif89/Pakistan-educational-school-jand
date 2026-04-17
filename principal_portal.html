@@ -124,7 +124,7 @@
     <script src="auth.js"></script>
     <script>
         const loggedInUser = JSON.parse(sessionStorage.getItem('loggedInUser') || 'null');
-        if (!loggedInUser || loggedInUser.role !== 'Principal') {
+        if (!loggedInUser || (loggedInUser.role !== 'Principal' && loggedInUser.groupKey !== 'principal')) {
             window.location.href = 'index.html';
         }
 

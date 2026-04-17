@@ -2,7 +2,7 @@
   "loginAccess": {
     "admin": true,
     "principal": true,
-    "branch": false,
+    "branch": true,
     "teacher": true,
     "student": true,
     "staff": true

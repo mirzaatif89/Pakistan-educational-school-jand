@@ -193,6 +193,7 @@ async function upsertAuthUser(User, payload) {
         username: payload.username,
         password: payload.password,
         plainPassword: payload.plainPassword || null,
+        groupKey: payload.groupKey || null,
         role: payload.role,
         isActive: true
     });
@@ -231,12 +232,13 @@ async function syncAuthUsers(db) {
             username: teacher.username,
             password: teacher.password,
             plainPassword: teacher.plainPassword || null,
+            groupKey: teacher.groupKey || 'teacher',
             role: 'Teacher'
         });
     }
 
     const staffMembers = await Staff.findAll({
-        attributes: ['id', 'fullName', 'email', 'username', 'password', 'plainPassword']
+        attributes: ['id', 'fullName', 'email', 'username', 'password', 'plainPassword', 'groupKey']
     });
     for (const member of staffMembers) {
         await upsertAuthUser(User, {
@@ -247,6 +249,7 @@ async function syncAuthUsers(db) {
             username: member.username,
             password: member.password,
             plainPassword: member.plainPassword || null,
+            groupKey: member.groupKey || 'staff',
             role: 'Staff'
         });
     }

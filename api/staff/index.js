@@ -35,7 +35,8 @@ module.exports = createHandler({
                 email: item.email,
                 password: item.password,
                 fullName: item.fullName,
-                plainPassword: item.plainPassword
+                plainPassword: item.plainPassword,
+                groupKey: item.groupKey || 'staff'
             });
         }
 

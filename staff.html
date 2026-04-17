@@ -192,7 +192,16 @@
                         </div>
                         <div class="input-group">
                             <label>Designation</label>
-                            <input type="text" id="sDesignation" placeholder="Enter designation" required>
+                            <select id="sDesignation" required
+                                style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: #f8fafc;">
+                                <option value="Staff Member" data-group-key="staff">Staff Member</option>
+                                <option value="Accountant" data-group-key="staff">Accountant</option>
+                                <option value="Receptionist" data-group-key="staff">Receptionist</option>
+                                <option value="Office Assistant" data-group-key="staff">Office Assistant</option>
+                                <option value="Principal" data-group-key="principal">Principal</option>
+                                <option value="Branch Manager" data-group-key="branch_manager">Branch Manager</option>
+                                <option value="System Administrator" data-group-key="admin">System Administrator</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <label>CNIC</label>
@@ -259,7 +268,13 @@
                         </div>
                         <div class="input-group">
                             <label>Password</label>
-                            <input type="password" id="sPassword" placeholder="Assign staff password" required>
+                            <div class="password-field">
+                                <input type="password" id="sPassword" placeholder="Assign staff password" required>
+                                <button type="button" class="password-toggle" data-toggle-password="sPassword"
+                                    aria-label="Show password" aria-pressed="false">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

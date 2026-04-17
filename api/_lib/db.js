@@ -49,6 +49,7 @@ function defineTeacherModel(db) {
         qualification: DataTypes.STRING,
         campusName: DataTypes.STRING,
         gender: DataTypes.STRING,
+        designation: DataTypes.STRING,
         subject: DataTypes.STRING,
         salary: DataTypes.STRING,
         idCardFront: DataTypes.TEXT('long'),
@@ -62,6 +63,7 @@ function defineTeacherModel(db) {
         username: { type: DataTypes.STRING, unique: true },
         password: DataTypes.STRING,
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, defaultValue: 'Teacher' }
     });
 }
@@ -76,6 +78,7 @@ function defineUserModel(db) {
         username: { type: DataTypes.STRING, unique: true, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, allowNull: false },
         isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
     });
@@ -104,6 +107,7 @@ function defineStaffModel(db) {
         username: { type: DataTypes.STRING, unique: true, allowNull: true },
         password: DataTypes.STRING,
         plainPassword: DataTypes.STRING,
+        groupKey: DataTypes.STRING,
         role: { type: DataTypes.STRING, defaultValue: 'Staff' }
     });
 }
@@ -217,6 +221,7 @@ async function ensureLegacySchema(db) {
         username: { type: DataTypes.STRING, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: false },
         isActive: { type: DataTypes.BOOLEAN, allowNull: true }
     });
@@ -234,6 +239,7 @@ async function ensureLegacySchema(db) {
         qualification: { type: DataTypes.STRING, allowNull: true },
         campusName: { type: DataTypes.STRING, allowNull: true },
         gender: { type: DataTypes.STRING, allowNull: true },
+        designation: { type: DataTypes.STRING, allowNull: true },
         subject: { type: DataTypes.STRING, allowNull: true },
         salary: { type: DataTypes.STRING, allowNull: true },
         idCardFront: { type: DataTypes.TEXT('long'), allowNull: true },
@@ -247,6 +253,7 @@ async function ensureLegacySchema(db) {
         username: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING, allowNull: true },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: true }
     });
 
@@ -271,6 +278,7 @@ async function ensureLegacySchema(db) {
         username: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING, allowNull: true },
         plainPassword: { type: DataTypes.STRING, allowNull: true },
+        groupKey: { type: DataTypes.STRING, allowNull: true },
         role: { type: DataTypes.STRING, allowNull: true }
     });
 }

@@ -30,6 +30,135 @@ const BACKEND_URL = isLocalhost
 const API_BASE_URL = `${BACKEND_URL}/api`;
 let socket;
 
+(function installAppPopups() {
+    if (window.showAppAlert && window.showAppConfirm) return;
+
+    const nativeAlert = window.alert ? window.alert.bind(window) : null;
+    let activePopup = null;
+
+    function escapePopupText(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    function ensurePopupElement() {
+        if (activePopup) return activePopup;
+        if (!document.body) return null;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'app-popup-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = `
+            <div class="app-popup-modal">
+                <div class="app-popup-icon"><i data-lucide="check-circle-2"></i></div>
+                <h2 class="app-popup-title">Message</h2>
+                <div class="app-popup-message"></div>
+                <div class="app-popup-actions">
+                    <button type="button" class="app-popup-button">OK</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        activePopup = overlay;
+        return activePopup;
+    }
+
+    function closePopup(resolve, value) {
+        const popup = ensurePopupElement();
+        if (!popup) {
+            if (resolve) resolve(value);
+            return;
+        }
+
+        popup.classList.remove('active');
+        if (resolve) resolve(value);
+    }
+
+    function showAppDialog({ message, title = 'Message', confirm = false, confirmText = 'OK', cancelText = 'Cancel' }) {
+        const popup = ensurePopupElement();
+        if (!popup) {
+            if (nativeAlert) nativeAlert(message);
+            return Promise.resolve(confirm ? false : undefined);
+        }
+
+        popup.querySelector('.app-popup-title').textContent = title;
+        popup.querySelector('.app-popup-message').innerHTML = escapePopupText(message);
+        const actions = popup.querySelector('.app-popup-actions');
+        actions.innerHTML = confirm
+            ? `<button type="button" class="app-popup-button secondary" data-popup-cancel>${escapePopupText(cancelText)}</button><button type="button" class="app-popup-button" data-popup-confirm>${escapePopupText(confirmText)}</button>`
+            : `<button type="button" class="app-popup-button" data-popup-confirm>${escapePopupText(confirmText)}</button>`;
+        popup.classList.add('active');
+
+        if (window.lucide && window.lucide.createIcons) {
+            window.lucide.createIcons();
+        }
+
+        const confirmButton = popup.querySelector('[data-popup-confirm]');
+        const cancelButton = popup.querySelector('[data-popup-cancel]');
+        confirmButton.focus();
+
+        return new Promise((resolve) => {
+            const cleanup = () => {
+                confirmButton.removeEventListener('click', handleConfirm);
+                if (cancelButton) cancelButton.removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleKeydown);
+            };
+
+            const handleConfirm = () => {
+                cleanup();
+                closePopup(resolve, confirm ? true : undefined);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                closePopup(resolve, false);
+            };
+
+            const handleKeydown = (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleConfirm();
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    handleCancel();
+                }
+            };
+
+            confirmButton.addEventListener('click', handleConfirm);
+            if (cancelButton) cancelButton.addEventListener('click', handleCancel);
+            document.addEventListener('keydown', handleKeydown);
+        });
+    }
+
+    function showAppAlert(message, title = 'Message') {
+        return showAppDialog({ message, title, confirmText: 'OK' });
+    }
+
+    function showAppConfirm(message, title = 'Confirm Action') {
+        return showAppDialog({
+            message,
+            title,
+            confirm: true,
+            confirmText: 'Confirm',
+            cancelText: 'Cancel'
+        });
+    }
+
+    window.showAppAlert = showAppAlert;
+    window.showAppConfirm = showAppConfirm;
+    window.alert = (message) => {
+        showAppAlert(message);
+    };
+})();
+
 if (typeof io !== 'undefined') {
     socket = io(BACKEND_URL);
 
@@ -242,6 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ensureAttendanceNav();
     ensureNotificationsNav();
     ensureSpecialNoticesNav();
+    ensureResetDataNav();
     applyBranchScopedStudentsView();
 
     // === INIT ICONS ===
@@ -594,6 +724,8 @@ function mergeTeacherRecords(incomingTeachers) {
         return {
             ...localTeacher,
             ...teacher,
+            designation: teacher.designation || localTeacher.designation || 'Teacher',
+            groupKey: teacher.groupKey || localTeacher.groupKey || 'teacher',
             profileImage: teacher.profileImage || localTeacher.profileImage || '',
             schedule: normalizeTeacherSchedule(teacher.schedule || localTeacher.schedule),
             plainPassword: teacher.plainPassword || localTeacher.plainPassword ||
@@ -612,6 +744,7 @@ function mergeStaffRecords(incomingStaff) {
         return {
             ...localStaff,
             ...member,
+            groupKey: member.groupKey || localStaff.groupKey || 'staff',
             plainPassword: member.plainPassword || localStaff.plainPassword ||
                 (localStaff.password && !isHashedPassword(localStaff.password) ? localStaff.password : '')
         };
@@ -796,6 +929,33 @@ function validateTeacherIdentityInputs({ teacherId = '', username = '', email = 
     }
 
     return '';
+}
+
+function getDesignationGroup(selectId, fallbackGroupKey) {
+    const select = document.getElementById(selectId);
+    if (!select) return fallbackGroupKey;
+    const option = select.options[select.selectedIndex];
+    return option?.dataset?.groupKey || fallbackGroupKey;
+}
+
+function setDesignationSelectValue(selectId, value, fallbackGroupKey) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+        select.selectedIndex = 0;
+        return;
+    }
+
+    const existingOption = Array.from(select.options).find((option) => option.value === normalized);
+    if (!existingOption) {
+        const option = document.createElement('option');
+        option.value = normalized;
+        option.textContent = normalized;
+        option.dataset.groupKey = fallbackGroupKey;
+        select.appendChild(option);
+    }
+    select.value = normalized;
 }
 
 function validateStudentIdentityInputs({ studentId = '', username = '', email = '' }) {
@@ -1176,6 +1336,95 @@ function ensureSpecialNoticesNav() {
     if (window.lucide) window.lucide.createIcons();
 }
 
+function ensureResetDataNav() {
+    const navLinks = document.querySelector('.nav-links');
+    const loggedInUser = getLoggedInUser();
+    if (!navLinks || !loggedInUser || loggedInUser.role !== 'Admin') return;
+    if (navLinks.querySelector('[data-reset-data-link]')) return;
+
+    const resetLink = document.createElement('a');
+    resetLink.href = '#';
+    resetLink.className = 'nav-item nav-item-danger';
+    resetLink.dataset.resetDataLink = 'true';
+    resetLink.innerHTML = '<i data-lucide="rotate-ccw"></i><span>Reset Data</span>';
+    resetLink.addEventListener('click', resetSystemData);
+
+    navLinks.appendChild(resetLink);
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function clearLocalSystemData() {
+    const prefixes = ['eduCore_', 'EDUCORE_', 'APEXIUMS_'];
+    const exactKeys = new Set([
+        STORAGE_KEY_STUDENTS,
+        STORAGE_KEY_TEACHERS,
+        STORAGE_KEY_CLASSES,
+        STORAGE_KEY_SETTINGS,
+        STORAGE_KEY_NOTIFICATIONS,
+        STORAGE_KEY_AUTH,
+        STORAGE_KEY_TEACHER_ATTENDANCE,
+        STORAGE_KEY_STUDENT_ATTENDANCE_CACHE,
+        STORAGE_KEY_STAFF,
+        STORAGE_KEY_TEACHER_SALARIES,
+        STORAGE_KEY_USERS,
+        STORAGE_KEY_PROMOTION_HISTORY,
+        STORAGE_KEY_SPECIAL_NOTICES,
+        'eduCore_bills',
+        'eduCore_monthly_fees'
+    ]);
+
+    Object.keys(localStorage).forEach((key) => {
+        if (exactKeys.has(key) || prefixes.some((prefix) => key.startsWith(prefix))) {
+            localStorage.removeItem(key);
+        }
+    });
+
+    [
+        'loggedInUser',
+        'eduCore_token',
+        'eduCore_session_id',
+        'eduCore_student_profile',
+        'eduCore_permissions_config',
+        'eduCore_student_result_card',
+        'login_attempts'
+    ].forEach((key) => sessionStorage.removeItem(key));
+}
+
+async function resetSystemData(event) {
+    if (event) event.preventDefault();
+
+    const confirmed = await showAppConfirm(
+        'This will permanently delete all students, teachers, staff, fees, attendance, salaries, classes, notices, bills, results, and saved portal data. Continue?',
+        'Reset All Data'
+    );
+    if (!confirmed) return;
+
+    const token = sessionStorage.getItem('eduCore_token');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/reset-data`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token || ''}`
+            },
+            body: JSON.stringify({ confirm: true })
+        });
+        const result = await parseJsonResponse(response, 'System data could not be reset.');
+
+        if (!response.ok || result?.success === false) {
+            throw new Error(result?.message || result?.error || 'System data could not be reset.');
+        }
+
+        clearLocalSystemData();
+        await showAppAlert('System data has been reset successfully. Please sign in again.', 'Reset Complete');
+        window.location.href = 'index.html';
+    } catch (error) {
+        await showAppAlert(error.message || 'System data could not be reset.', 'Reset Failed');
+    }
+}
+
 function applyBranchScopedStudentsView() {
     const loggedInUser = getLoggedInUser();
     if (!loggedInUser || loggedInUser.role !== 'Branch' || !window.location.pathname.toLowerCase().includes('students.html')) {
@@ -1333,7 +1582,7 @@ function resetBranchRegistrationForm() {
 
 async function deleteBranch(branchId) {
     if (!branchId) return;
-    if (!confirm('Delete this branch login?')) return;
+    if (!(await showAppConfirm('Delete this branch login?'))) return;
 
     try {
         const response = await fetch(`${API_BASE_URL}/branches/${encodeURIComponent(branchId)}`, {
@@ -1710,13 +1959,13 @@ function editBill(id) {
     }
 }
 
-function deleteBill(id) {
-    if (confirm('Delete this expense record?')) {
-        let bills = getBills();
-        bills = bills.filter(b => b.id !== id);
-        saveBills(bills);
-        renderFinance();
-    }
+async function deleteBill(id) {
+    if (!(await showAppConfirm('Delete this expense record?'))) return;
+
+    let bills = getBills();
+    bills = bills.filter(b => b.id !== id);
+    saveBills(bills);
+    renderFinance();
 }
 
 // === BILL PAYMENT CONFIRMATION LOGIC ===
@@ -2135,7 +2384,7 @@ function editStudent(s) {
 }
 
 async function deleteStudent(id) {
-    if (!confirm('Delete this student?')) return;
+    if (!(await showAppConfirm('Delete this student?'))) return;
 
     let students = getData(STORAGE_KEY_STUDENTS);
     const existingStudents = [...students];
@@ -2270,6 +2519,8 @@ async function handleTeacherFormSubmit(e) {
         qualification: document.getElementById('tQualification').value,
         campusName: document.getElementById('tCampusName').value,
         gender: document.getElementById('tGender').value,
+        designation: document.getElementById('tDesignation')?.value || 'Teacher',
+        groupKey: getDesignationGroup('tDesignation', 'teacher'),
         subject: document.getElementById('tSubject').value,
         salary: salaryValInput,
         username: usernameInput,
@@ -2496,7 +2747,8 @@ function renderTeachers(term = '') {
                     ${teacherAvatar}
                     <div class="teacher-name-text">
                         <div style="font-weight:500">${t.fullName}</div>
-                        <div style="font-size:0.75rem;color:var(--text-secondary)">${t.employeeCode || ''} ${t.qualification ? `• ${t.qualification}` : ''}</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">${t.employeeCode || ''} ${t.designation ? ` - ${t.designation}` : ''}</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">${t.qualification || ''}</div>
                     </div>
                 </div></td>
                 <td class="teacher-cell-compact">${t.fatherName || '-'}</td>
@@ -2547,6 +2799,7 @@ function editTeacher(t) {
     document.getElementById('tQualification').value = t.qualification || '';
     document.getElementById('tCampusName').value = t.campusName || '';
     document.getElementById('tGender').value = t.gender || '';
+    setDesignationSelectValue('tDesignation', t.designation || 'Teacher', t.groupKey || 'teacher');
     document.getElementById('tSubject').value = t.subject;
     document.getElementById('tSalary').value = t.salary || '0';
     if (document.getElementById('tBankName')) document.getElementById('tBankName').value = t.bankName || '';
@@ -2560,48 +2813,48 @@ function editTeacher(t) {
     if (document.getElementById('tCvFile')) document.getElementById('tCvFile').value = '';
 }
 
-function deleteTeacher(id) {
-    if (confirm('Delete this teacher?')) {
-        const existingTeachers = getData(STORAGE_KEY_TEACHERS);
-        const updatedTeachers = existingTeachers.filter(t => t.id !== id);
-        saveData(STORAGE_KEY_TEACHERS, updatedTeachers, { skipSync: true });
-        renderTeachers();
+async function deleteTeacher(id) {
+    if (!(await showAppConfirm('Delete this teacher?'))) return;
 
-        fetch(`${API_BASE_URL}/teachers/${id}`, {
-            method: 'DELETE'
+    const existingTeachers = getData(STORAGE_KEY_TEACHERS);
+    const updatedTeachers = existingTeachers.filter(t => t.id !== id);
+    saveData(STORAGE_KEY_TEACHERS, updatedTeachers, { skipSync: true });
+    renderTeachers();
+
+    fetch(`${API_BASE_URL}/teachers/${id}`, {
+        method: 'DELETE'
+    })
+        .then(async (response) => {
+            if (response.status === 503) {
+                pushNotification('Teacher Deleted', 'The teacher was deleted from the local list because the server is offline.', 'book');
+                return;
+            }
+
+            const responseText = await response.text();
+            let result = null;
+
+            try {
+                result = responseText ? JSON.parse(responseText) : null;
+            } catch (parseError) {
+                throw new Error('The server is still running an older version. Restart it with `node server.js` and try deleting again.');
+            }
+
+            if (response.status === 404) {
+                pushNotification('Teacher Deleted', 'The teacher has been removed from both the local list and the database.', 'book');
+                return;
+            }
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || result.error || 'Teacher delete failed.');
+            }
+
+            pushNotification('Teacher Deleted', result.message || 'Teacher deleted successfully.', 'book');
         })
-            .then(async (response) => {
-                if (response.status === 503) {
-                    pushNotification('Teacher Deleted', 'The teacher was deleted from the local list because the server is offline.', 'book');
-                    return;
-                }
-
-                const responseText = await response.text();
-                let result = null;
-
-                try {
-                    result = responseText ? JSON.parse(responseText) : null;
-                } catch (parseError) {
-                    throw new Error('The server is still running an older version. Restart it with `node server.js` and try deleting again.');
-                }
-
-                if (response.status === 404) {
-                    pushNotification('Teacher Deleted', 'The teacher has been removed from both the local list and the database.', 'book');
-                    return;
-                }
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || result.error || 'Teacher delete failed.');
-                }
-
-                pushNotification('Teacher Deleted', result.message || 'Teacher deleted successfully.', 'book');
-            })
-            .catch((error) => {
-                localStorage.setItem(STORAGE_KEY_TEACHERS, JSON.stringify(existingTeachers));
-                renderTeachers();
-                alert(error.message);
-            });
-    }
+        .catch((error) => {
+            localStorage.setItem(STORAGE_KEY_TEACHERS, JSON.stringify(existingTeachers));
+            renderTeachers();
+            alert(error.message);
+        });
 }
 
 
@@ -2796,6 +3049,7 @@ async function handleStaffFormSubmit(e) {
         fatherName: document.getElementById('sFatherName').value,
         dob: document.getElementById('sDob').value,
         designation: document.getElementById('sDesignation').value,
+        groupKey: getDesignationGroup('sDesignation', 'staff'),
         cnic: document.getElementById('sCnic').value,
         phone: document.getElementById('sPhone').value,
         email: document.getElementById('sEmail').value.trim(),
@@ -2908,7 +3162,7 @@ function editStaff(s) {
     document.getElementById('sFullName').value = s.fullName;
     document.getElementById('sFatherName').value = s.fatherName || '';
     if (document.getElementById('sDob')) document.getElementById('sDob').value = s.dob || '';
-    document.getElementById('sDesignation').value = s.designation || '';
+    setDesignationSelectValue('sDesignation', s.designation || 'Staff Member', s.groupKey || 'staff');
     document.getElementById('sCnic').value = s.cnic || '';
     document.getElementById('sPhone').value = s.phone;
     if (document.getElementById('sEmail')) document.getElementById('sEmail').value = s.email || '';
@@ -2925,48 +3179,48 @@ function editStaff(s) {
     if (document.getElementById('sIdCardBack')) document.getElementById('sIdCardBack').value = '';
 }
 
-function deleteStaff(id) {
-    if (confirm('Delete this staff member?')) {
-        const existingStaff = getData(STORAGE_KEY_STAFF);
-        const updatedStaff = existingStaff.filter(s => s.id !== id);
-        saveData(STORAGE_KEY_STAFF, updatedStaff, { skipSync: true });
-        renderStaff();
+async function deleteStaff(id) {
+    if (!(await showAppConfirm('Delete this staff member?'))) return;
 
-        fetch(`${API_BASE_URL}/staff/${id}`, {
-            method: 'DELETE'
+    const existingStaff = getData(STORAGE_KEY_STAFF);
+    const updatedStaff = existingStaff.filter(s => s.id !== id);
+    saveData(STORAGE_KEY_STAFF, updatedStaff, { skipSync: true });
+    renderStaff();
+
+    fetch(`${API_BASE_URL}/staff/${id}`, {
+        method: 'DELETE'
+    })
+        .then(async (response) => {
+            if (response.status === 503) {
+                pushNotification('Staff Deleted', 'The staff member was deleted from the local list because the server is offline.', 'user');
+                return;
+            }
+
+            const responseText = await response.text();
+            let result = null;
+
+            try {
+                result = responseText ? JSON.parse(responseText) : null;
+            } catch (parseError) {
+                throw new Error('The server is still running an older version. Restart it with `node server.js` and try deleting again.');
+            }
+
+            if (response.status === 404) {
+                pushNotification('Staff Deleted', 'The staff member has been removed from both the local list and the database.', 'user');
+                return;
+            }
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || result.error || 'Staff delete failed.');
+            }
+
+            pushNotification('Staff Deleted', result.message || 'Staff deleted successfully.', 'user');
         })
-            .then(async (response) => {
-                if (response.status === 503) {
-                    pushNotification('Staff Deleted', 'The staff member was deleted from the local list because the server is offline.', 'user');
-                    return;
-                }
-
-                const responseText = await response.text();
-                let result = null;
-
-                try {
-                    result = responseText ? JSON.parse(responseText) : null;
-                } catch (parseError) {
-                    throw new Error('The server is still running an older version. Restart it with `node server.js` and try deleting again.');
-                }
-
-                if (response.status === 404) {
-                    pushNotification('Staff Deleted', 'The staff member has been removed from both the local list and the database.', 'user');
-                    return;
-                }
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || result.error || 'Staff delete failed.');
-                }
-
-                pushNotification('Staff Deleted', result.message || 'Staff deleted successfully.', 'user');
-            })
-            .catch((error) => {
-                localStorage.setItem(STORAGE_KEY_STAFF, JSON.stringify(existingStaff));
-                renderStaff();
-                alert(error.message);
-            });
-    }
+        .catch((error) => {
+            localStorage.setItem(STORAGE_KEY_STAFF, JSON.stringify(existingStaff));
+            renderStaff();
+            alert(error.message);
+        });
 }
 
 
@@ -3064,13 +3318,13 @@ function editClass(c) {
     document.getElementById('cCapacity').value = c.capacity;
 }
 
-function deleteClass(id) {
-    if (confirm('Delete this class?')) {
-        let classes = getData(STORAGE_KEY_CLASSES);
-        classes = classes.filter(c => c.id !== id);
-        saveData(STORAGE_KEY_CLASSES, classes);
-        renderClasses();
-    }
+async function deleteClass(id) {
+    if (!(await showAppConfirm('Delete this class?'))) return;
+
+    let classes = getData(STORAGE_KEY_CLASSES);
+    classes = classes.filter(c => c.id !== id);
+    saveData(STORAGE_KEY_CLASSES, classes);
+    renderClasses();
 }
 
 // =======================================================
