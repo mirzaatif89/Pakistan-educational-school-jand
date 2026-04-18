@@ -238,6 +238,33 @@ ul {
     background-color: var(--primary-dark);
 }
 
+.portal-quick-link {
+    margin-top: 1.1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+}
+
+.portal-quick-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 0.6rem;
+    font-weight: 700;
+}
+
+.portal-quick-btn {
+    width: 100%;
+    gap: 0.45rem;
+    font-weight: 600;
+    background: #f6fdfc;
+    border-color: #b9e8e3;
+}
+
+.portal-quick-btn:hover {
+    background: #ecfbf8;
+}
+
 .login-footer {
     margin-top: 1.5rem;
     text-align: center;
