@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Portal</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260627-welcome-logo">
+    <link rel="stylesheet" href="ai-chat.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="auth.js?v=20260627-welcome-logo"></script>
+    <style>
+        :root {
+            --portal-bg: #f8fafc;
+            --portal-card: #ffffff;
+            --portal-border: #dbe3ee;
+            --portal-text: #0f172a;
+            --portal-muted: #64748b;
+            --portal-primary: #20b0a4;
+            --portal-primary-dark: #0f766e;
+            --portal-soft: #eef7f6;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #eef7f6;
+            color: var(--portal-text);
+            font-family: 'Nunito', 'Inter', sans-serif;
+        }
+
+        body.portal-dark {
+            --portal-bg: #0f172a;
+            --portal-card: #172033;
+            --portal-border: #2d3b52;
+            --portal-text: #e5eefb;
+            --portal-muted: #9caec4;
+            --portal-soft: #111c2f;
+            background: #0f172a;
+        }
+
+        .teacher-portal-header {
+            background: transparent;
+            color: var(--portal-text);
+            padding: 14px clamp(14px, 3vw, 28px) 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            max-width: 1180px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            border-bottom: 0;
+            box-shadow: none;
+        }
+
+        .portal-logo {
+            width: 180px;
+            max-width: 48vw;
+            height: 64px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .portal-header-title {
+            margin: 0;
+            color: var(--portal-primary-dark);
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: 700;
+            letter-spacing: 0;
+            text-align: center;
+        }
+
+        .portal-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .logout-btn {
+            border: 1px solid #cae8e4;
+            background: #ffffff;
+            color: var(--portal-primary-dark);
+            border-radius: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .portal-menu-wrap {
+            position: relative;
+            z-index: 80;
+        }
+
+        .portal-menu-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid #cae8e4;
+            border-radius: 12px;
+            background: var(--portal-card);
+            color: var(--portal-primary-dark);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .portal-menu-btn i {
+            width: 22px;
+            height: 22px;
+        }
+
+        .portal-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            width: min(260px, calc(100vw - 28px));
+            border: 1px solid var(--portal-border);
+            border-radius: 14px;
+            background: var(--portal-card);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+            padding: 8px;
+            display: none;
+        }
+
+        .portal-menu.open {
+            display: block;
+        }
+
+        .portal-menu-item {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--portal-text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 12px;
+            font: inherit;
+            font-weight: 800;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .portal-menu-item:hover {
+            background: var(--portal-soft);
+            color: var(--portal-primary-dark);
+        }
+
+        .portal-menu-item i {
+            width: 18px;
+            height: 18px;
+            color: var(--portal-primary-dark);
+        }
+
+        body.portal-dark .teacher-option-btn,
+        body.portal-dark .portal-screen-back,
+        body.portal-dark .portal-metric,
+        body.portal-dark .empty-note,
+        body.portal-dark .list-item,
+        body.portal-dark .attendance-day-tile,
+        body.portal-dark input,
+        body.portal-dark textarea,
+        body.portal-dark select {
+            background: var(--portal-card);
+            border-color: var(--portal-border);
+            color: var(--portal-text);
+        }
+
+        .teacher-portal {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 14px clamp(14px, 3vw, 28px) 40px;
+        }
+
+        body.teacher-panel-open .teacher-portal-header {
+            display: none;
+        }
+
+        body.teacher-panel-open .teacher-portal {
+            max-width: none;
+            width: 100%;
+            min-height: 100dvh;
+            padding: clamp(14px, 2vw, 26px);
+            margin: 0;
+        }
+
+        .profile-card,
+        .panel-card,
+        .stat-card {
+            background: var(--portal-card);
+            border: 1px solid var(--portal-border);
+            border-radius: 18px;
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.09);
+        }
+
+        .profile-card {
+            padding: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
+            position: relative;
+        }
+
+        .profile-card > .portal-menu-wrap {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+        }
+
+        .profile-card > .portal-menu-wrap .portal-menu {
+            left: auto;
+            right: 0;
+        }
+
+        .profile-main {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .profile-details {
+            min-width: 0;
+        }
+
+        .avatar {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            background: var(--portal-primary);
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-size: 28px;
+            font-weight: 800;
+            overflow: hidden;
+            flex: 0 0 auto;
+            border: 4px solid #ffffff;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .portal-photo-picker {
+            position: relative;
+            display: inline-flex;
+            flex: 0 0 auto;
+        }
+
+        .portal-photo-picker input {
+            display: none;
+        }
+
+        .portal-photo-action {
+            position: absolute;
+            right: -8px;
+            bottom: -8px;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--portal-border);
+            border-radius: 999px;
+            background: var(--portal-card);
+            color: var(--portal-primary-dark);
+            display: grid;
+            place-items: center;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .portal-photo-action i,
+        .portal-photo-action svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .profile-main h2 {
+            margin: 0 0 5px;
+            font-size: 24px;
+            letter-spacing: 0;
+        }
+
+        .muted {
+            color: var(--portal-muted);
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(32, 176, 164, 0.22);
+            border-radius: 999px;
+            padding: 6px 10px;
+            color: var(--portal-primary-dark);
+            font-size: 13px;
+            background: var(--portal-card);
+            white-space: nowrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            padding: 17px;
+            border-left: 4px solid var(--portal-primary);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .stat-card::after {
+            content: "";
+            position: absolute;
+            right: -28px;
+            top: -28px;
+            width: 92px;
+            height: 92px;
+            border-radius: 999px;
+            background: rgba(32, 176, 164, 0.1);
+        }
+
+        .stat-card:nth-child(2)::after {
+            background: rgba(32, 176, 164, 0.12);
+        }
+
+        .stat-card:nth-child(3)::after {
+            background: rgba(32, 176, 164, 0.1);
+        }
+
+        .stat-card:nth-child(4)::after {
+            background: rgba(32, 176, 164, 0.12);
+        }
+
+        .stat-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 22px;
+        }
+
+        .teacher-options {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin: 18px 0 0;
+        }
+
+        .teacher-option-btn {
+            min-height: 66px;
+            border: 1px solid #cae8e4;
+            border-radius: 12px;
+            background: #ffffff;
+            color: var(--portal-primary-dark);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.09);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0.85rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-align: center;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .teacher-option-btn i {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            padding: 0;
+            background: transparent;
+            color: var(--portal-primary-dark);
+        }
+
+        .teacher-option-btn:hover {
+            border-color: var(--portal-primary-dark);
+            background: var(--portal-primary-dark);
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.13);
+        }
+
+        .teacher-option-btn:hover i {
+            color: #ffffff;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .section-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .panel-card {
+            padding: 20px;
+        }
+
+        .panel-card h3 {
+            margin: 0 0 14px;
+            font-size: 18px;
+            letter-spacing: 0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .info-row {
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 14px;
+            padding: 12px;
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+        }
+
+        .info-row span,
+        .info-row strong {
+            display: block;
+        }
+
+        .info-row strong {
+            font-size: 12px;
+            color: var(--portal-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .schedule-list,
+        .notice-list,
+        .attendance-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .list-item {
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 14px;
+            padding: 12px;
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .list-item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .complaint-form {
+            display: grid;
+            gap: 14px;
+            width: 100%;
+        }
+
+        .complaint-form label {
+            display: block;
+            color: var(--portal-muted);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .complaint-form input,
+        .complaint-form textarea {
+            width: 100%;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 12px;
+            padding: 13px 14px;
+            font: inherit;
+            background: #ffffff;
+            color: var(--portal-text);
+        }
+
+        .complaint-form textarea {
+            min-height: 160px;
+            resize: vertical;
+        }
+
+        .portal-file-box {
+            border: 1px dashed #86d7d0;
+            border-radius: 14px;
+            background: #fbfefe;
+            padding: 14px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .portal-file-box input[type="file"] {
+            min-height: auto;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+
+        .portal-file-help {
+            color: var(--portal-muted);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .portal-btn {
+            min-height: 38px;
+            border: 0;
+            border-radius: 10px;
+            background: var(--portal-primary-dark);
+            color: #ffffff;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 9px 13px;
+        }
+
+        .empty-note {
+            border: 1px dashed #9fd8d2;
+            border-radius: 14px;
+            padding: 14px;
+            color: var(--portal-primary-dark);
+            background: var(--portal-soft);
+        }
+
+        .teacher-option-panel {
+            margin-top: 18px;
+            display: none;
+        }
+
+        .teacher-option-panel.active {
+            display: block;
+        }
+
+        .teacher-portal.portal-screen-open .profile-card,
+        .teacher-portal.portal-screen-open .stats-grid,
+        .teacher-portal.portal-screen-open .teacher-options {
+            display: none !important;
+        }
+
+        .teacher-option-panel.portal-screen-active {
+            display: block !important;
+            margin-top: 0;
+            width: 100%;
+            max-width: none;
+            min-height: calc(100dvh - clamp(14px, 2vw, 26px) * 2);
+            padding: clamp(18px, 2.5vw, 34px);
+        }
+
+        .complaints-panel {
+            max-width: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .portal-screen-back {
+            width: 44px;
+            height: 44px;
+            border: 1px solid #cae8e4;
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--portal-primary-dark);
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            padding: 0;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .portal-screen-back i {
+            width: 20px;
+            height: 20px;
+        }
+
+        .portal-form-grid,
+        .portal-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .portal-form-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            max-width: 980px;
+        }
+
+        .teacher-option-panel.portal-screen-active > .portal-mini-grid,
+        .teacher-option-panel.portal-screen-active > .portal-form-grid,
+        .teacher-option-panel.portal-screen-active > .notice-list,
+        .teacher-option-panel.portal-screen-active > .portal-table-wrap,
+        .teacher-option-panel.portal-screen-active > .complaint-form,
+        .teacher-option-panel.portal-screen-active > .attendance-board,
+        .teacher-option-panel.portal-screen-active > .attendance-toolbar,
+        .teacher-option-panel.portal-screen-active > .muted,
+        .teacher-option-panel.portal-screen-active > h3 {
+            max-width: 1180px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .teacher-option-panel.portal-screen-active > h3 {
+            font-size: clamp(1.45rem, 2.2vw, 2rem);
+            margin-bottom: 16px;
+        }
+
+        .teacher-option-panel.portal-screen-active > .muted {
+            display: block;
+            line-height: 1.65;
+        }
+
+        .attendance-toolbar {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 14px;
+            margin: 16px 0 12px;
+            flex-wrap: wrap;
+        }
+
+        .attendance-month-field {
+            display: grid;
+            gap: 6px;
+            width: min(260px, 100%);
+        }
+
+        .attendance-month-field label {
+            color: var(--portal-muted);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .attendance-month-field input {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid #cae8e4;
+            border-radius: 12px;
+            background: var(--portal-card);
+            color: var(--portal-text);
+            font: inherit;
+            font-weight: 800;
+            padding: 10px 12px;
+            outline: none;
+        }
+
+        .attendance-month-field input:focus {
+            border-color: var(--portal-primary-dark);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        #teacherAttendanceSummary {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .portal-field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .portal-field label {
+            color: var(--portal-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .portal-field input,
+        .portal-field select,
+        .portal-field textarea {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font: inherit;
+            background: #ffffff;
+            color: var(--portal-text);
+        }
+
+        .portal-field textarea {
+            min-height: 96px;
+            resize: vertical;
+        }
+
+        .portal-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        .portal-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 620px;
+        }
+
+        .portal-table th,
+        .portal-table td {
+            border-bottom: 1px solid #dcefed;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .portal-table th {
+            color: var(--portal-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .portal-metric {
+            border: 1px solid #cae8e4;
+            border-radius: 14px;
+            background: #fbfefe;
+            padding: 14px;
+        }
+
+        .portal-metric span,
+        .portal-metric strong {
+            display: block;
+        }
+
+        .portal-metric span {
+            color: var(--portal-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .portal-metric strong {
+            margin-top: 6px;
+            font-size: 18px;
+        }
+
+        .panel-action-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .attendance-board {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(54px, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .attendance-day-tile {
+            min-height: 58px;
+            border: 1px solid #dcefed;
+            border-radius: 12px;
+            background: #ffffff;
+            display: grid;
+            place-items: center;
+            gap: 2px;
+            padding: 8px;
+            color: #475569;
+            font-weight: 800;
+        }
+
+        .attendance-day-tile span {
+            font-size: 11px;
+            font-weight: 700;
+            color: inherit;
+        }
+
+        .attendance-day-tile.present,
+        .attendance-day-tile.late {
+            background: #dcfce7;
+            border-color: #86efac;
+            color: #166534;
+        }
+
+        .attendance-day-tile.leave {
+            background: #dbeafe;
+            border-color: #93c5fd;
+            color: #1d4ed8;
+        }
+
+        .attendance-day-tile.absent {
+            background: #ffffff;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        @media (max-width: 1040px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #teacherAttendanceSummary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .teacher-options {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 860px) {
+            .profile-card {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .portal-grid,
+            .info-grid,
+            .portal-form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .portal-mini-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            body.teacher-panel-open .teacher-portal {
+                padding: 12px;
+            }
+
+            .teacher-option-panel.portal-screen-active {
+                min-height: calc(100dvh - 24px);
+                padding: 18px;
+            }
+
+            .profile-card {
+                padding: 18px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .teacher-portal-header {
+                display: none;
+            }
+
+            .teacher-portal {
+                padding: 12px 12px 30px;
+            }
+
+            body.teacher-panel-open {
+                background: var(--portal-card);
+            }
+
+            body.teacher-panel-open .teacher-portal {
+                padding: 0;
+            }
+
+            .panel-card {
+                padding: 16px 14px;
+            }
+
+            .teacher-option-panel.portal-screen-active {
+                min-height: 100dvh;
+                border-radius: 0;
+                border: 0;
+                box-shadow: none;
+                padding: 18px 14px 28px;
+            }
+
+            .teacher-option-panel.portal-screen-active > .portal-mini-grid,
+            .teacher-option-panel.portal-screen-active > .portal-form-grid,
+            .teacher-option-panel.portal-screen-active > .notice-list,
+            .teacher-option-panel.portal-screen-active > .portal-table-wrap,
+            .teacher-option-panel.portal-screen-active > .complaint-form,
+            .teacher-option-panel.portal-screen-active > .attendance-board,
+            .teacher-option-panel.portal-screen-active > .attendance-toolbar,
+            .teacher-option-panel.portal-screen-active > .muted,
+            .teacher-option-panel.portal-screen-active > h3 {
+                max-width: none;
+            }
+
+            .portal-screen-back {
+                width: 52px;
+                height: 52px;
+                margin-bottom: 1.15rem;
+            }
+
+            .teacher-option-panel.portal-screen-active > h3 {
+                font-size: 1.38rem;
+                margin-bottom: 1rem;
+            }
+
+            .profile-card {
+                align-items: flex-start;
+                text-align: left;
+                padding: 16px 14px;
+                border-radius: 32px;
+                overflow: visible;
+                z-index: 30;
+            }
+
+            .portal-photo-action {
+                width: 30px;
+                height: 30px;
+                right: -4px;
+                bottom: -4px;
+            }
+
+            .portal-photo-action svg,
+            .portal-photo-action i {
+                width: 14px;
+                height: 14px;
+            }
+
+            .profile-card > .portal-menu-wrap {
+                top: 12px;
+                left: 12px;
+                right: auto;
+            }
+
+            .profile-card > .portal-menu-wrap .portal-menu {
+                left: 0;
+                right: auto;
+                width: min(245px, calc(100vw - 42px));
+            }
+
+            .profile-main {
+                align-items: stretch;
+                flex-direction: column;
+                width: 100%;
+                gap: 0.8rem;
+            }
+
+            .profile-main .portal-photo-picker {
+                align-self: center;
+            }
+
+            .profile-details {
+                width: 100%;
+            }
+
+            .profile-main h2 {
+                font-size: 1.35rem;
+                margin: 0 0 0.3rem;
+                line-height: 1.2;
+            }
+
+            .attendance-toolbar {
+                margin: 14px 0 10px;
+                gap: 10px;
+            }
+
+            .attendance-month-field {
+                width: 100%;
+            }
+
+            #teacherAttendanceSummary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            #teacherAttendanceSummary .portal-metric {
+                min-height: 92px;
+                padding: 12px;
+            }
+
+            .portal-mini-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .portal-metric {
+                min-height: 96px;
+                padding: 12px;
+                border-radius: 20px;
+            }
+
+            .portal-metric span {
+                font-size: 0.72rem;
+                line-height: 1.25;
+            }
+
+            .portal-metric strong {
+                font-size: 1.08rem;
+                line-height: 1.25;
+                overflow-wrap: anywhere;
+            }
+
+            .portal-form-grid,
+            .complaint-form {
+                gap: 12px;
+            }
+
+            .portal-field input,
+            .portal-field select,
+            .portal-field textarea,
+            .complaint-form input,
+            .complaint-form textarea {
+                min-height: 46px;
+                border-radius: 10px;
+                padding: 11px 12px;
+            }
+
+            .empty-note,
+            .list-item {
+                border-radius: 12px;
+                padding: 13px;
+            }
+
+            .portal-table {
+                min-width: 560px;
+            }
+
+            .pill-row {
+                flex-wrap: nowrap;
+                justify-content: center;
+                gap: 6px;
+                width: 100%;
+                overflow-x: auto;
+                padding-bottom: 2px;
+            }
+
+            .meta-pill {
+                flex: 0 0 auto;
+                padding: 6px 8px;
+                font-size: 0.74rem;
+                gap: 4px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .stat-card {
+                min-height: 104px;
+                padding: 14px 12px;
+                border-radius: 28px;
+            }
+
+            .stat-card .muted {
+                display: block;
+                min-height: 2.4em;
+                font-size: 0.84rem;
+                line-height: 1.2;
+            }
+
+            .stat-card strong {
+                font-size: 1.12rem;
+                line-height: 1.2;
+                overflow-wrap: anywhere;
+            }
+
+            .teacher-options {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .attendance-board {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+                gap: 6px;
+                margin-top: 12px;
+            }
+
+            .attendance-day-tile {
+                min-height: 54px;
+                border-radius: 10px;
+                padding: 6px 3px;
+                font-size: 0.85rem;
+            }
+
+            .attendance-day-tile span {
+                font-size: 0.64rem;
+                line-height: 1.1;
+            }
+
+            .teacher-option-btn {
+                min-height: 78px;
+                flex-direction: column;
+                gap: 6px;
+                padding: 0.75rem 0.5rem;
+                font-size: 0.78rem;
+                line-height: 1.18;
+                overflow-wrap: anywhere;
+                border-radius: 28px;
+            }
+
+            .panel-card,
+            .stat-card,
+            .profile-card {
+                border-radius: 28px;
+            }
+
+            .list-item-top {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="teacher-portal-header">
+        <img class="portal-logo" src="images/logo.png" alt="PESS JAND logo">
+    </header>
+    <main class="teacher-portal">
+        <section class="profile-card">
+            <div class="portal-menu-wrap">
+                <button class="portal-menu-btn" type="button" id="teacherMenuButton" aria-label="Open teacher menu" aria-expanded="false">
+                    <i data-lucide="menu"></i>
+                </button>
+                <div class="portal-menu" id="teacherPortalMenu">
+                    <button class="portal-menu-item" type="button" id="themeToggleBtn">
+                        <i data-lucide="moon"></i>
+                        <span id="themeToggleText">Dark Mode</span>
+                    </button>
+                    <a class="portal-menu-item" href="portal_about.html">
+                        <i data-lucide="info"></i>
+                        <span>About Us</span>
+                    </a>
+                    <button class="portal-menu-item" type="button" onclick="logoutUser()">
+                        <i data-lucide="log-out"></i>
+                        <span>Logout</span>
+                    </button>
+                    <button class="portal-menu-item" type="button" id="privacyPolicyBtn">
+                        <i data-lucide="shield"></i>
+                        <span>Privacy Policy</span>
+                    </button>
+                </div>
+            </div>
+            <div class="profile-main">
+                <div class="portal-photo-picker">
+                    <div class="avatar" id="teacherAvatar">T</div>
+                    <label class="portal-photo-action" for="teacherPortalPhoto" title="Change profile photo" aria-label="Change profile photo">
+                        <i data-lucide="camera"></i>
+                    </label>
+                    <input id="teacherPortalPhoto" type="file" accept="image/*">
+                </div>
+                <div class="profile-details">
+                    <h2 id="teacherName">Loading...</h2>
+                    <div class="muted" id="teacherRoleLine">Teacher</div>
+                    <div class="pill-row">
+                        <span class="meta-pill"><i data-lucide="shield-check" width="15"></i> Account Active</span>
+                        <span class="meta-pill"><i data-lucide="user" width="15"></i> <span id="teacherUsername">-</span></span>
+                        <span class="meta-pill"><i data-lucide="building-2" width="15"></i> <span id="teacherCampus">-</span></span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="muted">Employee ID</div>
+                <strong id="employeeCode">-</strong>
+            </div>
+        </section>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="muted">Subject</span>
+                <strong id="subjectStat">-</strong>
+            </div>
+            <div class="stat-card">
+                <span class="muted">Monthly Salary</span>
+                <strong id="salaryStat">PKR 0</strong>
+            </div>
+            <div class="stat-card">
+                <span class="muted">Assigned Lectures</span>
+                <strong id="lectureCount">0</strong>
+            </div>
+            <div class="stat-card">
+                <span class="muted">Attendance This Month</span>
+                <strong id="attendanceSummary">-</strong>
+            </div>
+        </section>
+
+        <section class="teacher-options" aria-label="Teacher portal options">
+            <button class="teacher-option-btn" type="button" data-teacher-panel="attendancePanel">
+                <i data-lucide="calendar-check" width="16"></i>
+                Attendance
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="salaryPanel">
+                <i data-lucide="wallet" width="16"></i>
+                Salary Record
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="timeTablePanel">
+                <i data-lucide="clock" width="16"></i>
+                Time Table
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="complaintsPanel">
+                <i data-lucide="message-square" width="16"></i>
+                Complains
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="messagesPanel">
+                <i data-lucide="message-circle" width="16"></i>
+                Messages
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="leavePanel">
+                <i data-lucide="calendar-minus" width="16"></i>
+                Apply for Leave
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="classesPanel">
+                <i data-lucide="school" width="16"></i>
+                Assigned Classes
+            </button>
+            <button class="teacher-option-btn" type="button" data-teacher-panel="lecturesPanel">
+                <i data-lucide="presentation" width="16"></i>
+                Assigned Lectures
+            </button>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="attendancePanel">
+            <h3>Attendance</h3>
+            <p class="muted">Attendance is marked by authorized admin/staff only. Select any month to review your record.</p>
+            <div class="attendance-toolbar">
+                <div class="attendance-month-field">
+                    <label for="teacherAttendanceMonth">Select Month</label>
+                    <input type="month" id="teacherAttendanceMonth">
+                </div>
+            </div>
+            <div class="portal-mini-grid" id="teacherAttendanceSummary"></div>
+            <div class="attendance-board" id="teacherAttendanceBoard"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="salaryPanel">
+            <h3>Salary Record</h3>
+            <div class="portal-mini-grid" id="teacherSalaryRecord"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="timeTablePanel">
+            <h3>Time Table</h3>
+            <div id="teacherTimeTable"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel complaints-panel" id="complaintsPanel">
+            <h3>Complains</h3>
+            <form id="teacherComplaintForm" class="complaint-form">
+                <label for="teacherComplaintSubject">Subject</label>
+                <input type="text" id="teacherComplaintSubject" required placeholder="Complaint subject">
+                <label for="teacherComplaintMessage">Complaint</label>
+                <textarea id="teacherComplaintMessage" required placeholder="Write your complaint"></textarea>
+                <div class="portal-file-box">
+                    <label for="teacherComplaintFile">Attach File</label>
+                    <input type="file" id="teacherComplaintFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.txt">
+                    <div class="portal-file-help" id="teacherComplaintFileName">Optional: attach a screenshot, image, PDF, Word, or text file.</div>
+                </div>
+                <button class="portal-btn" type="submit"><i data-lucide="send" width="15"></i> Submit Complaint</button>
+            </form>
+            <h4 style="margin:1rem 0 .75rem;">Complaint History</h4>
+            <div class="notice-list" id="teacherComplaintHistory"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="messagesPanel">
+            <h3>Messages</h3>
+            <div class="notice-list" id="teacherMessageList"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="leavePanel">
+            <h3>Apply for Leave</h3>
+            <form id="teacherLeaveForm">
+                <div class="portal-form-grid">
+                    <div class="portal-field">
+                        <label for="teacherLeaveFrom">From Date</label>
+                        <input type="date" id="teacherLeaveFrom" required>
+                    </div>
+                    <div class="portal-field">
+                        <label for="teacherLeaveTo">To Date</label>
+                        <input type="date" id="teacherLeaveTo" required>
+                    </div>
+                    <div class="portal-field" style="grid-column: 1 / -1;">
+                        <label for="teacherLeaveReason">Reason</label>
+                        <textarea id="teacherLeaveReason" required placeholder="Write leave reason"></textarea>
+                    </div>
+                </div>
+                <div class="panel-action-row">
+                    <button class="portal-btn" type="submit"><i data-lucide="send" width="15"></i> Submit Leave</button>
+                </div>
+            </form>
+            <div class="notice-list" id="teacherLeaveHistory"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="classesPanel">
+            <h3>Assigned Classes</h3>
+            <div class="notice-list" id="teacherAssignedClasses"></div>
+        </section>
+
+        <section class="panel-card teacher-option-panel" id="lecturesPanel">
+            <h3>Assigned Lectures</h3>
+            <div class="notice-list" id="teacherAssignedLectures"></div>
+        </section>
+    </main>
+
+    <script src="ai-chat.js"></script>
+    <script>
+        const API_BASE_URL = (() => {
+            const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const backendUrl = isLocalhost
+                ? (window.location.protocol === 'file:' ? 'http://localhost:3000' : window.location.origin)
+                : (window.ENV_BACKEND_URL || window.location.origin);
+            return `${backendUrl}/api`;
+        })();
+        const loggedInUser = JSON.parse(sessionStorage.getItem('loggedInUser') || 'null');
+        const authToken = sessionStorage.getItem('eduCore_token') || '';
+        const COMPLAINT_KEY = 'eduCore_complaints';
+        const TEACHER_LEAVE_KEY = 'eduCore_teacher_leave_requests';
+        const TEACHER_SALARY_KEY = 'eduCore_teacher_salaries';
+        const TEACHER_THEME_KEY = 'eduCore_teacher_portal_theme';
+        let currentTeacherProfile = null;
+        let remoteTeacherLeaveRequests = null;
+
+        function syncThemeMenu() {
+            const isDark = document.body.classList.contains('portal-dark');
+            const icon = document.querySelector('#themeToggleBtn i');
+            const text = document.getElementById('themeToggleText');
+            if (icon) icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            if (text) text.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function applyTeacherTheme(theme) {
+            document.body.classList.toggle('portal-dark', theme === 'dark');
+            syncThemeMenu();
+        }
+
+        function bindTeacherMenu() {
+            const menuButton = document.getElementById('teacherMenuButton');
+            const menu = document.getElementById('teacherPortalMenu');
+            const themeButton = document.getElementById('themeToggleBtn');
+            const privacyButton = document.getElementById('privacyPolicyBtn');
+
+            applyTeacherTheme(localStorage.getItem(TEACHER_THEME_KEY) || 'light');
+
+            menuButton?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const isOpen = menu?.classList.toggle('open');
+                menuButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            themeButton?.addEventListener('click', () => {
+                const nextTheme = document.body.classList.contains('portal-dark') ? 'light' : 'dark';
+                localStorage.setItem(TEACHER_THEME_KEY, nextTheme);
+                applyTeacherTheme(nextTheme);
+            });
+
+            privacyButton?.addEventListener('click', () => {
+                menu?.classList.remove('open');
+                menuButton?.setAttribute('aria-expanded', 'false');
+                showAppAlert('Your portal data is used only for school account access, attendance, salary, leave, and complaint records.', 'Privacy Policy');
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!menu?.classList.contains('open')) return;
+                if (event.target.closest('.portal-menu-wrap')) return;
+                menu.classList.remove('open');
+                menuButton?.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value || '-';
+        }
+
+        function formatCurrency(value) {
+            const amount = Number.parseInt(value || 0, 10) || 0;
+            return `PKR ${amount.toLocaleString('en-PK')}`;
+        }
+
+        function normalizeSchedule(rawSchedule) {
+            if (!rawSchedule) return [];
+            if (Array.isArray(rawSchedule)) return rawSchedule;
+            try {
+                const parsed = JSON.parse(rawSchedule);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_error) {
+                return [];
+            }
+        }
+
+        function readLocal(key) {
+            try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (_error) { return []; }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+        }
+
+        function todayKey() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        function monthKey(date = new Date()) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getTeacherIdentity(teacher = currentTeacherProfile) {
+            return String(teacher?.id || teacher?.employeeCode || loggedInUser?.id || loggedInUser?.username || '').trim();
+        }
+
+        function getTeacherSalaryPayment(month = monthKey()) {
+            const teacherId = getTeacherIdentity();
+            const records = readLocal(TEACHER_SALARY_KEY);
+            const map = records && !Array.isArray(records) ? records : {};
+            return map[`teacher_${teacherId}_${month}`] || map[`${teacherId}_${month}`] || null;
+        }
+
+        function getSchedule() {
+            return normalizeSchedule(currentTeacherProfile?.schedule);
+        }
+
+        function uniqueClasses(schedule = getSchedule()) {
+            const classes = new Map();
+            schedule.forEach((item) => {
+                const className = item.classGrade || item.className || item.class || '';
+                if (!className) return;
+                const key = className.toLowerCase();
+                if (!classes.has(key)) classes.set(key, className);
+            });
+            return Array.from(classes.values());
+        }
+
+        function getTeacherAttendanceMonth(attendanceStore, teacherId, month = monthKey()) {
+            const direct = attendanceStore?.[`${teacherId}_${month}`];
+            const legacy = attendanceStore?.[`teacher_${teacherId}_${month}`];
+            return Array.isArray(direct) ? direct : (Array.isArray(legacy) ? legacy : []);
+        }
+
+        async function getTeacherAttendanceStore() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-attendance`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                });
+                const result = response.ok ? await response.json() : null;
+                if (result?.attendance) {
+                    localStorage.setItem('eduCore_teacher_attendance', JSON.stringify(result.attendance));
+                    return result.attendance;
+                }
+            } catch (_error) {
+                // Fall back to browser cache below.
+            }
+            return readLocal('eduCore_teacher_attendance');
+        }
+
+        function renderPortalList(hostId, items, emptyText, renderItem) {
+            const host = document.getElementById(hostId);
+            if (!host) return;
+            if (!items.length) {
+                host.innerHTML = `<div class="empty-note">${escapeHtml(emptyText)}</div>`;
+                return;
+            }
+            host.innerHTML = items.map(renderItem).join('');
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function getSelectedAttendanceMonth() {
+            const input = document.getElementById('teacherAttendanceMonth');
+            const selected = String(input?.value || '').trim();
+            return /^\d{4}-\d{2}$/.test(selected) ? selected : monthKey();
+        }
+
+        async function renderSelfAttendance() {
+            const teacherId = getTeacherIdentity();
+            const store = await getTeacherAttendanceStore();
+            const month = getSelectedAttendanceMonth();
+            const monthInput = document.getElementById('teacherAttendanceMonth');
+            if (monthInput && monthInput.value !== month) monthInput.value = month;
+            const monthly = getTeacherAttendanceMonth(store, teacherId, month);
+            const normalizedMonthly = monthly.map((status) => normalizeAttendanceLabel(status));
+            const counted = normalizedMonthly.filter((status) => ['Present', 'Late', 'Absent', 'Leave'].includes(status));
+            const present = counted.filter((status) => status === 'Present').length;
+            const late = counted.filter((status) => status === 'Late').length;
+            const absent = counted.filter((status) => status === 'Absent').length;
+            const leave = counted.filter((status) => status === 'Leave').length;
+            setText('attendanceSummary', counted.length ? `${present + late}/${counted.length}` : '-');
+
+            const summary = document.getElementById('teacherAttendanceSummary');
+            if (summary) {
+                summary.innerHTML = `
+                    <div class="portal-metric"><span>Month</span><strong>${escapeHtml(month)}</strong></div>
+                    <div class="portal-metric"><span>Present / Late</span><strong>${present + late}</strong></div>
+                    <div class="portal-metric"><span>Absent</span><strong>${absent}</strong></div>
+                    <div class="portal-metric"><span>Leave</span><strong>${leave}</strong></div>
+                `;
+            }
+
+            const board = document.getElementById('teacherAttendanceBoard');
+            if (board) {
+                const [year, monthNumber] = month.split('-').map(Number);
+                const daysInMonth = new Date(year, monthNumber, 0).getDate();
+                board.innerHTML = Array.from({ length: daysInMonth }, (_, index) => {
+                    const day = index + 1;
+                    const status = normalizedMonthly[index] || '';
+                    const cls = status ? status.toLowerCase().replace(/\s+/g, '-') : 'empty';
+                    const label = status || 'Not Marked';
+                    return `
+                        <div class="attendance-day-tile ${escapeHtml(cls)}" title="${escapeHtml(label)}">
+                            <strong>${day}</strong>
+                            <span>${escapeHtml(status ? status : '-')}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function normalizeAttendanceLabel(status) {
+            const value = String(status || '').trim();
+            if (value === 'P') return 'Present';
+            if (value === 'A') return 'Absent';
+            if (value.toLowerCase() === 'late') return 'Late';
+            if (value.toLowerCase() === 'leave') return 'Leave';
+            if (value.toLowerCase() === 'present') return 'Present';
+            if (value.toLowerCase() === 'absent') return 'Absent';
+            return '';
+        }
+
+        function renderSalaryRecord() {
+            const host = document.getElementById('teacherSalaryRecord');
+            if (!host) return;
+            const month = monthKey();
+            const payment = getTeacherSalaryPayment(month);
+            const gross = Number.parseInt(currentTeacherProfile?.salary || 0, 10) || 0;
+            host.innerHTML = `
+                <div class="portal-metric"><span>Month</span><strong>${escapeHtml(month)}</strong></div>
+                <div class="portal-metric"><span>Monthly Salary</span><strong>${formatCurrency(gross)}</strong></div>
+                <div class="portal-metric"><span>Status</span><strong>${payment ? 'Transferred' : 'Pending'}</strong></div>
+                <div class="portal-metric"><span>Transfer Date</span><strong>${escapeHtml(payment?.date || '-')}</strong></div>
+            `;
+        }
+
+        function renderTimeTable() {
+            const schedule = getSchedule();
+            const host = document.getElementById('teacherTimeTable');
+            if (!host) return;
+            if (!schedule.length) {
+                host.innerHTML = '<div class="empty-note">No timetable has been assigned yet.</div>';
+                return;
+            }
+            host.innerHTML = `
+                <div class="portal-table-wrap">
+                    <table class="portal-table">
+                        <thead><tr><th>Day</th><th>Class</th><th>Subject</th><th>Time</th><th>Room</th></tr></thead>
+                        <tbody>
+                            ${schedule.map((item) => `
+                                <tr>
+                                    <td>${escapeHtml(item.day || item.weekDay || '-')}</td>
+                                    <td>${escapeHtml(item.classGrade || item.className || item.class || '-')}</td>
+                                    <td>${escapeHtml(item.subject || '-')}</td>
+                                    <td>${escapeHtml([item.startTime || item.start, item.endTime || item.end].filter(Boolean).join(' - ') || item.time || '-')}</td>
+                                    <td>${escapeHtml(item.room || '-')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function getTeacherLeaveRequests() {
+            const teacherId = getTeacherIdentity().toLowerCase();
+            const requests = Array.isArray(remoteTeacherLeaveRequests) ? remoteTeacherLeaveRequests : readLocal(TEACHER_LEAVE_KEY);
+            return requests
+                .filter((item) => String(item.applicantId || item.teacherId || '').toLowerCase() === teacherId)
+                .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        }
+
+        function mergeTeacherLeaveRequests(remote = [], cached = []) {
+            const requests = new Map();
+            [...cached, ...remote].forEach((item) => {
+                if (!item?.id) return;
+                requests.set(String(item.id), { ...(requests.get(String(item.id)) || {}), ...item });
+            });
+            return Array.from(requests.values());
+        }
+
+        async function syncLegacyTeacherLeaveRequests() {
+            const legacyRequests = getTeacherLeaveRequests()
+                .filter((item) => !item.applicantRole && String(item.status || 'Pending') === 'Pending');
+            for (const item of legacyRequests) {
+                if (!item.fromDate || !item.toDate || !item.reason) continue;
+                try {
+                    await fetch(`${API_BASE_URL}/leave-requests`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            id: item.id,
+                            fromDate: item.fromDate,
+                            toDate: item.toDate,
+                            reason: item.reason
+                        })
+                    });
+                } catch (_error) {
+                    return;
+                }
+            }
+        }
+
+        async function loadTeacherLeaveRequests() {
+            try {
+                const cachedRequests = readLocal(TEACHER_LEAVE_KEY);
+                await syncLegacyTeacherLeaveRequests();
+                const response = await fetch(`${API_BASE_URL}/leave-requests`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result?.success) {
+                    throw new Error(result?.message || 'Leave history could not be loaded.');
+                }
+                remoteTeacherLeaveRequests = mergeTeacherLeaveRequests(result.leaveRequests || [], cachedRequests);
+                localStorage.setItem(TEACHER_LEAVE_KEY, JSON.stringify(remoteTeacherLeaveRequests));
+            } catch (_error) {
+                remoteTeacherLeaveRequests = null;
+            }
+            renderTeacherLeaveHistory();
+        }
+
+        function renderTeacherLeaveHistory() {
+            renderPortalList('teacherLeaveHistory', getTeacherLeaveRequests(), 'No leave request submitted yet.', (item) => `
+                <div class="list-item">
+                    <div class="list-item-top">
+                        <span>${escapeHtml(item.fromDate || '-')} to ${escapeHtml(item.toDate || '-')}</span>
+                        <span>${escapeHtml(item.status || 'Pending')}</span>
+                    </div>
+                    <div>${escapeHtml(item.reason || '-')}</div>
+                    ${item.reviewReason ? `<div class="muted">Rejection reason: ${escapeHtml(item.reviewReason)}</div>` : ''}
+                </div>
+            `);
+        }
+
+        function renderAssignedClasses() {
+            const classes = uniqueClasses();
+            renderPortalList('teacherAssignedClasses', classes, 'No classes have been assigned yet.', (className) => `
+                <div class="list-item">
+                    <div class="list-item-top"><span>${escapeHtml(className)}</span><span>Assigned</span></div>
+                </div>
+            `);
+        }
+
+        function renderAssignedLectures() {
+            const schedule = getSchedule();
+            renderPortalList('teacherAssignedLectures', schedule, 'No lectures have been assigned yet.', (item) => `
+                <div class="list-item">
+                    <div class="list-item-top">
+                        <span>${escapeHtml(item.subject || 'Lecture')}</span>
+                        <span>${escapeHtml([item.startTime || item.start, item.endTime || item.end].filter(Boolean).join(' - ') || item.time || '-')}</span>
+                    </div>
+                    <div class="muted">${escapeHtml(item.day || item.weekDay || '-')} | ${escapeHtml(item.classGrade || item.className || item.class || '-')} | ${escapeHtml(item.room || '-')}</div>
+                </div>
+            `);
+        }
+
+        function renderTeacherPanels() {
+            renderSalaryRecord();
+            renderTimeTable();
+            renderTeacherComplaints();
+            renderTeacherLeaveHistory();
+            renderAssignedClasses();
+            renderAssignedLectures();
+            renderSelfAttendance();
+        }
+
+        function showTeacherPanel(panelId) {
+            const portal = document.querySelector('.teacher-portal');
+            const target = document.getElementById(panelId);
+            if (!portal || !target) return;
+
+            document.querySelectorAll('.teacher-option-panel').forEach((panel) => {
+                panel.classList.remove('active', 'portal-screen-active');
+                const existingBack = panel.querySelector('.portal-screen-back');
+                if (existingBack) existingBack.remove();
+            });
+
+            portal.classList.add('portal-screen-open');
+            document.body.classList.add('teacher-panel-open');
+            target.classList.add('active', 'portal-screen-active');
+
+            const backButton = document.createElement('button');
+            backButton.type = 'button';
+            backButton.className = 'portal-screen-back';
+            backButton.setAttribute('aria-label', 'Back to menu');
+            backButton.title = 'Back';
+            backButton.innerHTML = `<i data-lucide="arrow-left" width="20"></i>`;
+            backButton.addEventListener('click', closeTeacherPanelScreen);
+            target.insertBefore(backButton, target.firstChild);
+
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function closeTeacherPanelScreen() {
+            const portal = document.querySelector('.teacher-portal');
+            portal?.classList.remove('portal-screen-open');
+            document.body.classList.remove('teacher-panel-open');
+            document.querySelectorAll('.teacher-option-panel').forEach((panel) => {
+                panel.classList.remove('active', 'portal-screen-active');
+                const existingBack = panel.querySelector('.portal-screen-back');
+                if (existingBack) existingBack.remove();
+            });
+            document.querySelector('.teacher-options')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function renderSchedule(schedule) {
+            const list = document.getElementById('scheduleList');
+            if (!schedule.length) {
+                list.innerHTML = '<div class="empty-note">No lectures have been assigned yet.</div>';
+                return;
+            }
+
+            list.innerHTML = schedule.map((item) => {
+                const day = item.day || item.weekDay || 'Lecture';
+                const className = item.classGrade || item.className || item.class || '-';
+                const subject = item.subject || '-';
+                const time = [item.startTime || item.start, item.endTime || item.end].filter(Boolean).join(' - ') || item.time || '-';
+                return `
+                    <div class="list-item">
+                        <div class="list-item-top">
+                            <span>${day}</span>
+                            <span>${time}</span>
+                        </div>
+                        <div class="muted">${className} | ${subject}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadAttendance(teacherId) {
+            const list = document.getElementById('attendanceList');
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-attendance`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                });
+                const records = response.ok ? await response.json() : [];
+                const attendance = Array.isArray(records)
+                    ? records.filter((item) => String(item.teacherId || item.id || '') === String(teacherId))
+                    : [];
+
+                const now = new Date();
+                const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const monthRecords = attendance.filter((item) => String(item.date || '').startsWith(monthKey));
+                const present = monthRecords.filter((item) => String(item.status || '').toLowerCase() === 'present').length;
+                setText('attendanceSummary', monthRecords.length ? `${present}/${monthRecords.length}` : '-');
+
+                if (!monthRecords.length) {
+                    list.innerHTML = '<div class="empty-note">No attendance record is available for this month.</div>';
+                    return;
+                }
+
+                list.innerHTML = monthRecords.slice(-8).reverse().map((item) => `
+                    <div class="list-item">
+                        <div class="list-item-top">
+                            <span>${item.date || '-'}</span>
+                            <span>${item.status || '-'}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (_error) {
+                list.innerHTML = '<div class="empty-note">Attendance could not be loaded.</div>';
+            }
+        }
+
+        async function loadNotices() {
+            const list = document.getElementById('noticeList');
+            try {
+                const response = await fetch(`${API_BASE_URL}/special-notices?portal=teacher`);
+                const notices = response.ok ? await response.json() : [];
+                if (!Array.isArray(notices) || !notices.length) {
+                    list.innerHTML = '<div class="empty-note">No teacher notices are available.</div>';
+                    return;
+                }
+
+                list.innerHTML = notices.slice(0, 6).map((notice) => `
+                    <div class="list-item">
+                        <div class="list-item-top">
+                            <span>${notice.title || 'Notice'}</span>
+                            <span>${notice.noticeDate || notice.createdAt || ''}</span>
+                        </div>
+                        <div class="muted">${notice.message || notice.description || ''}</div>
+                    </div>
+                `).join('');
+            } catch (_error) {
+                list.innerHTML = '<div class="empty-note">Notices could not be loaded.</div>';
+            }
+        }
+
+        function applyTeacherData(teacher) {
+            currentTeacherProfile = teacher;
+            const name = teacher.fullName || loggedInUser?.fullName || 'Teacher';
+            const avatar = document.getElementById('teacherAvatar');
+            if (teacher.profileImage) {
+                avatar.innerHTML = `<img src="${teacher.profileImage}" alt="${name}">`;
+            } else {
+                avatar.textContent = name.charAt(0).toUpperCase();
+            }
+
+            setText('teacherName', name);
+            setText('teacherRoleLine', `${teacher.designation || 'Teacher'} | ${teacher.subject || '-'}`);
+            setText('teacherUsername', teacher.username || loggedInUser?.username || '-');
+            setText('teacherCampus', teacher.campusName || loggedInUser?.campusName || '-');
+            setText('employeeCode', teacher.employeeCode || teacher.id || '-');
+            setText('subjectStat', teacher.subject || '-');
+            setText('salaryStat', formatCurrency(teacher.salary));
+            setText('fatherName', teacher.fatherName || '-');
+            setText('cnic', teacher.cnic || '-');
+            setText('phone', teacher.phone || '-');
+            setText('email', teacher.email || '-');
+            setText('qualification', teacher.qualification || '-');
+            setText('address', teacher.address || '-');
+
+            const schedule = normalizeSchedule(teacher.schedule);
+            setText('lectureCount', String(schedule.length));
+            renderTeacherPanels();
+        }
+
+        function readTeacherPortalPhoto(file) {
+            return new Promise((resolve, reject) => {
+                if (!file || !String(file.type || '').startsWith('image/')) {
+                    reject(new Error('Select an image file.'));
+                    return;
+                }
+                if (file.size > 3 * 1024 * 1024) {
+                    reject(new Error('Select an image under 3 MB.'));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('Profile image could not be read.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function cacheTeacherPortalProfile(teacher) {
+            const teachers = JSON.parse(localStorage.getItem('eduCore_teachers') || '[]');
+            const index = teachers.findIndex((item) => String(item.id) === String(teacher.id));
+            if (index >= 0) {
+                teachers[index] = { ...teachers[index], profileImage: teacher.profileImage || '' };
+                localStorage.setItem('eduCore_teachers', JSON.stringify(teachers));
+            }
+        }
+
+        async function updateTeacherPortalPhoto(event) {
+            const input = event.target;
+            const file = input?.files?.[0];
+            if (!file) return;
+            try {
+                const profileImage = await readTeacherPortalPhoto(file);
+                const response = await fetch(`${API_BASE_URL}/teacher/me`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ profileImage })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result?.success || !result?.teacher) {
+                    throw new Error(result?.message || 'Profile photo could not be saved.');
+                }
+                cacheTeacherPortalProfile(result.teacher);
+                applyTeacherData(result.teacher);
+                await showAppAlert('Your profile photo has been updated.', 'Photo Updated');
+            } catch (error) {
+                await showAppAlert(error.message || 'Profile photo could not be saved.', 'Photo Error');
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
+        function getTeacherComplaintSenderId() {
+            return String(currentTeacherProfile?.id || currentTeacherProfile?.employeeCode || loggedInUser?.id || loggedInUser?.username || '').trim().toLowerCase();
+        }
+
+        function renderTeacherComplaints() {
+            const list = document.getElementById('teacherComplaintHistory');
+            if (!list) return;
+            const senderId = getTeacherComplaintSenderId();
+            const complaints = readLocal(COMPLAINT_KEY)
+                .filter((item) => item.senderRole === 'Teacher' && String(item.senderId || '').trim().toLowerCase() === senderId)
+                .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            if (!complaints.length) {
+                list.innerHTML = '<div class="empty-note">No complaints submitted yet.</div>';
+                return;
+            }
+            list.innerHTML = complaints.map((item) => `
+                <div class="list-item">
+                    <div class="list-item-top">
+                        <span>${escapeHtml(item.subject || 'Complaint')}</span>
+                        <span>${escapeHtml(item.status || 'Pending')}</span>
+                    </div>
+                    <div class="muted">${escapeHtml(item.message || '-')}</div>
+                    ${item.file?.dataUrl ? `<button type="button" class="portal-btn" style="margin-top:8px;width:max-content;" onclick="downloadTeacherComplaintFile('${escapeHtml(item.id || '')}')"><i data-lucide="download" width="15"></i> ${escapeHtml(item.file.name || 'Download File')}</button>` : ''}
+                    ${item.reply ? `<div class="empty-note" style="margin-top:8px;"><strong>Admin Reply:</strong><br>${escapeHtml(item.reply)}</div>` : ''}
+                    ${item.actionTaken ? `<div class="empty-note" style="margin-top:8px;"><strong>Action Taken:</strong><br>${escapeHtml(item.actionTaken)}</div>` : ''}
+                </div>
+            `).join('');
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function sanitizeTeacherFileName(fileName) {
+            return String(fileName || 'complaint-file').trim().replace(/[\\/:*?"<>|]+/g, '-') || 'complaint-file';
+        }
+
+        function downloadTeacherComplaintFile(id) {
+            const item = readLocal(COMPLAINT_KEY).find((complaint) => complaint.id === id);
+            if (!item?.file?.dataUrl) {
+                showAppAlert('No file is attached to this complaint.', 'File Missing');
+                return;
+            }
+            const link = document.createElement('a');
+            link.href = item.file.dataUrl;
+            link.download = sanitizeTeacherFileName(item.file.name || 'complaint-file');
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        function readTeacherComplaintFile(input) {
+            const file = input?.files?.[0];
+            if (!file) return Promise.resolve(null);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ name: file.name, dataUrl: reader.result, type: file.type || '' });
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function submitTeacherComplaint(event) {
+            event.preventDefault();
+            const subject = document.getElementById('teacherComplaintSubject').value.trim();
+            const message = document.getElementById('teacherComplaintMessage').value.trim();
+            if (!subject || !message) {
+                showAppAlert('Complaint subject and message are required.', 'Missing Complaint');
+                return;
+            }
+            let file = null;
+            try {
+                file = await readTeacherComplaintFile(document.getElementById('teacherComplaintFile'));
+            } catch (_error) {
+                showAppAlert('Complaint file could not be attached.', 'File Error');
+                return;
+            }
+            const complaints = readLocal(COMPLAINT_KEY);
+            complaints.push({
+                id: `COMP-${Date.now()}`,
+                senderRole: 'Teacher',
+                senderId: getTeacherComplaintSenderId(),
+                senderName: currentTeacherProfile?.fullName || loggedInUser?.fullName || 'Teacher',
+                senderClass: currentTeacherProfile?.subject || currentTeacherProfile?.designation || '',
+                subject,
+                message,
+                file,
+                status: 'Pending',
+                thread: [],
+                actionTaken: '',
+                createdAt: new Date().toISOString()
+            });
+            try {
+                localStorage.setItem(COMPLAINT_KEY, JSON.stringify(complaints));
+            } catch (_error) {
+                showAppAlert('Complaint could not be saved. The attached file may be too large.', 'Storage Full');
+                return;
+            }
+            event.target.reset();
+            updateTeacherComplaintFileLabel();
+            renderTeacherComplaints();
+            showAppAlert('Your complaint has been submitted.', 'Complaint Sent');
+        }
+
+        async function submitTeacherLeave(event) {
+            event.preventDefault();
+            const fromDate = document.getElementById('teacherLeaveFrom')?.value || '';
+            const toDate = document.getElementById('teacherLeaveTo')?.value || '';
+            const reason = document.getElementById('teacherLeaveReason')?.value.trim() || '';
+            if (!fromDate || !toDate || !reason) {
+                showAppAlert('Leave dates and reason are required.', 'Missing Leave Details');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/leave-requests`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ fromDate, toDate, reason })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result?.success) {
+                    throw new Error(result?.message || 'Leave request could not be saved.');
+                }
+            } catch (error) {
+                showAppAlert(error.message || 'Leave request could not be saved.', 'Leave Save Failed');
+                return;
+            }
+            event.target.reset();
+            await loadTeacherLeaveRequests();
+            showAppAlert('Your leave request has been submitted.', 'Leave Submitted');
+        }
+
+        function bindTeacherPortalOptions() {
+            document.querySelectorAll('[data-teacher-panel]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const panelId = button.getAttribute('data-teacher-panel');
+                    renderTeacherPanels();
+                    showTeacherPanel(panelId);
+                });
+            });
+            document.getElementById('teacherComplaintForm')?.addEventListener('submit', submitTeacherComplaint);
+            document.getElementById('teacherComplaintFile')?.addEventListener('change', updateTeacherComplaintFileLabel);
+            document.getElementById('teacherLeaveForm')?.addEventListener('submit', submitTeacherLeave);
+            document.getElementById('teacherAttendanceMonth')?.addEventListener('change', renderSelfAttendance);
+        }
+
+        function updateTeacherComplaintFileLabel() {
+            const file = document.getElementById('teacherComplaintFile')?.files?.[0];
+            const label = document.getElementById('teacherComplaintFileName');
+            if (label) {
+                label.textContent = file
+                    ? `Selected: ${file.name}`
+                    : 'Optional: attach a screenshot, image, PDF, Word, or text file.';
+            }
+        }
+
+        function getTeacherFallback() {
+            const teachers = JSON.parse(localStorage.getItem('eduCore_teachers') || '[]');
+            return teachers.find((teacher) => String(teacher.id) === String(loggedInUser?.id));
+        }
+
+        function renderTeacherMessages(messages = []) {
+            const list = document.getElementById('teacherMessageList');
+            if (!list) return;
+            if (!messages.length) {
+                list.innerHTML = '<div class="empty-note">No messages received yet.</div>';
+                return;
+            }
+            list.innerHTML = messages.map((item) => `
+                <div class="list-item">
+                    <div class="list-item-top">
+                        <span>${escapeHtml(item.createdAtLabel || '')}</span>
+                        <span>${escapeHtml(item.subject || 'Message')}</span>
+                    </div>
+                    <div class="muted">${escapeHtml(item.senderName ? `From: ${item.senderName}` : 'School message')}</div>
+                    <div class="muted" style="white-space:pre-wrap;">${escapeHtml(item.body || '')}</div>
+                </div>
+            `).join('');
+        }
+
+        async function loadTeacherMessages() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/messages`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result?.success) {
+                    throw new Error(result?.message || 'Messages could not be loaded.');
+                }
+                renderTeacherMessages(result.messages || []);
+            } catch (error) {
+                console.warn('Teacher messages could not be loaded:', error.message);
+                renderTeacherMessages([]);
+            }
+        }
+
+        async function loadTeacherProfile() {
+            if (!loggedInUser || loggedInUser.role !== 'Teacher' || !authToken) {
+                window.location.replace('/login');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher/me`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('Unable to load teacher profile.');
+                const teacher = await response.json();
+                applyTeacherData(teacher);
+                await loadTeacherMessages();
+                await loadTeacherLeaveRequests();
+            } catch (_error) {
+                const fallback = getTeacherFallback();
+                if (fallback) {
+                    applyTeacherData(fallback);
+                    await loadTeacherMessages();
+                    await loadTeacherLeaveRequests();
+                    return;
+                }
+                await showAppAlert('The teacher profile could not be loaded. Please sign in again.');
+                logoutUser();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            bindTeacherMenu();
+            loadTeacherProfile();
+            bindTeacherPortalOptions();
+            document.getElementById('teacherPortalPhoto')?.addEventListener('change', updateTeacherPortalPhoto);
+            lucide.createIcons();
+        });
+    </script>
+</body>
+
+</html>

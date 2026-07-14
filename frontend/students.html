@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260603-kids-roots-jand-brand">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Specific Basic Styles for the Form Modal/Section */
+        .form-container {
+            background: var(--surface-color);
+            padding: 1.15rem;
+            border-radius: 8px;
+            margin-bottom: 1.15rem;
+            border: 1px solid var(--border-color);
+            display: none;
+            /* Hidden by default */
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.85rem 1rem;
+            margin-bottom: 1rem;
+            align-items: start;
+        }
+
+        #studentFormContainer h3 {
+            margin-bottom: 0.95rem !important;
+            font-size: 1.05rem;
+        }
+
+        #studentForm .input-group {
+            min-width: 0;
+            margin-bottom: 0.65rem;
+        }
+
+        #studentForm .input-group label {
+            margin-bottom: 0.32rem;
+            min-height: 16px;
+            font-size: 0.78rem;
+            line-height: 1.25;
+        }
+
+        #studentForm .input-group input,
+        #studentForm .input-group select,
+        #studentForm .password-field {
+            width: 100% !important;
+            min-height: 36px !important;
+            height: 36px !important;
+            border-radius: 8px !important;
+            font-size: 0.88rem;
+            box-sizing: border-box;
+        }
+
+        #studentForm .input-group input,
+        #studentForm .input-group select {
+            padding: 0.42rem 0.65rem !important;
+        }
+
+        #studentForm .input-group textarea {
+            width: 100% !important;
+            min-height: 58px !important;
+            padding: 0.42rem 0.65rem !important;
+            border-radius: 8px !important;
+            font-size: 0.88rem;
+        }
+
+        #studentForm .profile-image-picker {
+            height: 36px;
+            min-height: 36px;
+            border-radius: 8px;
+        }
+
+        #studentForm .profile-image-action {
+            font-size: 0.78rem;
+            padding: 0 0.65rem;
+        }
+
+        #studentForm .profile-image-action i,
+        #studentForm .profile-image-action svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        #studentForm .student-family-section {
+            grid-column: 1 / -1;
+            margin-top: 0.15rem;
+            padding: 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        #studentForm .student-family-section h4 {
+            margin: 0 0 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.92rem;
+        }
+
+        #studentForm .student-family-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.85rem 1rem;
+        }
+
+        #studentForm .student-family-grid .input-group {
+            margin-bottom: 0;
+        }
+
+        .student-toolbar .search-bar,
+        .student-filter-group input,
+        .student-filter-group select,
+        .admin-records-select {
+            min-height: 42px !important;
+            height: 42px !important;
+            padding: 0.58rem 0.85rem !important;
+            border-radius: 8px !important;
+            font-size: 0.86rem;
+        }
+
+        .action-btn {
+            padding: 0.5rem 0.9rem;
+            font-size: 0.85rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            min-height: 34px;
+            height: auto;
+            transition: var(--transition);
+        }
+
+        .btn-edit {
+            background: #eff6ff;
+            color: var(--primary-color);
+        }
+
+        .btn-edit:hover {
+            background: #dbeafe;
+        }
+
+        .btn-view {
+            background: #ecfeff;
+            color: #0f766e;
+        }
+
+        .btn-view:hover {
+            background: #cffafe;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        .student-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .student-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .student-toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+        }
+
+        .student-stat {
+            font-weight: 700;
+            color: var(--text-secondary);
+            min-width: 140px;
+            display: flex;
+            align-items: center;
+            height: 42px;
+        }
+
+        .student-toolbar .btn-primary {
+            min-height: 42px !important;
+            height: 42px !important;
+            padding: 0.58rem 1.5rem !important;
+            display: inline-flex;
+        }
+
+        .student-print-btn {
+            min-height: 42px !important;
+            height: 42px !important;
+            padding: 0.58rem 1.25rem !important;
+        }
+
+        .student-filter-group {
+            flex: 0 1 260px;
+            width: 260px;
+            min-width: 260px;
+        }
+
+        .student-search-group {
+            max-width: none;
+        }
+
+        .student-filter-group label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .student-filter-group input,
+        .student-filter-group select {
+            width: 100%;
+            min-height: 42px;
+            height: 42px;
+            padding: 0.58rem 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: white;
+            font: inherit;
+        }
+
+        #studentPrintMode {
+            min-height: 42px !important;
+            height: 42px !important;
+            padding: 0.58rem 0.85rem !important;
+            border-radius: var(--radius-md) !important;
+        }
+
+        .student-filter-group .student-multifilter {
+            position: relative;
+        }
+
+        .student-filter-group .student-multifilter-trigger {
+            width: 100%;
+            min-height: 42px;
+            height: 42px;
+            padding: 0.58rem 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: white;
+            font: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            text-align: left;
+        }
+
+        .student-filter-group .student-multifilter-trigger::after {
+            content: "▾";
+            color: var(--text-secondary);
+            transition: transform 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .student-filter-group .student-multifilter.open .student-multifilter-trigger::after {
+            transform: rotate(180deg);
+        }
+
+        .student-filter-group .student-multifilter-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+            padding: 0.55rem;
+            max-height: 320px;
+            overflow: auto;
+            display: none;
+            z-index: 80;
+        }
+
+        .student-filter-group .student-multifilter.open .student-multifilter-menu {
+            display: block;
+        }
+
+        .student-filter-group .student-multifilter-group {
+            padding: 0.4rem 0.55rem 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .student-filter-group .student-multifilter-item {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.5rem 0.55rem;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .student-filter-group .student-multifilter-item:hover {
+            background: rgba(32, 176, 164, 0.08);
+        }
+
+        .student-filter-group .student-multifilter-item input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .student-filter-group input:focus,
+        .student-filter-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .student-filter-group .student-multifilter-trigger:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .admin-records-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin: 0 0 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .admin-records-head {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .admin-records-select {
+            min-width: min(100%, 280px);
+            padding: 0.85rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: #fff;
+            font: inherit;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .admin-record-section {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .admin-record-section.active {
+            display: block;
+        }
+
+        .admin-record-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.85rem;
+        }
+
+        .admin-record-table th,
+        .admin-record-table td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .admin-record-table th {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+        }
+
+        .admin-record-empty {
+            padding: 1rem;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            background: #f8fafc;
+            margin-top: 0.85rem;
+        }
+
+        .student-filter-group .student-multifilter.disabled .student-multifilter-trigger {
+            background: #f8fafc;
+            cursor: not-allowed;
+            color: var(--text-secondary);
+        }
+
+        .student-filter-group .student-multifilter.disabled .student-multifilter-trigger::after {
+            opacity: 0.5;
+        }
+
+        .student-filter-group .student-multifilter.disabled .student-multifilter-menu {
+            display: none !important;
+        }
+
+        .student-print-btn {
+            margin-bottom: 0.05rem;
+        }
+
+        .student-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .student-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .student-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .profile-image-picker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 42px;
+            min-height: 42px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: white;
+            box-shadow: none;
+            overflow: hidden;
+        }
+
+        .profile-image-picker:hover {
+            border-color: var(--primary-color);
+            background: white;
+        }
+
+        .profile-image-preview {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.78rem;
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+
+        .profile-image-preview:empty {
+            display: none;
+        }
+
+        .profile-image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .profile-image-content {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            padding-left: 0;
+        }
+
+        .profile-image-content strong {
+            display: none;
+        }
+
+        .profile-image-content span {
+            display: none;
+        }
+
+        .profile-image-action {
+            position: absolute;
+            inset: 0;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.4rem;
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            min-height: 0;
+            margin-top: 0;
+            padding: 0 0.85rem;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 0.82rem;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .profile-image-action:hover {
+            background: transparent;
+            color: var(--primary-color);
+        }
+
+        .profile-image-action i,
+        .profile-image-action svg {
+            display: block;
+            width: 14px;
+            height: 14px;
+            flex: 0 0 auto;
+        }
+
+        .profile-image-action span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .profile-image-picker input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 640px) {
+            .profile-image-picker {
+                text-align: center;
+            }
+
+            .profile-image-action {
+                margin-left: 0;
+                margin-right: 0;
+            }
+        }
+
+        .login-details {
+            line-height: 1.5;
+            font-size: 0.85rem;
+            min-width: 170px;
+        }
+
+        .login-details strong {
+            color: var(--text-primary);
+        }
+
+        .student-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .student-name-text {
+            min-width: 0;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .cell-compact {
+            line-height: 1.45;
+        }
+
+        .student-search-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.42);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1200;
+        }
+
+        .student-search-overlay.active {
+            display: flex;
+        }
+
+        .student-search-modal {
+            width: min(420px, 100%);
+            background: #ffffff;
+            border: 1px solid rgba(32, 176, 164, 0.24);
+            border-radius: 1rem;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            padding: 1.3rem;
+        }
+
+        .student-search-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .student-search-modal-title {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin: 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .student-search-modal-title span {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(32, 176, 164, 0.12);
+            color: var(--primary-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .student-search-modal-title i {
+            width: 16px;
+            height: 16px;
+        }
+
+        .student-search-close {
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 50%;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .student-search-close:hover,
+        .student-search-close:focus {
+            color: var(--primary-color);
+            background: rgba(32, 176, 164, 0.1);
+            outline: none;
+        }
+
+        .student-search-modal label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 0.45rem;
+        }
+
+        .student-search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.8rem;
+            padding: 0 0.9rem;
+            background: #ffffff;
+        }
+
+        .student-search-input-wrap:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .student-search-input-wrap i {
+            width: 16px;
+            height: 16px;
+            color: var(--primary-color);
+            flex-shrink: 0;
+        }
+
+        .student-search-input-wrap input {
+            width: 100%;
+            border: 0;
+            outline: none;
+            padding: 0.9rem 0;
+            font: inherit;
+        }
+
+        .student-search-control {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            width: 100%;
+            min-height: 42px;
+            height: 42px;
+            padding: 0 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+        }
+
+        .student-search-control i {
+            width: 17px;
+            height: 17px;
+            color: var(--primary-color);
+            flex: 0 0 auto;
+        }
+
+        .student-filter-group .student-search-control input {
+            border: 0;
+            border-radius: 0;
+            padding: 0.58rem 0;
+            min-width: 0;
+            background: transparent;
+        }
+
+        .student-filter-group .student-search-control input:focus {
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .student-search-control:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .student-search-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.7rem;
+            margin-top: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .student-search-actions .btn {
+            min-width: 95px;
+        }
+
+        .student-table-container {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #studentsTable {
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: collapse;
+            margin: 0;
+            padding: 0;
+        }
+
+        #studentsTable th {
+            padding: 0.65rem 0.6rem !important;
+            vertical-align: middle;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            overflow-wrap: unset !important;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            background: #fcfdfe;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #studentsTable td {
+            padding: 0.75rem 0.6rem !important;
+            vertical-align: middle;
+        }
+
+        #studentsTable th:nth-child(1),
+        #studentsTable td:nth-child(1) {
+            width: 8%;
+        }
+
+        #studentsTable th:nth-child(2),
+        #studentsTable td:nth-child(2) {
+            width: 7%;
+        }
+
+        #studentsTable th:nth-child(3),
+        #studentsTable td:nth-child(3) {
+            width: 18%;
+        }
+
+        #studentsTable th:nth-child(4),
+        #studentsTable td:nth-child(4) {
+            width: 12%;
+        }
+
+        #studentsTable th:nth-child(5),
+        #studentsTable td:nth-child(5) {
+            width: 9%;
+        }
+
+        #studentsTable th:nth-child(6),
+        #studentsTable td:nth-child(6) {
+            width: 9%;
+        }
+
+        #studentsTable th:nth-child(7),
+        #studentsTable td:nth-child(7) {
+            width: 10%;
+        }
+
+        #studentsTable th:nth-child(8),
+        #studentsTable td:nth-child(8) {
+            width: 8%;
+        }
+
+        #studentsTable th:nth-child(9),
+        #studentsTable td:nth-child(9) {
+            width: 8%;
+            text-align: center;
+        }
+
+        #studentsTable th:nth-child(10),
+        #studentsTable td:nth-child(10) {
+            width: 11%;
+            text-align: center;
+        }
+
+        #studentsTable .table-action-wrap {
+            justify-content: center;
+        }
+
+        #studentsTable .table-action-select {
+            width: 86px;
+            min-height: 34px;
+        }
+
+        @media (max-width: 900px) {
+            .student-toolbar,
+            .student-toolbar-left {
+                align-items: stretch;
+            }
+
+            .student-filter-group,
+            .student-search-group,
+            .student-stat {
+                min-width: 100%;
+                width: 100%;
+                max-width: none;
+            }
+
+            .student-print-btn,
+            .student-toolbar .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+
+        }
+
+        @media print {
+            body {
+                background: white !important;
+            }
+
+            .sidebar,
+            .header,
+            .form-container,
+            .student-toolbar,
+            .notification-bell,
+            .success-overlay,
+            .user-profile {
+                display: none !important;
+            }
+
+            .dashboard-container,
+            .main-content {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white !important;
+            }
+
+            .main-content::before {
+                content: "Filtered Student List";
+                display: block;
+                font-size: 22px;
+                font-weight: 700;
+                margin: 0 0 12px;
+                color: #111827;
+            }
+
+            .table-container {
+                border: none !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                width: 100% !important;
+            }
+
+            #studentsTable {
+                width: 100% !important;
+                table-layout: auto !important;
+            }
+
+            #studentsTable th,
+            #studentsTable td {
+                white-space: normal !important;
+                padding: 8px 10px !important;
+                font-size: 11px !important;
+            }
+
+            #studentsTable th:last-child,
+            #studentsTable td:last-child {
+                display: none !important;
+            }
+
+        .student-name-cell {
+            gap: 0.4rem !important;
+        }
+
+            .student-avatar {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 11px !important;
+            }
+
+            .login-details {
+                font-size: 10px !important;
+                line-height: 1.35 !important;
+            }
+
+            #noDataMessage {
+                display: none !important;
+            }
+        }
+
+        .student-view-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+
+        .student-view-modal {
+            width: min(760px, 95vw);
+            max-height: 90vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 48px rgba(2, 6, 23, 0.26);
+        }
+
+        .student-view-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .student-view-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+        }
+
+        .student-view-item {
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+        }
+
+        .student-view-item strong {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.01em;
+        }
+
+        .student-view-item span {
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .student-view-footer {
+            padding: 0 1.25rem 1.1rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item active">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="finance.html" class="nav-item" style="display: none;">
+                    <i data-lucide="receipt"></i>
+                    <span>Bills</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="revenue.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1>Student Management</h1>
+            </header>
+
+            <div class="student-toolbar">
+                <div class="student-toolbar-left">
+                    <div class="student-stat">
+                        Total Students: <span id="totalStudentCount" style="color: var(--primary-color);">0</span>
+                    </div>
+                    <div class="student-filter-group student-search-group">
+                        <label for="studentSearchInput">Search</label>
+                        <div class="student-search-control">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="studentSearchInput" placeholder="Search"
+                                oninput="runStudentSearchFromInput(this)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();runStudentSearchFromInput(this);}">
+                        </div>
+                    </div>
+                    <div class="student-filter-group">
+                        <label for="studentQuickFilterTrigger">Quick Filter</label>
+                        <div class="student-multifilter" id="studentQuickFilterMulti">
+                            <button class="student-multifilter-trigger" type="button" id="studentQuickFilterTrigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                All Students
+                            </button>
+                            <div class="student-multifilter-menu" id="studentQuickFilterMenu" role="listbox"
+                                aria-multiselectable="true"></div>
+                            <select id="studentQuickFilter" multiple style="display:none;"></select>
+                        </div>
+                    </div>
+                    <div class="student-filter-group">
+                        <label for="studentPrintMode">Print List</label>
+                        <select id="studentPrintMode"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #ffffff; font-weight: 700;">
+                            <option value="school">School Student List</option>
+                            <option value="outer">Outer Student List</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline student-print-btn" type="button" onclick="printStudentsList()">
+                        <i data-lucide="printer"></i> Print Students
+                    </button>
+                </div>
+                <button class="btn btn-primary" onclick="toggleStudentForm()">
+                    <i data-lucide="plus"></i> Add New Student
+                </button>
+            </div>
+
+            <!-- Add/Edit Form -->
+            <div id="studentFormContainer" class="form-container">
+                <h3 style="margin-bottom: 1.5rem;" id="formTitle">Add New Student</h3>
+                <form id="studentForm" onsubmit="handleStudentFormSubmit(event); return false;">
+                    <input type="hidden" id="studentId"> <!-- Hidden ID for Editing -->
+                    <input type="hidden" id="feeFrequency" value="Monthly">
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Profile Image</label>
+                            <div class="profile-image-picker">
+                                <div class="profile-image-preview" id="studentPhotoPreview"></div>
+                                <div class="profile-image-content">
+                                    <strong>Student photo</strong>
+                                    <span>Upload JPG or PNG image for the student profile.</span>
+                                    <label class="profile-image-action" for="studentProfileImage">
+                                        <i data-lucide="image-plus"></i>
+                                        <span>Choose Image</span>
+                                    </label>
+                                </div>
+                                <input type="file" id="studentProfileImage" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Student ID</label>
+                            <input type="text" id="studentCode" placeholder="STU-001" readonly>
+                        </div>
+                        <div class="input-group">
+                            <label>Full Name</label>
+                            <input type="text" id="fullName" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Father's Name</label>
+                            <input type="text" id="fatherName" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Date of Birth</label>
+                            <input type="date" id="studentDob" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Admission Date</label>
+                            <input type="date" id="admissionDate">
+                        </div>
+                        <div class="input-group">
+                            <label>Class</label>
+                            <select id="classGrade" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Class</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Monthly Fee (PKR)</label>
+                            <input type="number" id="monthlyFee" placeholder="Select class to load fee or enter custom fee"
+                                min="0" step="1"
+                                style="background-color: #fff; color: var(--text-primary);">
+                        </div>
+                        <div class="input-group">
+                            <label>Zero Fee Reason</label>
+                            <input type="text" id="zeroFeeReason" placeholder="Reason if student is studying free">
+                        </div>
+                        <div class="input-group">
+                            <label>Remaining Amount (PKR)</label>
+                            <input type="number" id="remainingAmount" placeholder="0" min="0" step="1"
+                                style="background-color: #fff; color: var(--text-primary);">
+                        </div>
+                        <div class="input-group">
+                            <label>Campus Name</label>
+                            <select id="campusName" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Campus</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Contact (Phone)</label>
+                            <input type="tel" id="parentPhone" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Address</label>
+                            <input type="text" id="studentAddress" placeholder="Student address">
+                        </div>
+                        <div class="input-group">
+                            <label>Guardian Name</label>
+                            <input type="text" id="guardianName" placeholder="e.g. Muhammad Ahmed">
+                        </div>
+                        <div class="input-group">
+                            <label>Guardian Contact Number</label>
+                            <input type="tel" id="guardianContact" placeholder="e.g. 03001234567">
+                        </div>
+                        <div class="input-group">
+                            <label>Email</label>
+                            <input type="email" id="studentEmail" placeholder="student@example.com">
+                        </div>
+                        <div class="input-group">
+                            <label>Gender</label>
+                            <select id="gender" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: #f8fafc;">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Roll No</label>
+                            <input type="text" id="rollNo" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Form B No</label>
+                            <input type="text" id="formB">
+                        </div>
+                        <div class="input-group">
+                            <label>Fingerprint</label>
+                            <input type="text" id="studentFingerprintData" placeholder="Fingerprint">
+                        </div>
+                        <section class="student-family-section" aria-label="Family details">
+                            <h4>Family</h4>
+                            <div class="student-family-grid">
+                                <div class="input-group">
+                                    <label>Family Name</label>
+                                    <input type="text" id="studentFamilyName" placeholder="e.g. Ahmed Family">
+                                </div>
+                                <div class="input-group">
+                                    <label>Family No.</label>
+                                    <input type="text" id="studentFamilyNo" placeholder="Family number">
+                                </div>
+                                <div class="input-group">
+                                    <label>Family Contact</label>
+                                    <input type="tel" id="studentFamilyContact" placeholder="e.g. 03001234567">
+                                </div>
+                                <div class="input-group">
+                                    <label>Family Added Time</label>
+                                    <input type="datetime-local" id="studentFamilyAddedTime" readonly style="background-color: #f8fafc; color: var(--text-secondary); cursor: not-allowed;">
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+
+                    <div class="action-steps">
+                        <div class="action-step-btn" id="btnCreateCreds" onclick="toggleStepPanel('credPanel')">
+                            <i data-lucide="key"></i>
+                            <span>Create Username & Password</span>
+                        </div>
+                        <button type="submit" class="action-step-btn btn-save-activate">
+                            <i data-lucide="check-circle"></i>
+                            <span>Save & Activate Student</span>
+                        </button>
+                    </div>
+
+                    <!-- Credentials Panel -->
+                    <div id="credPanel" class="step-panel">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">Create Login Credentials</h4>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Username</label>
+                                <input type="text" id="username" placeholder="Assign unique username">
+                            </div>
+                            <div class="input-group">
+                                <label>Password</label>
+                                <div class="password-field">
+                                    <input type="password" id="studentPassword" placeholder="Assign password">
+                                    <button type="button" class="password-toggle" data-toggle-password="studentPassword"
+                                        onclick="togglePasswordVisibility('studentPassword', this)"
+                                        aria-label="Show password" aria-pressed="false" title="Show password">
+                                        <i data-lucide="eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            These credentials will be used for login on the student portal.
+                        </p>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="toggleStudentForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Students List -->
+            <div class="table-container student-table-container">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Father Name</th>
+                            <th>DOB</th>
+                            <th>Class</th>
+                            <th>Campus</th>
+                            <th>Gender</th>
+                            <th>Fee Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Data will be populated here by JS -->
+                    </tbody>
+                </table>
+                <div id="noDataMessage"
+                    style="text-align: center; padding: 2rem; color: var(--text-secondary); display: none;">
+                    No students found. Add one to get started!
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-overlay">
+        <div class="success-modal">
+            <div class="success-icon-wrap">
+                <i data-lucide="check-circle"></i>
+            </div>
+            <h2 id="successTitle">Success!</h2>
+            <p id="successMessage" style="color: var(--text-secondary); margin: 1rem 0 2rem;"></p>
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeSuccessModal()">Great!</button>
+        </div>
+    </div>
+
+    <div id="studentColumnSearchModal" class="student-search-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="studentColumnSearchTitle" onclick="if(event.target===this) closeStudentColumnSearchModal()">
+        <form class="student-search-modal" onsubmit="applyStudentColumnSearch(event)">
+            <div class="student-search-modal-header">
+                <h2 class="student-search-modal-title" id="studentColumnSearchTitle">
+                    <span><i data-lucide="search"></i></span>
+                    Search
+                </h2>
+                <button type="button" class="student-search-close" aria-label="Close search"
+                    onclick="closeStudentColumnSearchModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <label for="studentColumnSearchInput" id="studentColumnSearchLabel">Search</label>
+            <div class="student-search-input-wrap">
+                <i data-lucide="search"></i>
+                <input type="text" id="studentColumnSearchInput" autocomplete="off" placeholder="Type to search">
+            </div>
+            <div class="student-search-actions">
+                <button type="button" class="btn btn-outline" onclick="clearStudentColumnSearch()">Clear</button>
+                <button type="button" class="btn btn-outline" onclick="closeStudentColumnSearchModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" onclick="applyStudentColumnSearch(event)">Search</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="studentViewModal" class="student-view-overlay" onclick="if(event.target===this) closeStudentViewModal()">
+        <div class="student-view-modal">
+            <div class="student-view-header">
+                <h2 style="margin: 0; font-size: 1.2rem;">Student Details</h2>
+                <button type="button" class="action-btn btn-delete" onclick="closeStudentViewModal()">
+                    <i data-lucide="x" width="14"></i> Close
+                </button>
+            </div>
+            <div class="student-view-grid">
+                <div class="student-view-item"><strong>Student ID</strong><span id="viewStudentCode">-</span></div>
+                <div class="student-view-item"><strong>Roll No</strong><span id="viewStudentRollNo">-</span></div>
+                <div class="student-view-item"><strong>Name</strong><span id="viewStudentName">-</span></div>
+                <div class="student-view-item"><strong>Father Name</strong><span id="viewStudentFatherName">-</span></div>
+                <div class="student-view-item"><strong>Date of Birth</strong><span id="viewStudentDob">-</span></div>
+                <div class="student-view-item"><strong>Class</strong><span id="viewStudentClass">-</span></div>
+                <div class="student-view-item"><strong>Campus</strong><span id="viewStudentCampus">-</span></div>
+                <div class="student-view-item"><strong>Gender</strong><span id="viewStudentGender">-</span></div>
+                <div class="student-view-item"><strong>Status</strong><span id="viewStudentStatus">-</span></div>
+                <div class="student-view-item"><strong>Parent Phone</strong><span id="viewStudentPhone">-</span></div>
+                <div class="student-view-item"><strong>Address</strong><span id="viewStudentAddress">-</span></div>
+                <div class="student-view-item"><strong>Guardian Name</strong><span id="viewStudentGuardianName">-</span></div>
+                <div class="student-view-item"><strong>Guardian Contact</strong><span id="viewStudentGuardianContact">-</span></div>
+                <div class="student-view-item"><strong>Email</strong><span id="viewStudentEmail">-</span></div>
+                <div class="student-view-item"><strong>Username</strong><span id="viewStudentUsername">-</span></div>
+            </div>
+            <div class="student-view-footer">
+                <button type="button" class="btn btn-outline" onclick="closeStudentViewModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js?v=20260520-sidebar-requested-order"></script>
+    <script src="script.js?v=20260708-zero-fee-student"></script>
+    <script>
+        window.togglePasswordVisibility = window.togglePasswordVisibility || function (targetId, toggleBtn) {
+            const input = document.getElementById(targetId);
+            if (!input) return false;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+                toggleBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
+                toggleBtn.setAttribute('title', show ? 'Hide password' : 'Show password');
+                toggleBtn.innerHTML = '<i data-lucide="' + (show ? 'eye-off' : 'eye') + '"></i>';
+            }
+            if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+            input.focus({ preventScroll: true });
+            return false;
+        };
+        // Init Icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

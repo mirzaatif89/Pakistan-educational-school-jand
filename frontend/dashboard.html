@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260627-welcome-logo">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .card.card-clickable {
+            cursor: pointer;
+        }
+
+        .session-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            padding: 1rem;
+        }
+
+        .session-modal-overlay.active {
+            display: flex;
+        }
+
+        .session-modal {
+            width: min(980px, 100%);
+            max-height: 85vh;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        .session-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .session-modal-header h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .session-modal-close {
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .session-modal-body {
+            overflow: auto;
+            padding: 0.9rem 1rem 1rem;
+        }
+
+        .session-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .session-table th,
+        .session-table td {
+            padding: 0.6rem 0.55rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .session-table th {
+            background: #f8fbff;
+            font-weight: 700;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .session-meta {
+            display: grid;
+            gap: 0.15rem;
+        }
+
+        .session-meta small {
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+        }
+
+        .session-actions .btn {
+            padding: 0.45rem 0.7rem;
+            font-size: 0.78rem;
+        }
+
+        .dashboard-email-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary-color);
+            color: #fff;
+            min-height: 34px;
+            padding: 0.38rem 0.75rem;
+            font-weight: 750;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            white-space: nowrap;
+            width: min(100%, 200px);
+        }
+
+        .dashboard-email-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .dashboard-email-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .dashboard-header {
+            align-items: center;
+            margin-bottom: 1.15rem;
+        }
+
+        .dashboard-header-actions {
+            display: grid;
+            grid-template-columns: minmax(150px, 200px) minmax(150px, 200px) 34px;
+            align-items: center;
+            justify-content: end;
+            gap: 0.55rem;
+            margin-left: auto;
+        }
+
+        .dashboard-campus-select {
+            width: min(100%, 200px);
+            min-height: 34px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text-primary);
+            padding: 0.38rem 0.65rem;
+            font-size: 0.82rem;
+            font-weight: 650;
+        }
+
+        .dashboard-header-actions .notification-bell {
+            margin-top: 0 !important;
+            width: 34px;
+            height: 34px;
+            justify-content: center;
+        }
+
+        #dashboardStatsGrid {
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 0.85rem;
+            align-items: stretch;
+            max-width: 1068px;
+        }
+
+        #dashboardStatsGrid .card {
+            display: flex;
+            flex-direction: column;
+            min-height: 104px;
+            height: 126px;
+            padding: 0.95rem 1rem;
+            border-radius: 8px;
+        }
+
+        #dashboardStatsGrid .card-title {
+            font-size: 0.76rem;
+            margin-bottom: 0.42rem;
+            padding-right: 2.4rem;
+        }
+
+        #dashboardStatsGrid .card-value {
+            font-size: 1.35rem;
+            line-height: 2.1;
+            margin-bottom: 0.3rem;
+        }
+
+        #dashboardStatsGrid .card-trend {
+            font-size: 0.76rem;
+            line-height: 1.2;
+            margin-top: auto;
+        }
+
+        #dashboardStatsGrid .card-icon {
+            width: 34px;
+            height: 34px;
+            right: 0.75rem;
+            top: 0.75rem;
+        }
+
+        .dashboard-revenue-card .card-value {
+            font-size: 1.35rem;
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+        }
+
+        .dashboard-revenue-card .card-trend {
+            flex-wrap: wrap;
+            line-height: 1.35;
+        }
+
+        @media (max-width: 980px) {
+            .dashboard-header-actions {
+                width: 100%;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+            }
+
+            .dashboard-email-btn,
+            .dashboard-campus-select {
+                width: 100% !important;
+                max-width: none !important;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .dashboard-header-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-header-actions .notification-bell {
+                justify-self: start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item active">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="finance.html" class="nav-item" style="display: none;">
+                    <i data-lucide="receipt"></i>
+                    <span>Bills</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="messages.html" class="nav-item">
+                    <i data-lucide="message-circle"></i>
+                    <span>Messages</span>
+                </a>
+                <a href="revenue.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header dashboard-header">
+                <h1>Overview</h1>
+                <div class="header-actions dashboard-header-actions">
+                    <button type="button" class="dashboard-email-btn" id="dashboardExecuteEmailsBtn" onclick="executeAllDashboardEmails()">
+                        <i data-lucide="mail-check" size="18"></i>
+                        Execute All Emails
+                    </button>
+                    <select id="dashboardCampusFilter" class="dashboard-campus-select" aria-label="Select campus">
+                        <option value="all">All Campuses</option>
+                    </select>
+                    <div class="notification-bell" id="notificationBell" style="position: relative; margin-top: 1rem;">
+                        <i data-lucide="bell" size="24"></i>
+                        <span class="notification-badge" id="notifBadge" style="background-color: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">0</span>
+
+                        <div class="notif-panel" id="notificationPanel">
+                            <div class="notif-header">
+                                <h4>Notifications</h4>
+                                <button class="clear-notif" onclick="clearAllNotifications(event)">Clear All</button>
+                            </div>
+                            <div class="notif-list" id="notificationList">
+                                <!-- Notifications added via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid" id="dashboardStatsGrid">
+                <a href="students.html" class="card" data-dashboard-card>
+                    <div class="card-title">Total Students</div>
+                    <div class="card-value" id="dashStudentCount">...</div>
+                    <div class="card-trend trend-up">
+                        <i data-lucide="trending-up" size="16"></i> Manage Records
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="users"></i>
+                    </div>
+                </a>
+
+                <a href="teachers.html" class="card" data-dashboard-card>
+                    <div class="card-title">Total Teachers</div>
+                    <div class="card-value" id="dashTeacherCount">...</div>
+                    <div class="card-trend trend-up">
+                        <i data-lucide="trending-up" size="16"></i> Manage Staff
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="book-open"></i>
+                    </div>
+                </a>
+
+                <a href="staff.html" class="card" data-dashboard-card>
+                    <div class="card-title">Total Staff</div>
+                    <div class="card-value" id="dashStaffCount">...</div>
+                    <div class="card-trend trend-up">
+                        <i data-lucide="trending-up" size="16"></i> Manage Members
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="briefcase"></i>
+                    </div>
+                </a>
+
+                <a href="revenue.html" class="card dashboard-revenue-card" data-dashboard-card>
+                    <div class="card-title">Total Revenue</div>
+                    <div class="card-value" id="dashRevenue">...</div>
+                    <div class="card-trend trend-up" id="dashRevenueDetail">
+                        Loading fee payments
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                </a>
+
+                <div class="card card-clickable" data-admin-only-card id="activeLoginsCard" title="View active sessions">
+                    <div class="card-title">Active Portal Logins</div>
+                    <div class="card-value" id="dashActiveLogins">...</div>
+                    <div class="card-trend trend-up" id="dashActiveLoginsDetail">
+                        <i data-lucide="monitor-up" size="16"></i> Checking live sessions
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="monitor-up"></i>
+                    </div>
+                </div>
+
+                <a href="complain_box.html" class="card" data-dashboard-card>
+                    <div class="card-title">Total Complaints</div>
+                    <div class="card-value" id="dashComplaintCount">...</div>
+                    <div class="card-trend trend-up" id="dashComplaintDetail">
+                        <i data-lucide="message-square" size="16"></i> Complaints received
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="message-square"></i>
+                    </div>
+                </a>
+
+                <a href="banners.html" class="card" data-dashboard-card>
+                    <div class="card-title">Live Banners</div>
+                    <div class="card-value" id="dashLiveBannerCount">...</div>
+                    <div class="card-trend trend-up" id="dashLiveBannerDetail">
+                        <i data-lucide="image" size="16"></i> Active now
+                    </div>
+                    <div class="card-icon">
+                        <i data-lucide="image"></i>
+                    </div>
+                </a>
+
+            </div>
+
+            <!-- Dashboard Table Section -->
+
+
+
+
+        </main>
+    </div>
+    <div class="session-modal-overlay" id="sessionModalOverlay">
+        <div class="session-modal">
+            <div class="session-modal-header">
+                <h3>Active Portal Logins</h3>
+                <button type="button" class="session-modal-close" id="sessionModalClose" aria-label="Close">x</button>
+            </div>
+            <div class="session-modal-body">
+                <table class="session-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Where Logged In</th>
+                            <th>Device</th>
+                            <th>Last Seen</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeSessionsBody">
+                        <tr><td colspan="6">Loading active sessions...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js?v=20260627-welcome-logo"></script>
+    <script src="script.js?v=20260705-global-campus-filter"></script>
+    <script>
+        async function executeAllDashboardEmails() {
+            const button = document.getElementById('dashboardExecuteEmailsBtn');
+            const previousHtml = button ? button.innerHTML : '';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i data-lucide="loader-circle" size="18"></i> Executing...';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            try {
+                const token = sessionStorage.getItem('eduCore_token') || '';
+                const response = await fetch(`${API_BASE_URL}/email/execute-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ force: true })
+                });
+                const result = await parseJsonResponse(response, 'All emails could not be executed.');
+                if (!response.ok || result?.success === false) {
+                    throw new Error(result?.message || 'All emails could not be executed.');
+                }
+
+                const details = result.result || {};
+                const message = [
+                    `Total sent: ${result.totalSent || 0}`,
+                    `Failed: ${result.totalFailed || 0}`,
+                    `Pending fee: ${details.pendingFees?.sent || 0}`,
+                    `Birthday: ${details.birthdays?.sent || 0}`,
+                    `Special notices: ${details.specialNotices?.sent || 0}`
+                ].join('\n');
+                alert(message);
+            } catch (error) {
+                alert(`Email execution failed: ${error.message || error}`);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = previousHtml;
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

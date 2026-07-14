@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Scheduling - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260603-kids-roots-jand-brand">
+    <link rel="stylesheet" href="student_schedule_theme.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+            <nav class="nav-links"></nav>
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info"><h4>Admin User</h4><p>Principal</p></div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Teacher Scheduling</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Open a teacher scheduling workspace.</p>
+                </div>
+            </header>
+
+            <section class="schedule-shell" aria-label="Teacher scheduling options">
+                <div class="schedule-hub-grid">
+                    <a href="teacher_timetable.html" class="schedule-hub-card">
+                        <span class="schedule-hub-icon"><i data-lucide="calendar-days"></i></span>
+                        <span><strong>Teacher Timetable</strong><span>Assign teacher, class, day, time, subject, and room.</span></span>
+                        <i class="schedule-hub-arrow" data-lucide="chevron-right"></i>
+                    </a>
+                    <a href="teacher_assigned_classes.html" class="schedule-hub-card">
+                        <span class="schedule-hub-icon"><i data-lucide="school"></i></span>
+                        <span><strong>Assigned Classes</strong><span>Set class incharges and teacher class assignments.</span></span>
+                        <i class="schedule-hub-arrow" data-lucide="chevron-right"></i>
+                    </a>
+                    <a href="teacher_timetable.html#assigned-lectures" class="schedule-hub-card">
+                        <span class="schedule-hub-icon"><i data-lucide="presentation"></i></span>
+                        <span><strong>Assigned Lectures</strong><span>Assign additional lectures by class, day, and time.</span></span>
+                        <i class="schedule-hub-arrow" data-lucide="chevron-right"></i>
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="auth.js?v=20260520-sidebar-requested-order"></script>
+    <script src="script.js?v=20260520-sidebar-classes-restore"></script>
+    <script>
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+</body>
+
+</html>

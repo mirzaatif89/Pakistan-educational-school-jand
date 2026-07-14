@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue Report - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .revenue-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .rev-card {
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .rev-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .rev-data h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .rev-data p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .revenue-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .chart-container {
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .class-revenue-list {
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .bar-row {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .bar-label .class-name {
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .bar-label .amount-display {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .bar-bg {
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 4px;
+            transition: width 1s ease-in-out;
+        }
+
+        .month-picker {
+            min-height: var(--app-control-height);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: white;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .revenue-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .revenue-toolbar label {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
+
+        .revenue-date-picker {
+            min-height: var(--app-control-height);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: #fff;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .daily-revenue-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            margin-top: 1.5rem;
+        }
+
+        .daily-revenue-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .daily-revenue-head h3 {
+            margin: 0;
+        }
+
+        .daily-revenue-meta {
+            color: var(--text-secondary);
+            font-size: 0.86rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
+        }
+
+        .daily-revenue-actions {
+            display: inline-flex;
+            align-items: end;
+            justify-content: flex-end;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .daily-revenue-date-field {
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .daily-revenue-date-field label {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .daily-revenue-table-wrap {
+            overflow-x: auto;
+        }
+
+        .daily-revenue-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 620px;
+        }
+
+        .daily-revenue-table th,
+        .daily-revenue-table td {
+            padding: 0.85rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .daily-revenue-table th {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            background: #f8fafc;
+        }
+
+        .daily-revenue-table td:last-child,
+        .daily-revenue-table th:last-child {
+            text-align: right;
+            font-weight: 800;
+        }
+
+        .daily-revenue-total {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            align-items: center;
+            margin-top: 1rem;
+            font-weight: 800;
+        }
+
+        .revenue-summary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+            gap: 1.5rem;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+
+        .all-months-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .all-months-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 0.7rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .all-months-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .all-months-row span {
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .profit-value.profit {
+            color: #15803d;
+        }
+
+        .profit-value.loss {
+            color: #dc2626;
+        }
+
+        @media (max-width: 920px) {
+            .revenue-summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="finance.html" class="nav-item" style="display: none;">
+                    <i data-lucide="receipt"></i>
+                    <span>Bills</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="revenue.html" class="nav-item active">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Revenue Analytics</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.9rem;">
+                        Real-time revenue tracking for <strong id="currentMonthDisplay"></strong>
+                    </p>
+                </div>
+                <div class="revenue-toolbar">
+                    <label for="revenueCampusFilter">Campus</label>
+                    <select class="month-picker" id="revenueCampusFilter" aria-label="Select revenue campus">
+                        <option value="all">All Campuses</option>
+                    </select>
+                    <label for="revenueMonthPicker">Month</label>
+                    <input class="month-picker" id="revenueMonthPicker" type="month" aria-label="Select revenue month">
+                </div>
+            </header>
+
+            <div class="revenue-summary-grid">
+                <div class="revenue-stats" style="margin-bottom: 0;">
+                    <div class="rev-card">
+                        <div class="rev-icon" style="background: rgba(32, 176, 164, 0.1); color: var(--primary-color);">
+                            <i data-lucide="dollar-sign"></i>
+                        </div>
+                        <div class="rev-data">
+                            <p>Expected Revenue</p>
+                            <h3 id="expectedRevenue">PKR 0</h3>
+                        </div>
+                    </div>
+                    <div class="rev-card">
+                        <div class="rev-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">
+                            <i data-lucide="check-circle"></i>
+                        </div>
+                        <div class="rev-data">
+                            <p>Collected Revenue</p>
+                            <h3 id="collectedRevenue">PKR 0</h3>
+                        </div>
+                    </div>
+                    <div class="rev-card">
+                        <div class="rev-icon" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;">
+                            <i data-lucide="clock"></i>
+                        </div>
+                        <div class="rev-data">
+                            <p>Pending Amount</p>
+                            <h3 id="pendingRevenue">PKR 0</h3>
+                        </div>
+                    </div>
+                </div>
+                <aside class="all-months-panel">
+                    <div>
+                        <h3>All Months Total</h3>
+                        <p style="color:var(--text-secondary); font-size:.85rem; margin-top:.25rem;">Collected revenue and paid expenses.</p>
+                    </div>
+                    <div class="all-months-row"><span>Total Revenue</span><strong id="allMonthsRevenue">PKR 0</strong></div>
+                    <div class="all-months-row"><span>Salary Transfers</span><strong id="allMonthsSalaries">PKR 0</strong></div>
+                    <div class="all-months-row"><span>Paid Bills</span><strong id="allMonthsBills">PKR 0</strong></div>
+                    <div class="all-months-row"><span>Profit / Loss</span><strong id="allMonthsProfitLoss" class="profit-value">PKR 0</strong></div>
+                </aside>
+            </div>
+
+            <div class="revenue-stats">
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(251, 191, 36, 0.16); color: #b45309;">
+                        <i data-lucide="receipt"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Paid Bills / Expenses</p>
+                        <h3 id="paidBillsExpense">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(59, 130, 246, 0.12); color: #1d4ed8;">
+                        <i data-lucide="calculator"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Total Paid Expenses</p>
+                        <h3 id="paidExpensesTotal">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(34, 197, 94, 0.12); color: #15803d;">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Profit / Loss</p>
+                        <h3 id="profitLossRevenue" class="profit-value">PKR 0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="revenue-stats" style="margin-top: 1.5rem;">
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(99, 102, 241, 0.1); color: #4f46e5;">
+                        <i data-lucide="wallet"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Salary Budget</p>
+                        <h3 id="salaryBudget">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">
+                        <i data-lucide="send"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Transferred Salaries</p>
+                        <h3 id="transferredSalaries">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;">
+                        <i data-lucide="clock-3"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Pending Salaries</p>
+                        <h3 id="pendingSalaries">PKR 0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="revenue-stats" style="margin-top: 1.5rem;">
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+                        <i data-lucide="badge-dollar-sign"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Net Expected After Salaries</p>
+                        <h3 id="netExpectedRevenue">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(34, 197, 94, 0.12); color: #15803d;">
+                        <i data-lucide="landmark"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Net Collected After Transfers</p>
+                        <h3 id="netCollectedRevenue">PKR 0</h3>
+                    </div>
+                </div>
+                <div class="rev-card">
+                    <div class="rev-icon" style="background: rgba(245, 158, 11, 0.12); color: #b45309;">
+                        <i data-lucide="scale"></i>
+                    </div>
+                    <div class="rev-data">
+                        <p>Remaining Balance</p>
+                        <h3 id="netPendingRevenue">PKR 0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="class-revenue-list" style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1.5rem;">Collection by Class</h3>
+                <div id="classBreakdownContainer">
+                    <!-- Bars by JS -->
+                </div>
+            </div>
+
+            <section class="daily-revenue-panel">
+                <div class="daily-revenue-head">
+                    <div>
+                        <h3>Daily Fee Collection by Class</h3>
+                        <div class="daily-revenue-meta" id="dailyRevenueMeta">Select a date to view fee collection.</div>
+                    </div>
+                    <div class="daily-revenue-actions">
+                        <div class="daily-revenue-date-field">
+                            <label for="revenueDatePicker">Date</label>
+                            <input class="revenue-date-picker" id="revenueDatePicker" type="date" aria-label="Select revenue print date">
+                        </div>
+                        <button class="btn btn-outline" type="button" onclick="printDailyRevenueReport()">
+                            <i data-lucide="printer"></i> Print
+                        </button>
+                    </div>
+                </div>
+                <div class="daily-revenue-table-wrap">
+                    <table class="daily-revenue-table">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Students Paid</th>
+                                <th>Payments</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyRevenueTableBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center; color:var(--text-secondary);">No date selected.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="daily-revenue-total">
+                    <span>Total:</span>
+                    <strong id="dailyRevenueTotal">PKR 0</strong>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const STORAGE_KEY_MONTHLY_FEES = 'eduCore_monthly_fees';
+        const STORAGE_KEY_REVENUE_BILLS = 'eduCore_bills';
+        const monthsNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        let revenueRefreshTimer = null;
+        let selectedRevenueMonthKey = '';
+        let selectedRevenueDateKey = '';
+        let dailyRevenueRows = [];
+        let dailyRevenueTotalAmount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            selectedRevenueMonthKey = getCurrentMonthMeta().monthKey;
+            selectedRevenueDateKey = getTodayDateKey();
+            initRevenueMonthPicker();
+            initRevenueDatePicker();
+            initRevenueCampusFilter();
+            document.getElementById('revenueMonthPicker')?.addEventListener('change', (event) => {
+                selectedRevenueMonthKey = String(event.target.value || getCurrentMonthMeta().monthKey);
+                updateRevenueReport();
+            });
+            document.getElementById('revenueDatePicker')?.addEventListener('change', (event) => {
+                selectedRevenueDateKey = String(event.target.value || getTodayDateKey());
+                updateRevenueReport();
+            });
+
+            attachRevenueLiveUpdates();
+            updateRevenueReport();
+            setTimeout(updateRevenueReport, 400);
+            setTimeout(updateRevenueReport, 1200);
+        });
+
+        async function initRevenueCampusFilter() {
+            const select = document.getElementById('revenueCampusFilter');
+            if (!select) return;
+
+            const user = typeof getLoggedInUser === 'function' ? getLoggedInUser() : null;
+            const branchCampus = user?.role === 'Branch' && user.campusName ? String(user.campusName).trim() : '';
+            const savedValue = typeof getGlobalCampusFilterForCurrentUser === 'function'
+                ? getGlobalCampusFilterForCurrentUser()
+                : (localStorage.getItem('eduCore_dashboard_campus_filter') || 'all');
+
+            let campuses = [];
+            try {
+                campuses = typeof loadRegisteredCampusNames === 'function' ? await loadRegisteredCampusNames() : [];
+            } catch (_error) {
+                campuses = [];
+            }
+
+            if (branchCampus && !campuses.includes(branchCampus)) campuses.unshift(branchCampus);
+            select.innerHTML = '<option value="all">All Campuses</option>';
+            campuses.forEach((campusName) => {
+                const option = document.createElement('option');
+                option.value = campusName;
+                option.textContent = campusName;
+                select.appendChild(option);
+            });
+
+            if (branchCampus) {
+                select.value = branchCampus;
+                select.disabled = true;
+                if (typeof setSavedGlobalCampusFilter === 'function') setSavedGlobalCampusFilter(branchCampus);
+            } else {
+                select.value = Array.from(select.options).some((option) => option.value === savedValue) ? savedValue : 'all';
+                if (typeof setSavedGlobalCampusFilter === 'function') setSavedGlobalCampusFilter(select.value || 'all');
+            }
+
+            if (!select.dataset.revenueCampusBound) {
+                select.dataset.revenueCampusBound = 'true';
+                select.addEventListener('change', () => {
+                    if (typeof setSavedGlobalCampusFilter === 'function') {
+                        setSavedGlobalCampusFilter(select.value || 'all');
+                    } else {
+                        localStorage.setItem('eduCore_dashboard_campus_filter', select.value || 'all');
+                    }
+                    updateRevenueReport();
+                });
+            }
+
+            updateRevenueReport();
+        }
+
+        function scheduleRevenueRefresh(delay = 150) {
+            clearTimeout(revenueRefreshTimer);
+            revenueRefreshTimer = setTimeout(() => {
+                updateRevenueReport();
+            }, delay);
+        }
+
+        function attachRevenueLiveUpdates() {
+            window.addEventListener('storage', () => scheduleRevenueRefresh(50));
+            window.addEventListener('focus', () => scheduleRevenueRefresh(50));
+            window.addEventListener('pageshow', () => scheduleRevenueRefresh(50));
+
+            if (typeof socket !== 'undefined' && socket) {
+                socket.on('students_update', () => scheduleRevenueRefresh());
+                socket.on('teachers_update', () => scheduleRevenueRefresh());
+                socket.on('staff_update', () => scheduleRevenueRefresh());
+            }
+        }
+
+        // Define standard class mapping (same as fees.html)
+        const feeClasses = [
+            { id: 'play', name: 'Play Group', keywords: ['play', 'pg', 'playgroup'] },
+            { id: 'nursery', name: 'Nursery', keywords: ['nursery', 'nursary'] },
+            { id: 'prep', name: 'Prep', keywords: ['prep', 'preschool'] },
+            { id: '1', name: 'Class One', keywords: ['1', 'one', '1st'] },
+            { id: '2', name: 'Class Two', keywords: ['2', 'two', '2nd'] },
+            { id: '3', name: 'Class Three', keywords: ['3', 'three', '3rd'] },
+            { id: '4', name: 'Class Four', keywords: ['4', 'four', '4th'] },
+            { id: '5', name: 'Class Five', keywords: ['5', 'five', '5th'] },
+            { id: '6', name: 'Class Six', keywords: ['6', 'six', '6th'] },
+            { id: '7', name: 'Class Seven', keywords: ['7', 'seven', '7th'] },
+            { id: '8', name: 'Class Eight', keywords: ['8', 'eight', '8th'] },
+            { id: '9', name: 'Class Nine', keywords: ['9', 'nine', '9th'] },
+            { id: '10', name: 'Class Ten', keywords: ['10', 'ten', '10th'] }
+        ];
+
+        function getStandardClassName(rawClass) {
+            if (!rawClass) return 'Unassigned Class';
+            const normalized = rawClass.toLowerCase().trim();
+
+            for (const cls of feeClasses) {
+                if (cls.keywords.some(k => normalized === k || normalized === `class ${k}`)) {
+                    return cls.name;
+                }
+            }
+            return rawClass.trim();
+        }
+
+        function getCurrentMonthMeta() {
+            const now = new Date();
+            return getMonthMetaFromKey(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+        }
+
+        function getMonthMetaFromKey(monthKey) {
+            const match = String(monthKey || '').match(/^(\d{4})-(\d{2})$/);
+            const now = new Date();
+            const year = match ? Number(match[1]) : now.getFullYear();
+            const monthIndex = match ? Math.min(Math.max(Number(match[2]) - 1, 0), 11) : now.getMonth();
+            return {
+                monthName: monthsNames[monthIndex],
+                monthShort: monthsNames[monthIndex].slice(0, 3),
+                monthIndex,
+                year,
+                monthKey: `${year}-${String(monthIndex + 1).padStart(2, '0')}`
+            };
+        }
+
+        function initRevenueMonthPicker() {
+            const picker = document.getElementById('revenueMonthPicker');
+            if (!picker) return;
+            picker.value = selectedRevenueMonthKey || getCurrentMonthMeta().monthKey;
+        }
+
+        function getTodayDateKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        function initRevenueDatePicker() {
+            const picker = document.getElementById('revenueDatePicker');
+            if (!picker) return;
+            picker.value = selectedRevenueDateKey || getTodayDateKey();
+        }
+
+        function formatRevenueMoney(value) {
+            return 'PKR ' + Math.round(Number(value || 0)).toLocaleString('en-PK');
+        }
+
+        function normalizeRevenueDateKey(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) return '';
+            return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatRevenueDateLabel(dateKey = '') {
+            const parsed = new Date(`${dateKey || getTodayDateKey()}T00:00:00`);
+            if (Number.isNaN(parsed.getTime())) return dateKey || '-';
+            return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function normalizeFeeMonthToKey(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const parsed = new Date(raw.replace(',', ' 1,'));
+            if (!Number.isNaN(parsed.getTime())) {
+                return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+            }
+
+            const lowered = raw.toLowerCase();
+            const monthIndex = monthsNames.findIndex(month =>
+                lowered === month.toLowerCase() || lowered.startsWith(month.toLowerCase().slice(0, 3))
+            );
+
+            if (monthIndex === -1) return '';
+
+            const yearMatch = lowered.match(/\b(20\d{2})\b/);
+            const year = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+            return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+        }
+
+        function getPaymentMonthKeys(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return [];
+            const lowered = raw.toLowerCase();
+            const yearMatch = lowered.match(/\b(20\d{2})\b/);
+            const fallbackYear = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+            const monthKeys = monthsNames
+                .map((month, monthIndex) => ({ month, monthIndex }))
+                .filter(({ month }) => lowered.includes(month.toLowerCase()) || lowered.includes(month.slice(0, 3).toLowerCase()))
+                .map(({ monthIndex }) => `${fallbackYear}-${String(monthIndex + 1).padStart(2, '0')}`);
+            if (monthKeys.length) return Array.from(new Set(monthKeys));
+            const single = normalizeFeeMonthToKey(raw);
+            return single ? [single] : [];
+        }
+
+        function studentAppliesToRevenueMonth(student, monthMeta) {
+            const rawStart = student?.admissionDate || student?.createdAt || '';
+            if (!rawStart) return true;
+            const parsed = new Date(rawStart);
+            if (Number.isNaN(parsed.getTime())) return true;
+            const startKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+            return startKey <= monthMeta.monthKey;
+        }
+
+        function readRevenueBills() {
+            try {
+                const bills = JSON.parse(localStorage.getItem(STORAGE_KEY_REVENUE_BILLS) || '[]');
+                return Array.isArray(bills) ? bills : [];
+            } catch (_error) {
+                return [];
+            }
+        }
+
+        function revenueMatchesSelectedCampus(record = {}) {
+            return typeof recordMatchesGlobalCampus === 'function' ? recordMatchesGlobalCampus(record) : true;
+        }
+
+        function getRevenueScopedStudents() {
+            const students = getData(STORAGE_KEY_STUDENTS);
+            return typeof getGlobalCampusFilteredRecords === 'function' ? getGlobalCampusFilteredRecords(students) : students;
+        }
+
+        function attachRevenuePaymentCampus(payments = [], students = getData(STORAGE_KEY_STUDENTS)) {
+            const studentList = Array.isArray(students) ? students : [];
+            const studentMap = new Map(studentList.map((student) => [String(student.id || ''), student]));
+            const rollMap = new Map(studentList
+                .filter((student) => String(student?.rollNo || '').trim())
+                .map((student) => [String(student.rollNo).trim().toLowerCase(), student]));
+            const nameRollMap = new Map(studentList
+                .filter((student) => String(student?.fullName || '').trim() || String(student?.rollNo || '').trim())
+                .map((student) => [
+                    `${String(student.fullName || '').trim().toLowerCase()}|${String(student.rollNo || '').trim().toLowerCase()}|${String(student.classGrade || '').trim().toLowerCase()}`,
+                    student
+                ]));
+            return (Array.isArray(payments) ? payments : []).map((payment) => {
+                const student = studentMap.get(String(payment?.studentId || '')) ||
+                    rollMap.get(String(payment?.rollNo || '').trim().toLowerCase()) ||
+                    nameRollMap.get(`${String(payment?.studentName || '').trim().toLowerCase()}|${String(payment?.rollNo || '').trim().toLowerCase()}|${String(payment?.classGrade || '').trim().toLowerCase()}`) ||
+                    {};
+                return {
+                    ...payment,
+                    campusName: payment?.campusName || student.campusName || student.branchName || student.campus || ''
+                };
+            });
+        }
+
+        function getRevenueScopedPayments(payments = [], students = getData(STORAGE_KEY_STUDENTS)) {
+            return attachRevenuePaymentCampus(payments, students).filter(revenueMatchesSelectedCampus);
+        }
+
+        function normalizeRevenueBillMonthKey(bill) {
+            const dateValue = bill?.billDate || bill?.date || bill?.paidAt || bill?.createdAt || '';
+            const parsed = new Date(dateValue);
+            if (Number.isNaN(parsed.getTime())) return '';
+            return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getPaidBillsAmount(monthKey = '') {
+            return readRevenueBills()
+                .filter(revenueMatchesSelectedCampus)
+                .filter((bill) => String(bill.status || '').toLowerCase() === 'paid')
+                .filter((bill) => !monthKey || normalizeRevenueBillMonthKey(bill) === monthKey)
+                .reduce((total, bill) => total + Math.max(Number(bill.amount || 0), 0), 0);
+        }
+
+        function getAllSalaryTransfers() {
+            const salaries = typeof getTeacherSalaries === 'function' ? getTeacherSalaries() : {};
+            const roster = typeof buildSalaryRoster === 'function' ? buildSalaryRoster() : [];
+            const allowedKeys = new Set();
+            roster.forEach((entry) => {
+                allowedKeys.add(`${entry.entityType}_${entry.id}_`);
+                if (entry.entityType === 'teacher') allowedKeys.add(`${entry.id}_`);
+            });
+            return Object.entries(salaries || {}).reduce((total, [key, payment]) => {
+                if (!/20\d{2}-\d{2}$/.test(String(key || ''))) return total;
+                if (allowedKeys.size && !Array.from(allowedKeys).some((prefix) => String(key).startsWith(prefix))) return total;
+                return total + Math.max(Number(payment?.amount || 0), 0);
+            }, 0);
+        }
+
+        function setProfitLossValue(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            const amount = Number(value || 0);
+            element.innerText = `${amount < 0 ? 'Loss: ' : 'Profit: '}${formatRevenueMoney(Math.abs(amount))}`;
+            element.classList.toggle('loss', amount < 0);
+            element.classList.toggle('profit', amount >= 0);
+        }
+
+        async function fetchCollectedFeePayments() {
+            const endpoints = [`${API_BASE_URL}/fees/payments`, `${API_BASE_URL}/fees`];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint);
+                    const result = await parseJsonResponse(response, 'Fee payments could not be loaded.');
+
+                    if (!response.ok || result?.success === false) {
+                        throw new Error(result?.message || 'Fee payments could not be loaded.');
+                    }
+
+                    return Array.isArray(result?.payments) ? result.payments : [];
+                } catch (error) {
+                    console.warn(`Revenue page could not load backend fee payments from ${endpoint}:`, error.message);
+                }
+            }
+
+            return [];
+        }
+
+        async function updateRevenueReport() {
+            const currentMonthMeta = getMonthMetaFromKey(selectedRevenueMonthKey || getCurrentMonthMeta().monthKey);
+            const allStudents = getData(STORAGE_KEY_STUDENTS);
+            const students = getRevenueScopedStudents();
+            const monthlyFeesData = JSON.parse(localStorage.getItem(STORAGE_KEY_MONTHLY_FEES)) || {};
+            const salarySummary = getMonthlySalarySummary(currentMonthMeta.monthKey);
+            const feePayments = getRevenueScopedPayments(await fetchCollectedFeePayments(), allStudents);
+            renderDailyFeeCollection(feePayments);
+            const monthDisplay = document.getElementById('currentMonthDisplay');
+            if (monthDisplay) monthDisplay.innerText = `${currentMonthMeta.monthName} ${currentMonthMeta.year}`;
+
+            const backendCollectedMap = new Map();
+            let allMonthsCollected = 0;
+            feePayments.forEach(payment => {
+                if (!payment || !payment.studentId) return;
+                const paidAmount = Number(payment.amount || 0);
+                if (!(paidAmount > 0)) return;
+                allMonthsCollected += paidAmount;
+                const paymentMonths = getPaymentMonthKeys(payment.feeMonth);
+                if (!paymentMonths.includes(currentMonthMeta.monthKey)) return;
+                const amountForMonth = paidAmount / Math.max(paymentMonths.length, 1);
+                const previousAmount = backendCollectedMap.get(payment.studentId) || 0;
+                backendCollectedMap.set(payment.studentId, previousAmount + amountForMonth);
+            });
+
+            let totalExpected = 0;
+            let totalCollected = 0;
+
+            const classCollection = {}; // { className: { expected: 0, collected: 0 } }
+
+            students.filter((student) => studentAppliesToRevenueMonth(student, currentMonthMeta)).forEach(s => {
+                const standardClass = getStandardClassName(s.classGrade);
+                const fee = (s?.freeStudy === true || s?.freeStudy === 'true' || String(s?.zeroFeeReason || s?.freeStudyReason || '').trim())
+                    ? 0
+                    : (parseInt(s.monthlyFee) || 0);
+                const isPaidLocally = (monthlyFeesData[s.id] && monthlyFeesData[s.id][currentMonthMeta.monthName] === 'Paid');
+                const collectedAmount = backendCollectedMap.has(s.id)
+                    ? backendCollectedMap.get(s.id)
+                    : (isPaidLocally ? fee : 0);
+
+                totalExpected += fee;
+                if (collectedAmount > 0) {
+                    totalCollected += collectedAmount;
+                }
+
+                if (!classCollection[standardClass]) {
+                    classCollection[standardClass] = { expected: 0, collected: 0 };
+                }
+                classCollection[standardClass].expected += fee;
+                if (collectedAmount > 0) classCollection[standardClass].collected += collectedAmount;
+            });
+
+            // Update UI Stats
+            const netExpected = totalExpected - salarySummary.expected;
+            const netCollected = totalCollected - salarySummary.transferred;
+            const remainingBalance = netCollected + salarySummary.pending;
+            const paidBills = getPaidBillsAmount(currentMonthMeta.monthKey);
+            const paidExpenses = salarySummary.transferred + paidBills;
+            const profitLoss = totalCollected - paidExpenses;
+            const allMonthsSalaries = getAllSalaryTransfers();
+            const allMonthsBills = getPaidBillsAmount();
+            const allMonthsProfitLoss = allMonthsCollected - allMonthsSalaries - allMonthsBills;
+
+            document.getElementById('expectedRevenue').innerText = formatRevenueMoney(totalExpected);
+            document.getElementById('collectedRevenue').innerText = formatRevenueMoney(totalCollected);
+            document.getElementById('pendingRevenue').innerText = formatRevenueMoney(Math.max(totalExpected - totalCollected, 0));
+            document.getElementById('salaryBudget').innerText = formatRevenueMoney(salarySummary.expected);
+            document.getElementById('transferredSalaries').innerText = formatRevenueMoney(salarySummary.transferred);
+            document.getElementById('pendingSalaries').innerText = formatRevenueMoney(salarySummary.pending);
+            document.getElementById('netExpectedRevenue').innerText = formatRevenueMoney(netExpected);
+            document.getElementById('netCollectedRevenue').innerText = formatRevenueMoney(netCollected);
+            document.getElementById('netPendingRevenue').innerText = formatRevenueMoney(remainingBalance);
+            document.getElementById('paidBillsExpense').innerText = formatRevenueMoney(paidBills);
+            document.getElementById('paidExpensesTotal').innerText = formatRevenueMoney(paidExpenses);
+            document.getElementById('allMonthsRevenue').innerText = formatRevenueMoney(allMonthsCollected);
+            document.getElementById('allMonthsSalaries').innerText = formatRevenueMoney(allMonthsSalaries);
+            document.getElementById('allMonthsBills').innerText = formatRevenueMoney(allMonthsBills);
+            setProfitLossValue('profitLossRevenue', profitLoss);
+            setProfitLossValue('allMonthsProfitLoss', allMonthsProfitLoss);
+
+            // Render Class Bars (sorted by class order)
+            const barContainer = document.getElementById('classBreakdownContainer');
+            barContainer.innerHTML = '';
+
+            // Sort classes in proper order (Play Group -> Class Ten)
+            const sortedClasses = feeClasses
+                .map(c => c.name)
+                .filter(name => classCollection[name] && classCollection[name].expected > 0);
+            const customClasses = Object.keys(classCollection)
+                .filter(name => !sortedClasses.includes(name) && classCollection[name].expected > 0)
+                .sort((a, b) => a.localeCompare(b));
+            const displayClasses = [...sortedClasses, ...customClasses];
+
+            if (displayClasses.length === 0) {
+                barContainer.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-secondary);">No revenue data available for this month.</p>';
+            } else {
+                displayClasses.forEach(className => {
+                    const data = classCollection[className];
+                    const pct = data.expected > 0 ? (data.collected / data.expected) * 100 : 0;
+
+                    const row = document.createElement('div');
+                    row.className = 'bar-row';
+                    row.innerHTML = `
+                        <div class="bar-label">
+                            <span class="class-name">${className}</span>
+                            <span class="amount-display">PKR ${data.collected.toLocaleString()} / ${data.expected.toLocaleString()}</span>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill" style="width: ${pct}%"></div>
+                        </div>
+                    `;
+                    barContainer.appendChild(row);
+                });
+            }
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function renderDailyFeeCollection(feePayments = []) {
+            const tbody = document.getElementById('dailyRevenueTableBody');
+            const meta = document.getElementById('dailyRevenueMeta');
+            const totalEl = document.getElementById('dailyRevenueTotal');
+            if (!tbody) return;
+
+            const dateKey = selectedRevenueDateKey || getTodayDateKey();
+            const classMap = new Map();
+
+            feePayments.forEach((payment) => {
+                if (!payment) return;
+                const status = String(payment.status || '').toLowerCase();
+                if (!['paid', 'partial'].includes(status)) return;
+                if (normalizeRevenueDateKey(payment.paidAt || payment.paymentDateLabel || payment.createdAt) !== dateKey) return;
+                const amount = Number(payment.amount || 0);
+                if (!(amount > 0)) return;
+                const className = getStandardClassName(payment.classGrade || 'Unassigned');
+                const previous = classMap.get(className) || { className, amount: 0, payments: 0, studentIds: new Set() };
+                previous.amount += amount;
+                previous.payments += 1;
+                if (payment.studentId) previous.studentIds.add(String(payment.studentId));
+                classMap.set(className, previous);
+            });
+
+            const sortedClasses = feeClasses
+                .map((item) => item.name)
+                .filter((className) => classMap.has(className));
+            const customClasses = Array.from(classMap.keys())
+                .filter((className) => !sortedClasses.includes(className))
+                .sort((a, b) => a.localeCompare(b));
+            dailyRevenueRows = [...sortedClasses, ...customClasses].map((className) => {
+                const row = classMap.get(className);
+                return {
+                    className,
+                    studentsPaid: row.studentIds.size,
+                    payments: row.payments,
+                    amount: row.amount
+                };
+            });
+            dailyRevenueTotalAmount = dailyRevenueRows.reduce((sum, row) => sum + row.amount, 0);
+
+            if (meta) {
+                meta.textContent = `Date: ${formatRevenueDateLabel(dateKey)} | Classes: ${dailyRevenueRows.length}`;
+            }
+            if (totalEl) totalEl.textContent = formatRevenueMoney(dailyRevenueTotalAmount);
+
+            if (!dailyRevenueRows.length) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">No fee collection found for ${formatRevenueDateLabel(dateKey)}.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = dailyRevenueRows.map((row) => `
+                <tr>
+                    <td><strong>${escapeHtml(row.className)}</strong></td>
+                    <td>${row.studentsPaid}</td>
+                    <td>${row.payments}</td>
+                    <td>${formatRevenueMoney(row.amount)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function printDailyRevenueReport() {
+            const dateKey = selectedRevenueDateKey || getTodayDateKey();
+            const schoolName = (() => {
+                try {
+                    const settings = JSON.parse(localStorage.getItem('eduCore_settings') || '{}') || {};
+                    return String(settings.schoolName || settings.schoolTitle || 'PESS JAND').trim() || 'PESS JAND';
+                } catch (_error) {
+                    return 'PESS JAND';
+                }
+            })();
+            const printedAt = new Date().toLocaleString();
+            const rowsMarkup = dailyRevenueRows.length ? dailyRevenueRows.map((row, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(row.className)}</td>
+                    <td>${row.studentsPaid}</td>
+                    <td>${row.payments}</td>
+                    <td>${formatRevenueMoney(row.amount)}</td>
+                </tr>
+            `).join('') : `<tr><td colspan="5" class="empty">No fee collection found for ${formatRevenueDateLabel(dateKey)}.</td></tr>`;
+
+            const html = `
+                <!doctype html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>${escapeHtml(schoolName)} - Daily Revenue</title>
+                    <style>
+                        @page { size: A4; margin: 12mm; }
+                        body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
+                        .head { display: flex; justify-content: space-between; gap: 16px; align-items: center; border-bottom: 2px solid #111827; padding-bottom: 12px; margin-bottom: 16px; }
+                        h1 { margin: 0; font-size: 22px; }
+                        p { margin: 4px 0 0; color: #475569; font-size: 12px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        th, td { border: 1px solid #94a3b8; padding: 8px; text-align: left; }
+                        th { background: #f1f5f9; text-transform: uppercase; font-size: 11px; }
+                        td:last-child, th:last-child { text-align: right; font-weight: 700; }
+                        .total { margin-top: 14px; text-align: right; font-size: 15px; font-weight: 800; }
+                        .empty { text-align: center; color: #64748b; }
+                    </style>
+                </head>
+                <body>
+                    <section class="head">
+                        <div>
+                            <h1>${escapeHtml(schoolName)}</h1>
+                            <p>Daily Fee Collection by Class</p>
+                            <p>Date: ${escapeHtml(formatRevenueDateLabel(dateKey))}</p>
+                        </div>
+                        <p>Printed: ${escapeHtml(printedAt)}</p>
+                    </section>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Class</th>
+                                <th>Students Paid</th>
+                                <th>Payments</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsMarkup}</tbody>
+                    </table>
+                    <div class="total">Total: ${formatRevenueMoney(dailyRevenueTotalAmount)}</div>
+                    <script>
+                        window.focus();
+                        window.print();
+                        window.onafterprint = () => window.close();
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            const printWindow = window.open('', 'eduCoreDailyRevenuePrint', 'width=1000,height=720');
+            if (!printWindow) {
+                alert('Popup blocked. Please allow popups to print the revenue report.');
+                return;
+            }
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+        }
+    </script>
+</body>
+
+</html>

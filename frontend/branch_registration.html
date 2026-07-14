@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch Registration - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260603-kids-roots-jand-brand">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .branch-page-header {
+            margin-bottom: 1.25rem;
+        }
+
+        .branch-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            overflow: visible;
+        }
+
+        .branch-panel h3 {
+            margin: 0 0 1rem;
+            color: var(--text-primary);
+            font-size: 1.15rem;
+        }
+
+        .branch-form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(180px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .branch-field {
+            margin: 0;
+            min-width: 0;
+        }
+
+        .branch-field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .branch-field input {
+            width: 100%;
+            min-height: 42px;
+            padding: 0.58rem 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            font: inherit;
+            color: var(--text-primary);
+        }
+
+        .branch-field input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .branch-field .password-field input {
+            padding-right: 3rem;
+        }
+
+        .branch-form-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
+        }
+
+        .branch-form-actions .btn {
+            min-height: 42px;
+        }
+
+        .branch-table-panel {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .branch-list-table {
+            width: 100%;
+            min-width: 850px;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        .branch-list-table th,
+        .branch-list-table td {
+            padding: 0.75rem 0.85rem;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border-color);
+            overflow-wrap: break-word;
+        }
+
+        .branch-list-table th {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            background: #f8fafc;
+        }
+
+        .branch-list-table td:last-child,
+        .branch-list-table th:last-child {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .branch-actions {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .branch-actions .table-action-select {
+            min-height: 36px;
+            background: #ffffff;
+        }
+
+        @media (max-width: 1180px) {
+            .branch-form-grid {
+                grid-template-columns: repeat(2, minmax(180px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .branch-panel {
+                padding: 1rem;
+                border-radius: 8px;
+            }
+
+            .branch-form-grid {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+            }
+
+            .branch-form-actions {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .branch-form-actions .btn {
+                width: 100%;
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="students.html" class="nav-item">
+                    <i data-lucide="users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="teachers.html" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>Teachers</span>
+                </a>
+                <a href="staff.html" class="nav-item">
+                    <i data-lucide="briefcase"></i>
+                    <span>Staff</span>
+                </a>
+                <a href="classes.html" class="nav-item">
+                    <i data-lucide="school"></i>
+                    <span>Classes</span>
+                </a>
+                <a href="fees.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Fees</span>
+                </a>
+                <a href="fee_challan.html" class="nav-item">
+                    <i data-lucide="file-text"></i>
+                    <span>Fee Challan</span>
+                </a>
+                <a href="teacher_salaries.html" class="nav-item">
+                    <i data-lucide="wallet"></i>
+                    <span>Salaries</span>
+                </a>
+                <a href="exams.html" class="nav-item">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Exams</span>
+                </a>
+                <a href="revenue.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="branch_registration.html" class="nav-item active" data-branch-registration-link="true">
+                    <i data-lucide="building-2"></i>
+                    <span>Branch Registration</span>
+                </a>
+                <a href="permissions.html" class="nav-item">
+                    <i data-lucide="shield"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="aboutme.html" class="nav-item">
+                    <i data-lucide="info"></i>
+                    <span>About Us</span>
+                </a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header branch-page-header">
+                <div>
+                    <h1>Branch Registration</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Create branch login credentials for each campus.</p>
+                </div>
+            </header>
+
+            <section class="branch-panel">
+                <h3>Register New Branch</h3>
+                <form id="branchRegistrationForm">
+                    <input type="hidden" id="branchRecordId">
+                    <div class="branch-form-grid">
+                        <div class="branch-field">
+                            <label>Campus Name</label>
+                            <input type="text" id="branchCampusName" required placeholder="Campus 1">
+                        </div>
+                        <div class="branch-field">
+                            <label>Branch Display Name</label>
+                            <input type="text" id="branchDisplayName" placeholder="Campus 1 Office">
+                        </div>
+                        <div class="branch-field">
+                            <label>Username</label>
+                            <input type="text" id="branchUsername" required placeholder="campus1_admin">
+                        </div>
+                        <div class="branch-field">
+                            <label>Password</label>
+                            <div class="password-field">
+                                <input type="password" id="branchPassword" placeholder="Create password">
+                                <button type="button" class="password-toggle" data-toggle-password="branchPassword"
+                                    aria-label="Show password" aria-pressed="false">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="branch-form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="save"></i> Save Branch
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetBranchRegistrationForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="branch-panel branch-table-panel">
+                <h3>Registered Branches</h3>
+                <table class="branch-list-table">
+                    <thead>
+                        <tr>
+                            <th>Campus</th>
+                            <th>Display Name</th>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Status</th>
+                            <th>Branch ID</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding: 1rem; color: var(--text-secondary);">Loading branches...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <div id="successModal" class="success-overlay">
+        <div class="success-modal">
+            <div class="success-icon-wrap">
+                <i data-lucide="check-circle"></i>
+            </div>
+            <h2 id="successTitle">Success!</h2>
+            <p id="successMessage" style="color: var(--text-secondary); margin: 1rem 0 2rem;"></p>
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeSuccessModal()">Great!</button>
+        </div>
+    </div>
+
+    <script src="auth.js?v=20260520-sidebar-requested-order"></script>
+    <script src="script.js?v=20260520-sidebar-classes-restore"></script>
+    <script>
+        (function () {
+            const API = window.API_BASE_URL || `${window.location.origin}/api`;
+
+            function html(value) {
+                return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[char]));
+            }
+
+            function renderBranchTable(branches = []) {
+                const tbody = document.getElementById('branchTableBody');
+                if (!tbody) return;
+                const rows = Array.isArray(branches) ? branches : [];
+                window.branchRecordsCache = rows;
+
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1rem; color: var(--text-secondary);">No branches registered yet.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = rows.map((branch) => `
+                    <tr>
+                        <td><strong>${html(branch.campusName || '-')}</strong></td>
+                        <td>${html(branch.fullName || '-')}</td>
+                        <td>${html(branch.username || '-')}</td>
+                        <td>${html(branch.plainPassword || 'Hidden')}</td>
+                        <td>${branch.isActive === false ? 'Inactive' : 'Active'}</td>
+                        <td>${html(branch.profileId || '-')}</td>
+                        <td>
+                            <div class="branch-actions">
+                                <select class="table-action-select" onchange="handleBranchActionSelect(this, '${html(branch.id)}')">
+                                    <option value="">Actions</option>
+                                    <option value="edit">Edit</option>
+                                    <option value="delete">Delete</option>
+                                </select>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            async function loadBranchRows() {
+                const tbody = document.getElementById('branchTableBody');
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1rem; color: var(--text-secondary);">Loading branches...</td></tr>';
+                }
+                try {
+                    const token = sessionStorage.getItem('eduCore_token') || '';
+                    const response = await fetch(`${API}/branches`, {
+                        cache: 'no-store',
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || data.error || 'Branches could not be loaded.');
+                    renderBranchTable(Array.isArray(data) ? data : data.branches);
+                } catch (error) {
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1rem; color: #dc2626;">Branches could not be loaded. Please refresh and try again.</td></tr>';
+                    }
+                }
+            }
+
+            async function saveBranch(event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const form = document.getElementById('branchRegistrationForm');
+                const submitBtn = form?.querySelector('button[type="submit"]');
+                const recordId = document.getElementById('branchRecordId').value.trim();
+                const campusName = document.getElementById('branchCampusName').value.trim();
+                const fullName = document.getElementById('branchDisplayName').value.trim() || campusName;
+                const username = document.getElementById('branchUsername').value.trim();
+                const password = document.getElementById('branchPassword').value.trim();
+
+                if (!campusName || !username) {
+                    alert('Campus name and username are required.');
+                    return;
+                }
+                if (!recordId && !password) {
+                    alert('Password is required for a new branch login.');
+                    return;
+                }
+
+                try {
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i data-lucide="loader-circle"></i> Saving...';
+                        if (window.lucide) window.lucide.createIcons();
+                    }
+
+                    const response = await fetch(`${API}/branches`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(sessionStorage.getItem('eduCore_token') ? { Authorization: `Bearer ${sessionStorage.getItem('eduCore_token')}` } : {})
+                        },
+                        body: JSON.stringify({ id: recordId || undefined, campusName, fullName, username, password })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.success === false) {
+                        throw new Error(data.message || data.error || 'Branch registration failed.');
+                    }
+
+                    document.getElementById('branchRecordId').value = '';
+                    document.getElementById('branchCampusName').value = '';
+                    document.getElementById('branchDisplayName').value = '';
+                    document.getElementById('branchUsername').value = '';
+                    document.getElementById('branchPassword').value = '';
+                    await loadBranchRows();
+                    if (typeof populateCampusDropdowns === 'function') populateCampusDropdowns();
+                    if (typeof showSuccessModal === 'function') {
+                        showSuccessModal(recordId ? 'Branch Updated!' : 'Branch Registered!', `${campusName} branch login has been saved.`);
+                    }
+                } catch (error) {
+                    alert(error.message || 'Branch registration failed.');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i data-lucide="save"></i> Save Branch';
+                        if (window.lucide) window.lucide.createIcons();
+                    }
+                }
+            }
+
+            window.loadBranchRows = loadBranchRows;
+            window.renderBranchTable = renderBranchTable;
+
+            window.handleBranchActionSelect = function handleBranchActionSelect(selectElement, branchId) {
+                const action = String(selectElement?.value || '').trim().toLowerCase();
+                if (!action) return;
+                if (selectElement) selectElement.value = '';
+
+                const branch = (window.branchRecordsCache || [])
+                    .find((record) => String(record.id) === String(branchId));
+
+                if (action === 'edit' && branch) {
+                    editBranch(branch);
+                    return;
+                }
+
+                if (action === 'delete') {
+                    deleteBranch(branchId);
+                }
+            };
+
+            function bindBranchPage() {
+                const form = document.getElementById('branchRegistrationForm');
+                if (form) {
+                    if (typeof window.handleBranchRegistrationSubmit === 'function') {
+                        form.removeEventListener('submit', window.handleBranchRegistrationSubmit);
+                    }
+                    form.addEventListener('submit', saveBranch);
+                }
+                loadBranchRows();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindBranchPage);
+            } else {
+                bindBranchPage();
+            }
+        })();
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+</body>
+
+</html>

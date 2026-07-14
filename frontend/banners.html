@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banners - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260603-kids-roots-jand-brand">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .banner-layout {
+            display: grid;
+            grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+            gap: 1.15rem;
+            align-items: start;
+        }
+
+        .banner-panel {
+            background: #ffffff;
+            border: 1px solid rgba(32, 176, 164, 0.18);
+            border-radius: 10px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .banner-panel-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(180deg, #ffffff 0%, #f8fffe 100%);
+        }
+
+        .banner-panel-head h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .banner-panel-head p {
+            margin: 0.25rem 0 0;
+            color: var(--text-secondary);
+            font-size: 0.86rem;
+        }
+
+        .banner-form {
+            display: grid;
+            gap: 1rem;
+            padding: 1.1rem;
+        }
+
+        .banner-field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .banner-field input,
+        .banner-field textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.78rem 0.9rem;
+            font: inherit;
+            color: var(--text-primary);
+            background: #fff;
+        }
+
+        .banner-field input:focus,
+        .banner-field textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(32, 176, 164, 0.12);
+        }
+
+        .banner-upload-box {
+            display: grid;
+            gap: 0.8rem;
+            padding: 0.8rem;
+            border: 1px dashed rgba(32, 176, 164, 0.5);
+            border-radius: 10px;
+            background: #f8fffe;
+        }
+
+        .banner-preview {
+            width: 100%;
+            aspect-ratio: 16 / 7;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #f8fafc 0%, #eefcfb 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--text-secondary);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .banner-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .banner-file-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid rgba(32, 176, 164, 0.35);
+            border-radius: 8px;
+            background: white;
+            color: var(--primary-color);
+            font-weight: 800;
+            padding: 0.65rem 0.95rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .banner-file-action:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .banner-file-action span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            line-height: 1;
+        }
+
+        #bannerImageFile {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .banner-order-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.85rem;
+            align-items: end;
+        }
+
+        .banner-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-height: 42px;
+            padding: 0 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .banner-toggle input {
+            accent-color: var(--primary-color);
+        }
+
+        .banner-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .banner-list {
+            display: grid;
+            gap: 0.95rem;
+            padding: 1.1rem;
+        }
+
+        .banner-card {
+            display: grid;
+            grid-template-columns: 230px minmax(0, 1fr);
+            gap: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            padding: 0.85rem;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .banner-thumb {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #eef2f7;
+            border: 1px solid var(--border-color);
+        }
+
+        .banner-meta {
+            display: grid;
+            gap: 0.65rem;
+            min-width: 0;
+            align-content: start;
+        }
+
+        .banner-meta h3 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+        }
+
+        .banner-meta p {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .banner-pill-row {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .banner-pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.25rem 0.6rem;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .banner-pill.order {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .banner-pill.inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .banner-empty {
+            display: grid;
+            justify-items: center;
+            gap: 0.65rem;
+            padding: 2.5rem 1.5rem;
+            border: 1px dashed rgba(32, 176, 164, 0.35);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            text-align: center;
+            background: #f8fffe;
+        }
+
+        .banner-empty i {
+            color: var(--primary-color);
+            width: 32px;
+            height: 32px;
+        }
+
+        .banner-empty strong {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 980px) {
+            .banner-layout,
+            .banner-card {
+                grid-template-columns: 1fr;
+            }
+
+            .banner-order-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
+                <a href="banners.html" class="nav-item active" data-banners-link="true"><i data-lucide="image"></i><span>Banners</span></a>
+                <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
+                <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
+                <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
+                <a href="fees.html" class="nav-item"><i data-lucide="credit-card"></i><span>Fees</span></a>
+                <a href="fee_challan.html" class="nav-item"><i data-lucide="file-text"></i><span>Fee Challan</span></a>
+                <a href="teacher_salaries.html" class="nav-item"><i data-lucide="wallet"></i><span>Salaries</span></a>
+                <a href="exams.html" class="nav-item"><i data-lucide="clipboard-list"></i><span>Exams</span></a>
+                <a href="revenue.html" class="nav-item"><i data-lucide="trending-up"></i><span>Revenue</span></a>
+                <a href="permissions.html" class="nav-item"><i data-lucide="shield"></i><span>Permissions</span></a>
+                <a href="aboutme.html" class="nav-item"><i data-lucide="info"></i><span>About Us</span></a>
+                <a href="#" class="nav-item" onclick="logoutUser(event)"><i data-lucide="log-out"></i><span>Logout</span></a>
+            </nav>
+
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Banners</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Manage website and portal banner images.</p>
+                </div>
+            </header>
+
+            <section class="banner-layout">
+                <div class="banner-panel">
+                    <div class="banner-panel-head">
+                        <div>
+                            <h2>Banner Details</h2>
+                            <p>Upload a wide image and control its display order.</p>
+                        </div>
+                    </div>
+                    <form id="bannerForm" class="banner-form">
+                        <input type="hidden" id="bannerId">
+                        <input type="hidden" id="bannerExistingImage">
+                        <div class="banner-field">
+                            <label for="bannerTitle">Title</label>
+                            <input type="text" id="bannerTitle" placeholder="Admissions Open">
+                        </div>
+                        <div class="banner-field">
+                            <label>Upload Banner</label>
+                            <div class="banner-upload-box">
+                                <div class="banner-preview" id="bannerImagePreview">No image selected</div>
+                                <label class="banner-file-action" for="bannerImageFile">
+                                    <span>Choose Image</span>
+                                </label>
+                                <input type="file" id="bannerImageFile" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="banner-order-row">
+                            <div class="banner-field">
+                                <label for="bannerDisplayOrder">Order</label>
+                                <input type="number" id="bannerDisplayOrder" value="1" min="1">
+                            </div>
+                            <label class="banner-toggle">
+                                <input type="checkbox" id="bannerIsActive" checked>
+                                Active
+                            </label>
+                        </div>
+                        <div class="banner-actions">
+                            <button type="submit" class="btn btn-primary" id="bannerSaveBtn"><i data-lucide="save"></i> Save Banner</button>
+                            <button type="button" class="btn btn-outline" id="bannerResetBtn"><i data-lucide="rotate-ccw"></i> Reset</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="banner-panel">
+                    <div class="banner-panel-head">
+                        <div>
+                            <h2>Saved Banners</h2>
+                            <p>Active banners appear on the website and portal.</p>
+                        </div>
+                    </div>
+                    <div id="bannerList" class="banner-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="auth.js?v=20260520-sidebar-requested-order"></script>
+    <script src="script.js?v=20260520-sidebar-classes-restore"></script>
+    <script>
+        let bannerRecords = [];
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function readBannerFile(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) return resolve('');
+                if (!file.type.startsWith('image/')) return reject(new Error('Please upload an image file only.'));
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('Image could not be read.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function getNextBannerOrder() {
+            const maxOrder = bannerRecords.reduce((max, banner) => {
+                const order = Number(banner.displayOrder || 0);
+                return Number.isFinite(order) && order > max ? order : max;
+            }, 0);
+            return maxOrder + 1;
+        }
+
+        function setBannerPreview(imageUrl = '') {
+            const preview = document.getElementById('bannerImagePreview');
+            if (!preview) return;
+            if (imageUrl) {
+                preview.innerHTML = `<img src="${escapeHtml(imageUrl)}" alt="Banner preview">`;
+                return;
+            }
+            preview.innerHTML = '<span>No image selected</span>';
+        }
+
+        function resetBannerForm() {
+            document.getElementById('bannerId').value = '';
+            document.getElementById('bannerExistingImage').value = '';
+            document.getElementById('bannerForm').reset();
+            document.getElementById('bannerDisplayOrder').value = String(getNextBannerOrder());
+            document.getElementById('bannerIsActive').checked = true;
+            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Save Banner';
+            setBannerPreview('');
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function renderBanners() {
+            const list = document.getElementById('bannerList');
+            if (!bannerRecords.length) {
+                list.innerHTML = `
+                    <div class="banner-empty">
+                        <i data-lucide="image"></i>
+                        <strong>No banners saved yet</strong>
+                        <span>Upload a banner image and save it to show it here.</span>
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+
+            const sortedBanners = [...bannerRecords].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+            list.innerHTML = sortedBanners.map((banner) => `
+                <article class="banner-card">
+                    <img class="banner-thumb" src="${escapeHtml(banner.imageUrl)}" alt="${escapeHtml(banner.title)}">
+                    <div class="banner-meta">
+                        <div class="banner-pill-row">
+                            <span class="banner-pill${banner.isActive ? '' : ' inactive'}">${banner.isActive ? 'Active' : 'Inactive'}</span>
+                            <span class="banner-pill order">Order ${Number(banner.displayOrder || 0)}</span>
+                        </div>
+                        <h3>${escapeHtml(banner.title)}</h3>
+                        <div class="banner-actions">
+                            <button class="btn btn-outline" type="button" onclick="toggleBannerStatus('${escapeHtml(banner.id)}')">
+                                <i data-lucide="${banner.isActive ? 'eye-off' : 'eye'}"></i> ${banner.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button class="btn btn-outline" type="button" onclick="editBanner('${escapeHtml(banner.id)}')"><i data-lucide="pencil"></i> Edit</button>
+                            <button class="btn btn-danger" type="button" onclick="deleteBanner('${escapeHtml(banner.id)}')"><i data-lucide="trash-2"></i> Delete</button>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        async function loadBanners() {
+            const list = document.getElementById('bannerList');
+            if (list) {
+                list.innerHTML = `
+                    <div class="banner-empty">
+                        <i data-lucide="loader-circle"></i>
+                        <strong>Loading banners</strong>
+                        <span>Please wait while saved banners are loaded.</span>
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/banners`);
+                const data = await response.json();
+                if (!response.ok || data.success === false) {
+                    throw new Error(data.message || 'Banners could not be loaded.');
+                }
+                bannerRecords = Array.isArray(data.banners) ? data.banners : [];
+                renderBanners();
+                resetBannerForm();
+            } catch (error) {
+                bannerRecords = [];
+                if (list) {
+                    list.innerHTML = `
+                        <div class="banner-empty">
+                            <i data-lucide="circle-alert"></i>
+                            <strong>Banners could not be loaded</strong>
+                            <span>Refresh the page and try again.</span>
+                        </div>
+                    `;
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                resetBannerForm();
+                console.error(error);
+            }
+        }
+
+        function editBanner(id) {
+            const banner = bannerRecords.find((item) => item.id === id);
+            if (!banner) return;
+            document.getElementById('bannerId').value = banner.id;
+            document.getElementById('bannerTitle').value = banner.title || '';
+            document.getElementById('bannerExistingImage').value = banner.imageUrl || '';
+            document.getElementById('bannerImageFile').value = '';
+            document.getElementById('bannerDisplayOrder').value = Number(banner.displayOrder || 1);
+            document.getElementById('bannerIsActive').checked = banner.isActive !== false;
+            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Update Banner';
+            setBannerPreview(banner.imageUrl || '');
+            if (window.lucide) window.lucide.createIcons();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function saveBannerPayload(payload) {
+            const response = await fetch(`${API_BASE_URL}/banners`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+                throw new Error(data.message || 'Banner save failed.');
+            }
+            bannerRecords = Array.isArray(data.banners) ? data.banners : [];
+            renderBanners();
+            return data;
+        }
+
+        async function toggleBannerStatus(id) {
+            const banner = bannerRecords.find((item) => item.id === id);
+            if (!banner) return;
+
+            try {
+                await saveBannerPayload({
+                    ...banner,
+                    isActive: banner.isActive === false
+                });
+            } catch (error) {
+                alert(error.message || 'Banner status update failed.');
+            }
+        }
+
+        async function deleteBanner(id) {
+            if (!confirm('Delete this banner?')) return;
+            const response = await fetch(`${API_BASE_URL}/banners/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+                alert(data.message || 'Banner delete failed.');
+                return;
+            }
+            bannerRecords = Array.isArray(data.banners) ? data.banners : [];
+            renderBanners();
+        }
+
+        document.getElementById('bannerForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            let fileData = '';
+            try {
+                fileData = await readBannerFile(document.getElementById('bannerImageFile').files[0]);
+            } catch (error) {
+                alert(error.message || 'Image could not be read.');
+                return;
+            }
+            const imageUrl = fileData || document.getElementById('bannerExistingImage').value.trim();
+            if (!imageUrl) {
+                alert('Please upload a banner image.');
+                return;
+            }
+            const payload = {
+                id: document.getElementById('bannerId').value.trim() || undefined,
+                title: document.getElementById('bannerTitle').value.trim(),
+                subtitle: '',
+                imageUrl,
+                linkUrl: '',
+                displayOrder: Number(document.getElementById('bannerDisplayOrder').value || getNextBannerOrder()),
+                isActive: document.getElementById('bannerIsActive').checked
+            };
+
+            try {
+                await saveBannerPayload(payload);
+            } catch (error) {
+                alert(error.message || 'Banner save failed.');
+                return;
+            }
+            resetBannerForm();
+        });
+
+        document.getElementById('bannerResetBtn').addEventListener('click', resetBannerForm);
+        document.getElementById('bannerImageFile').addEventListener('change', async (event) => {
+            try {
+                const imageUrl = await readBannerFile(event.target.files[0]);
+                setBannerPreview(imageUrl);
+            } catch (error) {
+                alert(error.message || 'Image could not be read.');
+                event.target.value = '';
+                setBannerPreview(document.getElementById('bannerExistingImage').value.trim());
+            }
+        });
+
+        if (window.socket) {
+            window.socket.on('banners_update', (records) => {
+                bannerRecords = Array.isArray(records) ? records : [];
+                renderBanners();
+                if (!document.getElementById('bannerId').value) {
+                    document.getElementById('bannerDisplayOrder').value = String(getNextBannerOrder());
+                }
+            });
+        }
+
+        loadBanners();
+    </script>
+</body>
+
+</html>

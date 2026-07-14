@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PESS JAND</title>
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+    <link rel="stylesheet" href="website.css?v=20260714-pess-redesign">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="top-strip">
+            <span><i data-lucide="map-pin"></i><span id="headerAddress">Jand, Attock</span></span>
+            <a href="tel:+923405983088"><i data-lucide="phone"></i><span>0340-5983088</span></a>
+            <a href="tel:+923015060130"><i data-lucide="phone-call"></i><span>03015060130</span></a>
+            <a href="tel:+92572622364"><i data-lucide="landmark"></i><span>0572622364</span></a>
+            <a href="mailto:pessabubakar65@gmail.com"><i data-lucide="mail"></i><span>pessabubakar65@gmail.com</span></a>
+        </div>
+
+        <nav class="main-nav" aria-label="Main navigation">
+            <a class="brand" href="#home">
+                <img src="images/logo.png" alt="PESS JAND logo">
+                <span>PESS JAND</span>
+            </a>
+            <button class="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">
+                <i data-lucide="menu"></i>
+            </button>
+            <div class="nav-links" id="siteNavLinks">
+                <a href="#home">Home</a>
+                <a href="#admissions">Admissions</a>
+                <a href="#learning">Learning</a>
+                <a href="#gallery">Gallery</a>
+                <a href="#contact">Contact</a>
+                <a class="nav-login" href="/login">Portal Login</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero" id="home">
+            <div class="hero-media" aria-hidden="true"></div>
+            <div class="hero-content">
+                <p class="eyebrow">Pakistan Educational School System</p>
+                <h1>PESS JAND</h1>
+                <p class="hero-lead">A focused school environment for confident learning, strong character, discipline, and daily classroom care.</p>
+                <div class="hero-actions">
+                    <a class="primary-action" href="#admissions"><i data-lucide="clipboard-edit"></i> Admission Inquiry</a>
+                    <a class="secondary-action" href="/login"><i data-lucide="log-in"></i> School Portal</a>
+                </div>
+            </div>
+            <div class="hero-admission-card">
+                <img src="images/admission.jpeg" alt="PESS JAND admissions open">
+            </div>
+        </section>
+
+        <section class="official-banner" aria-label="Official school banner">
+            <img src="images/banner.jpeg" alt="Pakistan Educational School System banner">
+        </section>
+
+        <section class="section-shell intro-section" id="admissions">
+            <div class="section-heading">
+                <p class="eyebrow">Admissions Open</p>
+                <h2>New admissions are open for junior and school classes.</h2>
+                <p>Parents can contact the school office for class availability, admission guidance, fee details, and campus visit timing.</p>
+            </div>
+            <div class="admission-layout">
+                <img src="images/posterone.jpeg" alt="Admission open poster">
+                <div class="admission-panel">
+                    <span>No Admission Fee</span>
+                    <span>Play Group to Matric</span>
+                    <span>English Medium</span>
+                    <span>Special Monthly Fee Discount</span>
+                    <a href="#contact"><i data-lucide="phone"></i> Contact Office</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="learning-section" id="learning">
+            <div class="section-shell learning-inner">
+                <div class="learning-photo">
+                    <img src="images/environment.jpeg" alt="Students learning at PESS JAND">
+                </div>
+                <div class="learning-copy">
+                    <p class="eyebrow">School Environment</p>
+                    <h2>Small learners, caring teachers, and practical daily routines.</h2>
+                    <p>Classroom activities build reading, writing, confidence, manners, and responsibility. The school focuses on knowledge with character, love, and peace.</p>
+                    <div class="value-grid">
+                        <article>
+                            <i data-lucide="book-open-check"></i>
+                            <h3>Knowledge</h3>
+                            <p>Concept-based lessons and regular academic follow-up.</p>
+                        </article>
+                        <article>
+                            <i data-lucide="heart-handshake"></i>
+                            <h3>Character</h3>
+                            <p>Respect, cleanliness, discipline, and Islamic values.</p>
+                        </article>
+                        <article>
+                            <i data-lucide="users-round"></i>
+                            <h3>Care</h3>
+                            <p>A friendly environment for young children and parents.</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="website-banner-section" id="websiteBannerSection" hidden>
+            <div class="website-banner-track" id="websiteBannerTrack"></div>
+            <div class="website-banner-dots" id="websiteBannerDots"></div>
+        </section>
+
+        <section class="notice-section" id="events">
+            <div class="section-shell notice-inner">
+                <div class="section-heading compact">
+                    <p class="eyebrow">Notices & Events</p>
+                    <h2>Latest updates from school</h2>
+                </div>
+                <article class="data-panel notice-panel">
+                    <div class="panel-title">
+                        <h3>Public Notices</h3>
+                        <span id="noticeUpdated">Live</span>
+                    </div>
+                    <div class="notice-list" id="noticeList">
+                        <p class="empty-state">Loading events...</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section-shell gallery-section" id="gallery">
+            <div class="section-heading">
+                <p class="eyebrow">Campus Gallery</p>
+                <h2>Real school visuals from PESS JAND.</h2>
+            </div>
+            <div class="gallery-grid">
+                <img src="images/banner.jpeg" alt="Official school banner">
+                <img src="images/environment.jpeg" alt="Students in classroom">
+                <img src="images/admission.jpeg" alt="Admissions open">
+            </div>
+        </section>
+
+        <section class="portal-section">
+            <div>
+                <p class="eyebrow">School Portal</p>
+                <h2>Login access for school operations</h2>
+                <p>Attendance, fees, results, notices, students, teachers, and administrative records are managed through the school portal.</p>
+            </div>
+            <div class="portal-actions">
+                <a href="/login"><i data-lucide="shield-check"></i> Admin / Staff</a>
+                <a href="/student_portal"><i data-lucide="graduation-cap"></i> Student Portal</a>
+                <a href="/teacher_portal"><i data-lucide="book-user"></i> Teacher Portal</a>
+            </div>
+        </section>
+
+        <section class="section-shell contact-section" id="contact">
+            <div class="section-heading compact">
+                <p class="eyebrow">Contact</p>
+                <h2>Reach PESS JAND</h2>
+                <p id="contactAddress">Jand, Attock</p>
+            </div>
+            <div class="contact-grid">
+                <a href="tel:+923405983088"><i data-lucide="phone"></i><span>0340-5983088</span></a>
+                <a href="tel:+923015060130"><i data-lucide="phone-call"></i><span>03015060130</span></a>
+                <a href="tel:+92572622364"><i data-lucide="landmark"></i><span>0572622364</span></a>
+                <a href="mailto:pessabubakar65@gmail.com"><i data-lucide="mail"></i><span>pessabubakar65@gmail.com</span></a>
+            </div>
+            <form class="inquiry-form" id="inquiryForm">
+                <label>Name<input type="text" id="inquiryName" placeholder="Parent / student name"></label>
+                <label>Class<input type="text" id="inquiryClass" placeholder="Required class"></label>
+                <label>Phone<input type="tel" id="inquiryPhone" placeholder="Contact number"></label>
+                <label class="full-field">Message<textarea id="inquiryMessage" placeholder="Write your question"></textarea></label>
+                <button type="submit"><i data-lucide="send"></i> Send Inquiry</button>
+            </form>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <img src="images/logo.png" alt="PESS JAND logo">
+        <div>
+            <strong>PESS JAND</strong>
+            <span>Knowledge, character, love, and peace.</span>
+        </div>
+    </footer>
+
+    <script src="website.js?v=20260714-pess-redesign"></script>
+</body>
+
+</html>
