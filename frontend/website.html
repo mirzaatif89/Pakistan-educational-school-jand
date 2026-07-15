@@ -32,6 +32,8 @@
                 <a href="#home">Home</a>
                 <a href="#admissions">Admissions</a>
                 <a href="#learning">Learning</a>
+                <a href="#vision">Vision</a>
+                <a href="#ceo">CEO</a>
                 <a href="#gallery">Gallery</a>
                 <a href="#contact">Contact</a>
                 <a class="nav-login" href="/login">Portal Login</a>
@@ -63,8 +65,8 @@
         <section class="section-shell intro-section" id="admissions">
             <div class="section-heading">
                 <p class="eyebrow">Admissions Open</p>
-                <h2>New admissions are open for junior and school classes.</h2>
-                <p>Parents can contact the school office for class availability, admission guidance, fee details, and campus visit timing.</p>
+                <h2>Apply online for admission.</h2>
+                <p>Fill the admission form and the school office will receive your application in the portal.</p>
             </div>
             <div class="admission-layout">
                 <img src="images/posterone.jpeg" alt="Admission open poster">
@@ -73,9 +75,22 @@
                     <span>Play Group to Matric</span>
                     <span>English Medium</span>
                     <span>Special Monthly Fee Discount</span>
-                    <a href="#contact"><i data-lucide="phone"></i> Contact Office</a>
                 </div>
             </div>
+            <form class="inquiry-form admission-form" id="inquiryForm">
+                <label>Student Name<input type="text" id="inquiryStudentName" required placeholder="Student full name"></label>
+                <label>Parent Name<input type="text" id="inquiryParentName" required placeholder="Father / guardian name"></label>
+                <label>Class<input type="text" id="inquiryClass" required placeholder="Required class"></label>
+                <label>Phone<input type="tel" id="inquiryPhone" required placeholder="Contact number"></label>
+                <label>Email<input type="email" id="inquiryEmail" placeholder="Email address"></label>
+                <label>Campus<select id="inquiryCampus"><option value="">Select campus</option><option>Main Campus</option><option>PESS JAND</option></select></label>
+                <label>Student Age<input type="text" id="inquiryStudentAge" placeholder="Age"></label>
+                <label>Previous School<input type="text" id="inquiryPreviousSchool" placeholder="Previous school"></label>
+                <label class="full-field">Address<input type="text" id="inquiryAddress" placeholder="Home address"></label>
+                <label class="full-field">Message<textarea id="inquiryMessage" placeholder="Any admission details"></textarea></label>
+                <p class="form-status" id="inquiryFormStatus" aria-live="polite"></p>
+                <button type="submit"><i data-lucide="send"></i> Submit Application</button>
+            </form>
         </section>
 
         <section class="learning-section" id="learning">
@@ -105,6 +120,51 @@
                         </article>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section class="vision-mission-section" id="vision">
+            <div class="section-shell">
+                <div class="section-heading compact">
+                    <p class="eyebrow">Vision & Mission</p>
+                    <h2>Building knowledge, character, and confident leadership.</h2>
+                </div>
+                <div class="vision-grid">
+                    <article>
+                        <i data-lucide="telescope"></i>
+                        <h3>Vision</h3>
+                        <p>To become a leading educational institution that inspires young minds with knowledge, character, innovation, and Islamic values, empowering every learner to become a confident, compassionate, and responsible leader who contributes positively to Pakistan and the world.</p>
+                    </article>
+                    <article>
+                        <i data-lucide="target"></i>
+                        <h3>Mission</h3>
+                        <p>We are committed to providing quality, affordable, and student-centered education in a safe and nurturing environment. We develop academic excellence, moral values, critical thinking, creativity, leadership, and lifelong learning through modern teaching practices, strong parent partnerships, and dedicated educators.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="ceo-section" id="ceo">
+            <div class="section-shell ceo-inner">
+                <div class="ceo-photo">
+                    <img src="images/CEO.jpeg" alt="Engr. Malik Azmat Abbas, Chief Executive Officer">
+                </div>
+                <article class="ceo-message">
+                    <p class="eyebrow">CEO's Message</p>
+                    <h2>Pakistan Educational School System (PESS) Jand</h2>
+                    <p>Dear Students, Parents, Teachers, and Community Members,</p>
+                    <p>It is my great pleasure to welcome you to Pakistan Educational School System (PESS) Jand, an institution committed to providing quality education, strong moral values, and a nurturing environment where every child can grow with confidence.</p>
+                    <p>At PESS Jand, we believe that education is not only about academic excellence but also about building character, leadership, creativity, and a lifelong passion for learning. Our dedicated faculty strives to prepare students to face future challenges with knowledge, integrity, and responsibility.</p>
+                    <p>We value the trust that parents place in us and consider them our partners in shaping the future of our children. Together, we will continue to inspire young minds and empower them to become responsible citizens who contribute positively to Pakistan and the world.</p>
+                    <p>As we move forward, our commitment remains unwavering to provide a safe, modern, and inspiring learning environment where every student has the opportunity to achieve excellence.</p>
+                    <p>Thank you for being part of the PESS Jand family. We look forward to a future filled with success, innovation, and outstanding achievements.</p>
+                    <blockquote>Building Knowledge, Shaping Character & Creating a Bright Pakistan.</blockquote>
+                    <div class="ceo-signature">
+                        <strong>Engr. Malik Azmat Abbas</strong>
+                        <span>Chief Executive Officer (CEO)</span>
+                        <span>Pakistan Educational School System (PESS) Jand</span>
+                    </div>
+                </article>
             </div>
         </section>
 
@@ -168,13 +228,6 @@
                 <a href="tel:+92572622364"><i data-lucide="landmark"></i><span>0572622364</span></a>
                 <a href="mailto:pessabubakar65@gmail.com"><i data-lucide="mail"></i><span>pessabubakar65@gmail.com</span></a>
             </div>
-            <form class="inquiry-form" id="inquiryForm">
-                <label>Name<input type="text" id="inquiryName" placeholder="Parent / student name"></label>
-                <label>Class<input type="text" id="inquiryClass" placeholder="Required class"></label>
-                <label>Phone<input type="tel" id="inquiryPhone" placeholder="Contact number"></label>
-                <label class="full-field">Message<textarea id="inquiryMessage" placeholder="Write your question"></textarea></label>
-                <button type="submit"><i data-lucide="send"></i> Send Inquiry</button>
-            </form>
         </section>
     </main>
 

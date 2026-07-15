@@ -358,9 +358,12 @@ svg {
     font-weight: 800;
 }
 
-.admission-panel a {
-    grid-column: 1 / -1;
-    width: fit-content;
+.admission-form {
+    margin-top: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: var(--shadow);
 }
 
 .learning-section {
@@ -397,6 +400,7 @@ svg {
 }
 
 .value-grid article,
+.vision-grid article,
 .data-panel,
 .contact-grid a,
 .inquiry-form {
@@ -422,9 +426,111 @@ svg {
 }
 
 .value-grid p,
+.vision-grid p,
 .empty-state,
 .notice-item span {
     color: var(--muted);
+}
+
+.vision-mission-section {
+    background: linear-gradient(180deg, #fff7e3, #ffffff);
+    border-bottom: 1px solid var(--line);
+}
+
+.vision-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.vision-grid article {
+    padding: clamp(1.2rem, 3vw, 1.8rem);
+}
+
+.vision-grid svg {
+    width: 34px;
+    height: 34px;
+    color: var(--maroon);
+}
+
+.vision-grid h3 {
+    margin: 0.85rem 0 0.55rem;
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+.ceo-section {
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+}
+
+.ceo-inner {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.58fr);
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: start;
+}
+
+.ceo-photo {
+    position: sticky;
+    top: 112px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--cream);
+    box-shadow: var(--shadow);
+}
+
+.ceo-photo img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.ceo-message {
+    padding: clamp(1.2rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fffdf8;
+    box-shadow: 0 12px 30px rgba(57, 30, 20, 0.08);
+}
+
+.ceo-message h2 {
+    margin: 0;
+    color: var(--ink);
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: clamp(1.7rem, 3vw, 2.6rem);
+    line-height: 1.1;
+}
+
+.ceo-message p {
+    margin: 1rem 0 0;
+    color: var(--muted);
+}
+
+.ceo-message blockquote {
+    margin: 1.35rem 0;
+    padding: 1rem 1.1rem;
+    border-left: 5px solid var(--gold);
+    color: var(--maroon-dark);
+    background: var(--gold-soft);
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: 1.08rem;
+    font-weight: 800;
+}
+
+.ceo-signature {
+    display: grid;
+    gap: 0.15rem;
+    margin-top: 1.2rem;
+    color: var(--muted);
+}
+
+.ceo-signature strong {
+    color: var(--ink);
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: 1.1rem;
 }
 
 .notice-section {
@@ -562,6 +668,7 @@ svg {
 }
 
 .inquiry-form input,
+.inquiry-form select,
 .inquiry-form textarea {
     width: 100%;
     border: 1px solid var(--line);
@@ -578,6 +685,18 @@ svg {
 
 .full-field {
     grid-column: 1 / -1;
+}
+
+.form-status {
+    grid-column: 1 / -1;
+    min-height: 1.25rem;
+    margin: 0;
+    color: #166534;
+    font-weight: 800;
+}
+
+.form-status.error {
+    color: #991b1b;
 }
 
 .inquiry-form button {
@@ -676,6 +795,7 @@ svg {
     .admission-layout,
     .learning-inner,
     .notice-inner,
+    .ceo-inner,
     .portal-section {
         grid-template-columns: 1fr;
     }
@@ -694,6 +814,7 @@ svg {
     }
 
     .value-grid,
+    .vision-grid,
     .gallery-grid,
     .contact-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -791,10 +912,15 @@ svg {
 
     .admission-panel,
     .value-grid,
+    .vision-grid,
     .gallery-grid,
     .contact-grid,
     .inquiry-form {
         grid-template-columns: 1fr;
+    }
+
+    .ceo-photo {
+        position: static;
     }
 
     .gallery-grid img,

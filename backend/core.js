@@ -33,6 +33,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'eduCore_secret_key_2026';
 const PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions.json');
 const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json');
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
+const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
+const ONLINE_ADMISSIONS_FILE = path.join(MOBILE_STORE_DIR, 'online_admissions.json');
 const ADMIN_CREDENTIALS_FILE = path.join(DATA_DIR, 'admin_credentials.json');
 const PRINCIPAL_USERNAME = process.env.PRINCIPAL_USERNAME || 'principal@school.com';
 const PRINCIPAL_PASSWORD = process.env.PRINCIPAL_PASSWORD || 'Principal123';
@@ -135,6 +137,7 @@ const MODULE_KEYS = [
     'notifications',
     'messages',
     'special_notices',
+    'online_admissions',
     'exams',
     'revenue',
     'settings',
@@ -161,6 +164,7 @@ const ALLOWED_HOME_PAGES = new Set([
     'notifications.html',
     'messages.html',
     'special_notices.html',
+    'online_admissions.html',
     'exams.html',
     'revenue.html',
     'settings.html',
@@ -224,6 +228,7 @@ const defaultPermissions = {
                 notifications: 'manage',
                 messages: 'manage',
                 special_notices: 'manage',
+                online_admissions: 'manage',
                 exams: 'manage',
                 revenue: 'view',
                 settings: 'view',
@@ -247,6 +252,7 @@ const defaultPermissions = {
                 exams: 'view',
                 notifications: 'view',
                 messages: 'view',
+                online_admissions: 'none',
                 aboutme: 'view'
             })
         }
@@ -919,6 +925,46 @@ function writeDateSheet(data) {
     return normalized;
 }
 
+function readOnlineAdmissions() {
+    try {
+        if (!fs.existsSync(ONLINE_ADMISSIONS_FILE)) return [];
+        const parsed = JSON.parse(fs.readFileSync(ONLINE_ADMISSIONS_FILE, 'utf8'));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_error) {
+        return [];
+    }
+}
+
+function writeOnlineAdmissions(records = []) {
+    fs.mkdirSync(MOBILE_STORE_DIR, { recursive: true });
+    const normalized = Array.isArray(records) ? records : [];
+    fs.writeFileSync(ONLINE_ADMISSIONS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+    return normalized;
+}
+
+function normalizeOnlineAdmission(payload = {}, existing = {}) {
+    const raw = payload && typeof payload === 'object' ? payload : {};
+    const now = new Date().toISOString();
+    return {
+        ...existing,
+        ...raw,
+        id: String(raw.id || existing.id || `ADM-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        studentName: String(raw.studentName ?? existing.studentName ?? '').trim(),
+        parentName: String(raw.parentName ?? existing.parentName ?? '').trim(),
+        className: String(raw.className ?? existing.className ?? '').trim(),
+        phone: String(raw.phone ?? existing.phone ?? '').trim(),
+        email: String(raw.email ?? existing.email ?? '').trim(),
+        campus: String(raw.campus ?? existing.campus ?? '').trim(),
+        studentAge: String(raw.studentAge ?? existing.studentAge ?? '').trim(),
+        previousSchool: String(raw.previousSchool ?? existing.previousSchool ?? '').trim(),
+        address: String(raw.address ?? existing.address ?? '').trim(),
+        message: String(raw.message ?? existing.message ?? '').trim(),
+        status: String(raw.status || existing.status || 'New').trim() || 'New',
+        createdAt: existing.createdAt || raw.createdAt || now,
+        updatedAt: now
+    };
+}
+
 app.get('/api/date-sheet', (req, res) => {
     res.json({ success: true, dateSheet: readDateSheet() });
 });
@@ -931,6 +977,51 @@ app.post('/api/date-sheet', (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: 'Date sheet could not be executed.' });
     }
+});
+
+app.get('/api/online-admissions', (req, res) => {
+    res.json({ success: true, applications: readOnlineAdmissions() });
+});
+
+app.post('/api/online-admissions', (req, res) => {
+    try {
+        const payload = req.body || {};
+        const required = ['studentName', 'parentName', 'className', 'phone'];
+        const missing = required.find((key) => !String(payload[key] || '').trim());
+        if (missing) {
+            return res.status(400).json({ success: false, message: 'Student name, parent name, class, and phone are required.' });
+        }
+
+        const applications = readOnlineAdmissions();
+        const application = normalizeOnlineAdmission(payload);
+        applications.unshift(application);
+        const saved = writeOnlineAdmissions(applications);
+        if (io) io.emit('online_admissions_update', saved);
+        return res.json({ success: true, application, applications: saved });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Application could not be submitted.' });
+    }
+});
+
+app.post('/api/online-admissions/:id', (req, res) => {
+    try {
+        const applications = readOnlineAdmissions();
+        const index = applications.findIndex((item) => String(item.id) === String(req.params.id));
+        if (index < 0) return res.status(404).json({ success: false, message: 'Application not found.' });
+
+        applications[index] = normalizeOnlineAdmission(req.body || {}, applications[index]);
+        const saved = writeOnlineAdmissions(applications);
+        if (io) io.emit('online_admissions_update', saved);
+        return res.json({ success: true, application: applications[index], applications: saved });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Application could not be updated.' });
+    }
+});
+
+app.delete('/api/online-admissions/:id', (req, res) => {
+    const applications = writeOnlineAdmissions(readOnlineAdmissions().filter((item) => String(item.id) !== String(req.params.id)));
+    if (io) io.emit('online_admissions_update', applications);
+    res.json({ success: true, deleted: true, applications });
 });
 
 app.post('/api/login', async (req, res) => {

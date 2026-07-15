@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Admissions - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.jpeg">
+    <link rel="stylesheet" href="style.css?v=20260715-online-admissions">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .admission-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .admission-toolbar select {
+            min-height: 42px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.8rem;
+            background: #ffffff;
+        }
+
+        .applications-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .application-card {
+            display: grid;
+            gap: 0.85rem;
+            border: 1px solid rgba(32, 176, 164, 0.18);
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+            padding: 1rem;
+        }
+
+        .application-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .application-head h3 {
+            margin: 0;
+            color: var(--text-primary);
+            overflow-wrap: anywhere;
+        }
+
+        .application-meta {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .application-meta span {
+            display: grid;
+            gap: 0.2rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.7rem;
+            color: var(--text-secondary);
+            background: #f8fffe;
+            overflow-wrap: anywhere;
+        }
+
+        .application-meta strong {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .application-message {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.32rem 0.65rem;
+            color: #0f5132;
+            background: #dcfce7;
+            font-size: 0.78rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .status-pill.contacted {
+            color: #1d4ed8;
+            background: #dbeafe;
+        }
+
+        .status-pill.closed {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        .application-actions {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .empty-applications {
+            min-height: 260px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            border: 1px dashed var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            background: #ffffff;
+            padding: 1.2rem;
+        }
+
+        @media (max-width: 920px) {
+            .application-meta {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .admission-toolbar,
+            .application-head {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .application-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .application-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo">
+            </div>
+            <nav class="nav-links"></nav>
+            <a href="settings.html" class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h4>Admin User</h4>
+                    <p>Principal</p>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div>
+                    <h1>Online Admissions</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Website admission applications appear here.</p>
+                </div>
+            </header>
+
+            <section class="admission-toolbar">
+                <div>
+                    <strong id="applicationCount">0 Applications</strong>
+                    <p style="color: var(--text-secondary); margin: 0.15rem 0 0;">Review new admission requests and update their status.</p>
+                </div>
+                <select id="applicationStatusFilter" aria-label="Filter applications by status">
+                    <option value="all">All Applications</option>
+                    <option value="New">New</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </section>
+
+            <section class="applications-grid" id="applicationsList"></section>
+        </main>
+    </div>
+
+    <script src="auth.js?v=20260715-online-admissions"></script>
+    <script src="script.js?v=20260520-sidebar-classes-restore"></script>
+    <script src="sidebar-order.js?v=20260715-online-admissions"></script>
+    <script>
+        let applications = [];
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString();
+        }
+
+        function getFilteredApplications() {
+            const filter = document.getElementById('applicationStatusFilter')?.value || 'all';
+            const records = [...applications].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            return filter === 'all' ? records : records.filter((item) => String(item.status || 'New') === filter);
+        }
+
+        function statusClass(status = 'New') {
+            const normalized = String(status || 'New').toLowerCase();
+            if (normalized === 'contacted') return ' contacted';
+            if (normalized === 'closed') return ' closed';
+            return '';
+        }
+
+        function renderApplications() {
+            const list = document.getElementById('applicationsList');
+            const count = document.getElementById('applicationCount');
+            const records = getFilteredApplications();
+            if (count) count.textContent = `${applications.length} Application${applications.length === 1 ? '' : 's'}`;
+
+            if (!records.length) {
+                list.innerHTML = '<div class="empty-applications"><div><i data-lucide="clipboard-list"></i><h3>No applications found</h3><p>New online admission requests will appear here.</p></div></div>';
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+
+            list.innerHTML = records.map((application) => {
+                const status = application.status || 'New';
+                return `
+                    <article class="application-card">
+                        <div class="application-head">
+                            <div>
+                                <h3>${escapeHtml(application.studentName || 'Student')}</h3>
+                                <span style="color: var(--text-secondary);">Applied: ${escapeHtml(formatDate(application.createdAt))}</span>
+                            </div>
+                            <span class="status-pill${statusClass(status)}">${escapeHtml(status)}</span>
+                        </div>
+                        <div class="application-meta">
+                            <span><small>Parent Name</small><strong>${escapeHtml(application.parentName || '-')}</strong></span>
+                            <span><small>Class</small><strong>${escapeHtml(application.className || '-')}</strong></span>
+                            <span><small>Campus</small><strong>${escapeHtml(application.campus || '-')}</strong></span>
+                            <span><small>Phone</small><strong>${escapeHtml(application.phone || '-')}</strong></span>
+                            <span><small>Email</small><strong>${escapeHtml(application.email || '-')}</strong></span>
+                            <span><small>Student Age</small><strong>${escapeHtml(application.studentAge || '-')}</strong></span>
+                            <span><small>Previous School</small><strong>${escapeHtml(application.previousSchool || '-')}</strong></span>
+                            <span><small>Address</small><strong>${escapeHtml(application.address || '-')}</strong></span>
+                        </div>
+                        ${application.message ? `<p class="application-message">${escapeHtml(application.message)}</p>` : ''}
+                        <div class="application-actions">
+                            <a class="btn btn-outline" href="tel:${escapeHtml(application.phone || '')}"><i data-lucide="phone"></i> Call</a>
+                            <button class="btn btn-outline" type="button" onclick="updateApplicationStatus('${escapeHtml(application.id)}', 'Contacted')"><i data-lucide="phone-call"></i> Mark Contacted</button>
+                            <button class="btn btn-outline" type="button" onclick="updateApplicationStatus('${escapeHtml(application.id)}', 'Closed')"><i data-lucide="check-circle"></i> Close</button>
+                            <button class="btn btn-danger" type="button" onclick="deleteApplication('${escapeHtml(application.id)}')"><i data-lucide="trash-2"></i> Delete</button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        async function loadApplications() {
+            const response = await fetch(`${API_BASE_URL}/online-admissions`);
+            const data = await response.json();
+            applications = Array.isArray(data.applications) ? data.applications : [];
+            renderApplications();
+        }
+
+        async function updateApplicationStatus(id, status) {
+            const response = await fetch(`${API_BASE_URL}/online-admissions/${encodeURIComponent(id)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+                alert(data.message || 'Application could not be updated.');
+                return;
+            }
+            applications = Array.isArray(data.applications) ? data.applications : applications.map((item) => item.id === id ? { ...item, status } : item);
+            renderApplications();
+        }
+
+        async function deleteApplication(id) {
+            if (!confirm('Delete this admission application?')) return;
+            const response = await fetch(`${API_BASE_URL}/online-admissions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const data = await response.json();
+            applications = Array.isArray(data.applications) ? data.applications : applications.filter((item) => String(item.id) !== String(id));
+            renderApplications();
+        }
+
+        document.getElementById('applicationStatusFilter')?.addEventListener('change', renderApplications);
+
+        if (window.socket) {
+            window.socket.on('online_admissions_update', (records) => {
+                applications = Array.isArray(records) ? records : [];
+                renderApplications();
+            });
+        }
+
+        loadApplications().catch((error) => {
+            document.getElementById('applicationsList').innerHTML = `<div class="empty-applications"><strong>Applications could not be loaded</strong><p>${escapeHtml(error.message || '')}</p></div>`;
+        });
+    </script>
+</body>
+
+</html>
