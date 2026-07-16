@@ -322,7 +322,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 14px;
             margin-bottom: 18px;
         }
@@ -362,6 +362,20 @@
             display: block;
             margin-top: 8px;
             font-size: 22px;
+        }
+
+        .teacher-message-card {
+            border: 1px solid var(--portal-border);
+            border-left: 4px solid var(--portal-primary);
+            text-align: left;
+            font: inherit;
+            color: var(--portal-text);
+            cursor: pointer;
+        }
+
+        .teacher-message-card:hover {
+            border-color: var(--portal-primary-dark);
+            transform: translateY(-2px);
         }
 
         .teacher-options {
@@ -1195,6 +1209,10 @@
                 <span class="muted">Attendance This Month</span>
                 <strong id="attendanceSummary">-</strong>
             </div>
+            <button class="stat-card teacher-message-card" type="button" data-teacher-panel="messagesPanel">
+                <span class="muted">Messages</span>
+                <strong id="teacherMessageCount">0</strong>
+            </button>
         </section>
 
         <section class="teacher-options" aria-label="Teacher portal options">
@@ -2055,6 +2073,8 @@
 
         function renderTeacherMessages(messages = []) {
             const list = document.getElementById('teacherMessageList');
+            const count = document.getElementById('teacherMessageCount');
+            if (count) count.textContent = String(messages.length || 0);
             if (!list) return;
             if (!messages.length) {
                 list.innerHTML = '<div class="empty-note">No messages received yet.</div>';
