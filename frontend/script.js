@@ -5025,6 +5025,8 @@ function toggleStudentForm(editMode = false) {
             if (admissionDateField) admissionDateField.value = new Date().toISOString().split('T')[0];
             if (document.getElementById('feeFrequency')) document.getElementById('feeFrequency').value = 'Monthly';
             if (document.getElementById('remainingAmount')) document.getElementById('remainingAmount').value = '0';
+            if (document.getElementById('studentNonDigital')) document.getElementById('studentNonDigital').checked = false;
+            syncStudentNonDigitalPhoneRequirement();
             populateStudentFamilyOptions();
             setStudentPhotoPreview('');
             title.innerText = 'Add New Student';
@@ -5044,10 +5046,13 @@ async function validateStudentRequiredFields() {
         ['studentDob', 'Date of Birth'],
         ['classGrade', 'Class'],
         ['campusName', 'Campus'],
-        ['parentPhone', 'Contact Phone'],
         ['gender', 'Gender'],
         ['rollNo', 'Roll No']
     ];
+
+    if (!document.getElementById('studentNonDigital')?.checked) {
+        requiredFields.splice(5, 0, ['parentPhone', 'Contact Phone']);
+    }
 
     const missingField = requiredFields.find(([fieldId]) => {
         const field = document.getElementById(fieldId);
@@ -5063,6 +5068,22 @@ async function validateStudentRequiredFields() {
     }
 
     return true;
+}
+
+function isStudentNonDigital(student = {}) {
+    const rawValue = student?.nonDigital ?? student?.isNonDigital ?? student?.noMobile;
+    const normalized = String(rawValue ?? '').trim().toLowerCase();
+    return rawValue === true || normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
+function syncStudentNonDigitalPhoneRequirement() {
+    const checkbox = document.getElementById('studentNonDigital');
+    const phoneField = document.getElementById('parentPhone');
+    if (!checkbox || !phoneField) return;
+
+    const nonDigital = checkbox.checked;
+    phoneField.required = !nonDigital;
+    phoneField.placeholder = nonDigital ? 'No mobile available' : '';
 }
 
 function generateStudentCode() {
@@ -5609,6 +5630,7 @@ async function handleStudentFormSubmit(e) {
     const parentPhone = document.getElementById('parentPhone').value.trim();
     let usernameInput = document.getElementById('username').value.trim();
     let studentPasswordInput = document.getElementById('studentPassword').value;
+    const nonDigital = document.getElementById('studentNonDigital')?.checked === true;
     const monthlyFeeInput = document.getElementById('monthlyFee') ? document.getElementById('monthlyFee').value : '';
     const remainingAmountInput = document.getElementById('remainingAmount') ? document.getElementById('remainingAmount').value : '';
     const zeroFeeReasonInput = document.getElementById('zeroFeeReason') ? document.getElementById('zeroFeeReason').value.trim() : '';
@@ -5623,10 +5645,13 @@ async function handleStudentFormSubmit(e) {
         ['studentDob', 'Date of Birth is required.'],
         ['classGrade', 'Class is required.'],
         ['campusName', 'Campus Name is required.'],
-        ['parentPhone', 'Contact Phone is required.'],
         ['gender', 'Gender is required.'],
         ['rollNo', 'Roll No is required.']
     ];
+
+    if (!nonDigital) {
+        requiredFields.splice(5, 0, ['parentPhone', 'Contact Phone is required.']);
+    }
 
     for (const [fieldId, message] of requiredFields) {
         const field = document.getElementById(fieldId);
@@ -5723,6 +5748,7 @@ async function handleStudentFormSubmit(e) {
         classGrade: selectedClassGrade,
         campusName: document.getElementById('campusName').value,
         parentPhone,
+        nonDigital,
         address: studentAddress,
         guardianName,
         guardianContact,
@@ -5851,6 +5877,8 @@ function bindStudentFamilyAutoFill() {
 }
 
 bindStudentFamilyAutoFill();
+
+document.getElementById('studentNonDigital')?.addEventListener('change', syncStudentNonDigitalPhoneRequirement);
 
 function decodeRowPayload(encodedPayload) {
     try {
@@ -6133,6 +6161,7 @@ function viewStudent(student) {
         viewStudentGender: student.gender || '-',
         viewStudentStatus: isStudentTerminated(student) ? 'Terminated' : (student.feesStatus || 'Pending'),
         viewStudentPhone: student.parentPhone || '-',
+        viewStudentDigitalAccess: isStudentNonDigital(student) ? 'Non-Digital / No Mobile' : 'Digital / Mobile Available',
         viewStudentAddress: student.address || '-',
         viewStudentGuardianName: student.guardianName || '-',
         viewStudentGuardianContact: student.guardianContact || '-',
@@ -6287,6 +6316,7 @@ function parseStudentQuickFilterValues(values) {
     let below5 = false;
     let polioList = false;
     let zeroFee = false;
+    let nonDigital = false;
 
     normalizedValues.forEach((value) => {
         if (value.startsWith('gender:')) {
@@ -6318,6 +6348,11 @@ function parseStudentQuickFilterValues(values) {
             return;
         }
 
+        if (value === 'non-digital') {
+            nonDigital = true;
+            return;
+        }
+
         if (value === 'list:polio') {
             polioList = true;
             return;
@@ -6335,7 +6370,8 @@ function parseStudentQuickFilterValues(values) {
         feeStatuses,
         polioList,
         below5,
-        zeroFee
+        zeroFee,
+        nonDigital
     };
 }
 
@@ -6693,6 +6729,7 @@ function renderStudents(term = '') {
     const feeStatusSet = new Set(parsedFilters.feeStatuses.map((status) => String(status || '').toLowerCase()));
     const requireBelow5 = parsedFilters.below5;
     const requireZeroFee = parsedFilters.zeroFee;
+    const requireNonDigital = parsedFilters.nonDigital;
 
     if (loggedInUser?.role === 'Branch' && loggedInUser.campusName) {
         campusSet = new Set([String(loggedInUser.campusName).toLowerCase()]);
@@ -6718,6 +6755,7 @@ function renderStudents(term = '') {
         (campusSet.size === 0 || campusSet.has(String(s.campusName || '').toLowerCase())) &&
         (feeStatusSet.size === 0 || feeStatusSet.has(String(getStudentStatusLabel(s) || '').toLowerCase())) &&
         (!requireZeroFee || isStudentZeroFee(s)) &&
+        (!requireNonDigital || isStudentNonDigital(s)) &&
         !isStudentTerminated(s)
     );
 
@@ -6738,6 +6776,9 @@ function renderStudents(term = '') {
         filtered.forEach(s => {
             const terminated = isStudentTerminated(s);
             const statusLabel = getStudentStatusLabel(s);
+            const digitalBadge = isStudentNonDigital(s)
+                ? '<span class="status-badge status-pending" title="No mobile available">Non-Digital</span>'
+                : '';
             const normalizedFeeStatus = String(s.feesStatus || '').trim().toLowerCase();
             let statusClass = terminated
                 ? 'status-failed'
@@ -6749,7 +6790,7 @@ function renderStudents(term = '') {
                 <td><b>${s.rollNo}</b></td>
                 <td><div class="student-name-cell">
                     <div class="student-avatar">${buildStudentAvatarMarkup(s)}</div>
-                    <div class="student-name-text">${s.fullName}</div>
+                    <div class="student-name-text">${s.fullName}${digitalBadge}</div>
                 </div></td>
                 <td class="cell-compact">${s.fatherName || '-'}</td>
                 <td>${formatDateForDisplay(s.dob)}</td>
@@ -7183,6 +7224,7 @@ function printStudentsList() {
     const feeStatusSet = new Set(parsedFilters.feeStatuses.map((status) => String(status || '').toLowerCase()));
     const requireBelow5 = parsedFilters.below5;
     const requireZeroFee = parsedFilters.zeroFee;
+    const requireNonDigital = parsedFilters.nonDigital;
 
     if (loggedInUser?.role === 'Branch' && loggedInUser.campusName) {
         campusSet = new Set([String(loggedInUser.campusName).toLowerCase()]);
@@ -7210,6 +7252,7 @@ function printStudentsList() {
             (campusSet.size === 0 || campusSet.has(String(s.campusName || '').toLowerCase())) &&
             (feeStatusSet.size === 0 || feeStatusSet.has(String(getStudentStatusLabel(s) || '').toLowerCase())) &&
             (!requireZeroFee || isStudentZeroFee(s)) &&
+            (!requireNonDigital || isStudentNonDigital(s)) &&
             !isStudentTerminated(s)
         )
         .sort((a, b) => {
@@ -7225,7 +7268,9 @@ function printStudentsList() {
     const settings = getData(STORAGE_KEY_SETTINGS) || {};
     const schoolName = settings.schoolName || 'Student List';
     const printedAt = new Date().toLocaleString();
-    const modeLabel = printMode === 'polio' ? 'Polio List' : (printMode === 'outer' ? 'Outer Student List' : 'School Student List');
+    const modeLabel = parsedFilters.nonDigital
+        ? 'Non-Digital Students List'
+        : (printMode === 'polio' ? 'Polio List' : (printMode === 'outer' ? 'Outer Student List' : 'School Student List'));
 
     const formatDateSafe = (value) => {
         try {
@@ -7556,7 +7601,7 @@ function populateStudentQuickFilterOptions() {
     const campuses = Array.from(campusMap.values()).sort((a, b) => a.localeCompare(b));
     const classes = Array.from(classMap.values()).sort(compareStudentClassNames);
     const signature = [
-        'filters:v2',
+        'filters:v3',
         `campuses:${campuses.map((name) => String(name || '').toLowerCase()).join('|')}`,
         `classes:${classes.map((name) => String(name || '').toLowerCase()).join('|')}`
     ].join('||');
@@ -7570,6 +7615,7 @@ function populateStudentQuickFilterOptions() {
             <option value="gender:Female">Female Students</option>
             <option value="gender:Other">Other Gender</option>
             <option value="age:below5">Below 5 Years</option>
+            <option value="non-digital">Non-Digital / No Mobile</option>
             <option value="fee:Paid">Fee Paid</option>
             <option value="zero-fee">Zero Fee Students</option>
             <option value="fee:Pending">Fee Pending</option>
@@ -7662,6 +7708,8 @@ function editStudent(s) {
     document.getElementById('classGrade').value = s.classGrade;
     document.getElementById('campusName').value = s.campusName || '';
     document.getElementById('parentPhone').value = s.parentPhone;
+    if (document.getElementById('studentNonDigital')) document.getElementById('studentNonDigital').checked = isStudentNonDigital(s);
+    syncStudentNonDigitalPhoneRequirement();
     if (document.getElementById('studentAddress')) document.getElementById('studentAddress').value = s.address || '';
     if (document.getElementById('guardianName')) document.getElementById('guardianName').value = s.guardianName || '';
     if (document.getElementById('guardianContact')) document.getElementById('guardianContact').value = s.guardianContact || '';

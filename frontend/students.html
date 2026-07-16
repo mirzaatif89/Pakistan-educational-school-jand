@@ -117,6 +117,31 @@
             margin-bottom: 0;
         }
 
+        #studentForm .student-digital-option {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-height: 36px;
+            padding: 0.48rem 0.7rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fffaf0;
+            color: var(--text-primary);
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+
+        #studentForm .student-digital-option input {
+            width: 18px !important;
+            height: 18px !important;
+            min-height: 18px !important;
+            accent-color: var(--primary-color);
+        }
+
+        #studentForm .student-digital-option span {
+            line-height: 1.25;
+        }
+
         .student-toolbar .search-bar,
         .student-filter-group input,
         .student-filter-group select,
@@ -1262,6 +1287,13 @@
                             <input type="tel" id="parentPhone" required>
                         </div>
                         <div class="input-group">
+                            <label>Digital Access</label>
+                            <label class="student-digital-option">
+                                <input type="checkbox" id="studentNonDigital">
+                                <span>Non-Digital / No Mobile</span>
+                            </label>
+                        </div>
+                        <div class="input-group">
                             <label>Address</label>
                             <input type="text" id="studentAddress" placeholder="Student address">
                         </div>
@@ -1452,6 +1484,7 @@
                 <div class="student-view-item"><strong>Gender</strong><span id="viewStudentGender">-</span></div>
                 <div class="student-view-item"><strong>Status</strong><span id="viewStudentStatus">-</span></div>
                 <div class="student-view-item"><strong>Parent Phone</strong><span id="viewStudentPhone">-</span></div>
+                <div class="student-view-item"><strong>Digital Access</strong><span id="viewStudentDigitalAccess">-</span></div>
                 <div class="student-view-item"><strong>Address</strong><span id="viewStudentAddress">-</span></div>
                 <div class="student-view-item"><strong>Guardian Name</strong><span id="viewStudentGuardianName">-</span></div>
                 <div class="student-view-item"><strong>Guardian Contact</strong><span id="viewStudentGuardianContact">-</span></div>
@@ -1465,7 +1498,7 @@
     </div>
 
     <script src="auth.js?v=20260520-sidebar-requested-order"></script>
-    <script src="script.js?v=20260708-zero-fee-student"></script>
+    <script src="script.js?v=20260716-non-digital-students"></script>
     <script>
         window.togglePasswordVisibility = window.togglePasswordVisibility || function (targetId, toggleBtn) {
             const input = document.getElementById(targetId);
