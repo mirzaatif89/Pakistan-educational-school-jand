@@ -895,6 +895,10 @@ svg {
 }
 
 @media (max-width: 1120px) {
+    .top-strip {
+        display: none;
+    }
+
     .main-nav {
         width: calc(100% - 24px);
     }
@@ -979,37 +983,49 @@ svg {
 }
 
 @media (max-width: 760px) {
-    .top-strip {
-        justify-content: flex-start;
-        font-size: 0.78rem;
-    }
-
     .main-nav {
-        min-height: 72px;
+        min-height: 68px;
         width: calc(100% - 24px);
+        gap: 0.75rem;
     }
 
     .brand img {
-        width: 58px;
-        height: 50px;
+        width: 48px;
+        height: 44px;
     }
 
     .brand {
         min-width: 0;
-        max-width: calc(100vw - 92px);
+        max-width: calc(100vw - 84px);
+        gap: 0.55rem;
     }
 
     .brand span {
-        max-width: calc(100vw - 142px);
-        font-size: 0.9rem;
+        max-width: calc(100vw - 136px);
+        font-size: 0.82rem;
         line-height: 1.08;
         overflow-wrap: anywhere;
     }
 
+    .menu-toggle {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+    }
+
+    .nav-links {
+        top: 74px;
+        left: 10px;
+        right: 10px;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+        border-radius: 12px;
+    }
+
     .hero {
-        min-height: 720px;
-        padding: 3.2rem 1rem 5.2rem;
-        align-items: flex-end;
+        min-height: auto;
+        padding: 2.25rem 1rem 3.5rem;
+        align-items: center;
         background-position: center, center, center top;
     }
 
@@ -1020,29 +1036,53 @@ svg {
 
     .hero h1 {
         max-width: 100%;
-        font-size: clamp(2.35rem, 11vw, 3.6rem);
-        line-height: 1;
+        font-size: clamp(2rem, 9vw, 2.85rem);
+        line-height: 1.06;
     }
 
     .hero-lead {
         width: 100%;
         max-width: 100%;
         font-size: 1rem;
+        line-height: 1.55;
+        margin-top: 0.95rem;
     }
 
     .hero-highlights {
         grid-template-columns: 1fr;
+        gap: 0.65rem;
+        margin-top: 1rem;
+    }
+
+    .hero-highlights span {
+        min-height: 0;
+        padding: 0.78rem 0.85rem;
+        border-radius: 12px;
     }
 
     .hero-school-mark {
         width: 100%;
         justify-content: flex-start;
         border-radius: 14px;
+        margin-bottom: 0.85rem;
+        padding: 0.45rem 0.65rem 0.45rem 0.45rem;
+        font-size: 0.82rem;
+    }
+
+    .hero-school-mark img {
+        width: 36px;
+        height: 34px;
+    }
+
+    .eyebrow {
+        font-size: 0.72rem;
+        line-height: 1.35;
+        letter-spacing: 0.04em;
     }
 
     .admission-spotlight {
         width: calc(100% - 24px);
-        margin-top: -3.5rem;
+        margin-top: -1.5rem;
         padding: 0.85rem;
         border-radius: 14px;
     }
@@ -1052,7 +1092,8 @@ svg {
     }
 
     .admission-spotlight img {
-        max-height: none;
+        max-height: 260px;
+        aspect-ratio: 16 / 10;
     }
 
     .hero-actions,
@@ -1079,12 +1120,69 @@ svg {
     .admission-layout > img {
         min-height: 0;
         height: auto;
+        max-height: 320px;
     }
 
     .primary-action,
     .secondary-action,
     .portal-actions a {
         width: 100%;
+    }
+
+    .section-shell {
+        padding: 2.6rem 0;
+    }
+
+    .section-heading {
+        margin-bottom: 1.35rem;
+    }
+
+    .section-heading h2,
+    .learning-copy h2,
+    .portal-section h2,
+    .ceo-message h2,
+    .admission-spotlight h2 {
+        font-size: clamp(1.55rem, 7vw, 2.2rem);
+        line-height: 1.12;
+    }
+
+    .admission-panel {
+        padding: 0.9rem;
+        gap: 0.7rem;
+    }
+
+    .admission-panel span {
+        min-height: 68px;
+        padding: 0.85rem;
+        font-size: 1rem;
+    }
+
+    .inquiry-form {
+        padding: 1rem;
+        gap: 0.85rem;
+    }
+
+    .ceo-message {
+        padding: 1rem;
+    }
+
+    .ceo-message p {
+        font-size: 0.95rem;
+    }
+
+    .contact-grid a {
+        min-height: 64px;
+        overflow-wrap: anywhere;
+    }
+
+    .site-footer {
+        align-items: flex-start;
+        padding: 1.15rem;
+    }
+
+    .site-footer img {
+        width: 58px;
+        height: 48px;
     }
 }
 
@@ -1098,5 +1196,29 @@ svg {
 
     .site-footer {
         justify-content: flex-start;
+    }
+
+    .hero {
+        padding: 1.9rem 0.75rem 3rem;
+    }
+
+    .hero h1 {
+        font-size: clamp(1.82rem, 9.6vw, 2.45rem);
+    }
+
+    .hero-lead {
+        font-size: 0.94rem;
+    }
+
+    .hero-actions {
+        margin-top: 1.25rem;
+    }
+
+    .primary-action,
+    .secondary-action,
+    .portal-actions a,
+    .inquiry-form button {
+        min-height: 44px;
+        padding: 0.7rem 0.85rem;
     }
 }
