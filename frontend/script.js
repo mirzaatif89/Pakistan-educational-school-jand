@@ -1298,7 +1298,7 @@ function getBrandingSettings() {
         schoolTitle: 'PESS JAND',
         session: '',
         phone: '0340-5983088,03015060130,0572622364',
-        email: 'pessabubakar65@gmail.com',
+        email: 'pessjand@gmail.com',
         address: '',
         schoolAddress: '',
         logoDataUrl: ''
