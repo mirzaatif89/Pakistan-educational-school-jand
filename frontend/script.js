@@ -3096,7 +3096,7 @@ function ensureBannersNav() {
     bannersLink.href = toRoutePath('banners.html');
     bannersLink.className = `nav-item${currentPage === 'banners.html' ? ' active' : ''}`;
     bannersLink.dataset.bannersLink = 'true';
-    bannersLink.innerHTML = '<i data-lucide="image"></i><span>Banners</span>';
+    bannersLink.innerHTML = '<i data-lucide="ad"></i><span>Ads</span>';
 
     if (studentsLink) {
         studentsLink.insertAdjacentElement('afterend', bannersLink);
@@ -3215,7 +3215,7 @@ function ensureAdminSidebarCompleteness() {
     const currentPage = getCurrentPageName();
     const completeLinks = [
         { page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
-        { page: 'banners.html', label: 'Banners', icon: 'image' },
+        { page: 'banners.html', label: 'Ads', icon: 'ad' },
         { page: 'classes.html', label: 'Classes', icon: 'school' },
         { page: 'students.html', label: 'Students', icon: 'users' },
         { page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },
@@ -3314,7 +3314,7 @@ function renderAdminSidebarSequence() {
 
     const navItems = [
         { type: 'link', page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
-        { type: 'link', page: 'banners.html', label: 'Banners', icon: 'image' },
+        { type: 'link', page: 'banners.html', label: 'Ads', icon: 'ad' },
         { type: 'link', page: 'classes.html', label: 'Classes', icon: 'school' },
         { type: 'link', page: 'students.html', label: 'Students', icon: 'users' },
         { type: 'link', page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },
@@ -4764,12 +4764,12 @@ async function updateDashboardBannerStats(records) {
         const liveCount = banners.filter((banner) => banner.isActive !== false).length;
         if (countEl) countEl.innerText = liveCount.toString();
         if (detailEl) {
-            detailEl.innerHTML = `<i data-lucide="image" size="16"></i> ${banners.length} total banners`;
+            detailEl.innerHTML = `<i data-lucide="ad" size="16"></i> ${banners.length} total ads`;
             if (window.lucide) window.lucide.createIcons();
         }
     } catch (error) {
         if (countEl) countEl.innerText = '0';
-        if (detailEl) detailEl.innerHTML = '<i data-lucide="image" size="16"></i> Unable to load';
+        if (detailEl) detailEl.innerHTML = '<i data-lucide="ad" size="16"></i> Unable to load';
         if (window.lucide) window.lucide.createIcons();
     }
 }

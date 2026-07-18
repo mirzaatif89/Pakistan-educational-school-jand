@@ -621,6 +621,7 @@ ul {
 .sidebar :is(.lucide-shield, .lucide-shield-check, [data-lucide="shield"], [data-lucide="shield-check"]) { --nav-icon-color: #93c5fd; --nav-icon-bg: rgba(147, 197, 253, 0.16); --nav-icon-active-bg: rgba(147, 197, 253, 0.24); }
 .sidebar :is(.lucide-library, [data-lucide="library"]) { --nav-icon-color: #f472b6; --nav-icon-bg: rgba(244, 114, 182, 0.16); --nav-icon-active-bg: rgba(244, 114, 182, 0.24); }
 .sidebar :is(.lucide-building-2, .lucide-bus, .lucide-coffee, [data-lucide="building-2"], [data-lucide="bus"], [data-lucide="coffee"]) { --nav-icon-color: #fdba74; --nav-icon-bg: rgba(253, 186, 116, 0.17); --nav-icon-active-bg: rgba(253, 186, 116, 0.25); }
+.sidebar :is(.lucide-ad, [data-lucide="ad"]) { --nav-icon-color: #facc15; --nav-icon-bg: rgba(250, 204, 21, 0.17); --nav-icon-active-bg: rgba(250, 204, 21, 0.25); }
 .sidebar :is(.lucide-award, [data-lucide="award"]) { --nav-icon-color: #fde047; --nav-icon-bg: rgba(253, 224, 71, 0.17); --nav-icon-active-bg: rgba(253, 224, 71, 0.25); }
 .sidebar :is(.lucide-info, [data-lucide="info"]) { --nav-icon-color: #67e8f9; --nav-icon-bg: rgba(103, 232, 249, 0.16); --nav-icon-active-bg: rgba(103, 232, 249, 0.24); }
 .sidebar :is(.lucide-log-out, [data-lucide="log-out"]) { --nav-icon-color: #f87171; --nav-icon-bg: rgba(248, 113, 113, 0.16); --nav-icon-active-bg: rgba(248, 113, 113, 0.24); }

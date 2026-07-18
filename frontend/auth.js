@@ -123,7 +123,7 @@
         'student_courses.html': { moduleKey: 'student_scheduling', defaultHome: 'dashboard.html', label: 'Class Course', icon: 'library' },
         'quiz_uploading.html': { moduleKey: 'student_scheduling', defaultHome: 'dashboard.html', label: 'Quiz Uploading', icon: 'circle-help' },
         'lecture_uploading.html': { moduleKey: 'student_scheduling', defaultHome: 'dashboard.html', label: 'Lecture Uploading', icon: 'presentation' },
-        'banners.html': { moduleKey: 'banners', defaultHome: 'dashboard.html', label: 'Banners', icon: 'image' },
+        'banners.html': { moduleKey: 'banners', defaultHome: 'dashboard.html', label: 'Ads', icon: 'ad' },
         'online_admissions.html': { moduleKey: 'online_admissions', defaultHome: 'dashboard.html', label: 'Online Admissions', icon: 'clipboard-list' },
         'teachers.html': { moduleKey: 'teachers', defaultHome: 'dashboard.html', label: 'Teachers', icon: 'book-open' },
         'stuck_off.html': { moduleKey: 'students', defaultHome: 'dashboard.html', label: 'Stuck Off', icon: 'user-x' },
@@ -717,7 +717,7 @@
 
             const navItems = [
                 { type: 'link', page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
-                { type: 'link', page: 'banners.html', label: 'Banners', icon: 'image' },
+                { type: 'link', page: 'banners.html', label: 'Ads', icon: 'ad' },
                 { type: 'link', page: 'online_admissions.html', label: 'Online Admissions', icon: 'clipboard-list' },
                 { type: 'link', page: 'classes.html', label: 'Classes', icon: 'school' },
                 { type: 'link', page: 'students.html', label: 'Students', icon: 'users' },
