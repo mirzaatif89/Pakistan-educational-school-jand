@@ -3,8 +3,10 @@ const { getDb } = require('../_lib/db');
 
 function formatBanner(record) {
     const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
+    const placement = String(raw.placement || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
     return {
         ...raw,
+        placement,
         displayOrder: Number(raw.displayOrder || 0),
         isActive: raw.isActive !== false
     };

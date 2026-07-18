@@ -8,6 +8,7 @@ const state = {
 const WEBSITE_SCHOOL_ADDRESS = 'Main Kohat Road Jand';
 let activeBannerIndex = 0;
 let bannerTimer = null;
+const desktopBannerMedia = window.matchMedia('(min-width: 768px)');
 
 function text(value, fallback = '-') {
     const clean = String(value ?? '').trim();
@@ -57,8 +58,18 @@ function renderBanners() {
     const dots = document.getElementById('websiteBannerDots');
     if (!section || !track || !dots) return;
 
+    if (!desktopBannerMedia.matches) {
+        section.hidden = true;
+        track.innerHTML = '';
+        dots.innerHTML = '';
+        if (bannerTimer) window.clearInterval(bannerTimer);
+        bannerTimer = null;
+        return;
+    }
+
     const activeBanners = state.banners
         .filter((banner) => banner && banner.isActive !== false && text(banner.imageUrl, ''))
+        .filter((banner) => String(banner.placement || '').trim().toLowerCase() === 'banner')
         .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
 
     if (!activeBanners.length) {
@@ -217,3 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadWebsiteData();
     if (window.lucide) window.lucide.createIcons();
 });
+
+if (desktopBannerMedia.addEventListener) {
+    desktopBannerMedia.addEventListener('change', renderBanners);
+} else if (desktopBannerMedia.addListener) {
+    desktopBannerMedia.addListener(renderBanners);
+}

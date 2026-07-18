@@ -64,6 +64,7 @@
         }
 
         .banner-field input,
+        .banner-field select,
         .banner-field textarea {
             width: 100%;
             border: 1px solid var(--border-color);
@@ -75,6 +76,7 @@
         }
 
         .banner-field input:focus,
+        .banner-field select:focus,
         .banner-field textarea:focus {
             outline: none;
             border-color: var(--primary-color);
@@ -327,8 +329,8 @@
         <main class="main-content">
             <header class="header">
                 <div>
-                    <h1>Ads</h1>
-                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Manage website and portal ad images.</p>
+                    <h1 id="bannerPageTitle">Ads</h1>
+                    <p id="bannerPageSubtitle" style="color: var(--text-secondary); margin-top: 0.3rem;">Manage mobile app ad images.</p>
                 </div>
             </header>
 
@@ -336,19 +338,24 @@
                 <div class="banner-panel">
                     <div class="banner-panel-head">
                         <div>
-                            <h2>Ad Details</h2>
-                            <p>Upload a wide image and control its display order.</p>
+                            <h2 id="bannerFormTitle">Ad Details</h2>
+                            <p id="bannerFormSubtitle">Upload an image, click URL, and display order.</p>
                         </div>
                     </div>
                     <form id="bannerForm" class="banner-form">
                         <input type="hidden" id="bannerId">
                         <input type="hidden" id="bannerExistingImage">
+                        <input type="hidden" id="bannerPlacement" value="ad">
                         <div class="banner-field">
                             <label for="bannerTitle">Title</label>
                             <input type="text" id="bannerTitle" placeholder="Admissions Open">
                         </div>
                         <div class="banner-field">
-                            <label>Upload Ad</label>
+                            <label for="bannerLinkUrl">Click Page URL</label>
+                            <input type="text" id="bannerLinkUrl" placeholder="/ad-page or https://example.com">
+                        </div>
+                        <div class="banner-field">
+                            <label id="bannerUploadLabel">Upload Ad</label>
                             <div class="banner-upload-box">
                                 <div class="banner-preview" id="bannerImagePreview">No image selected</div>
                                 <label class="banner-file-action" for="bannerImageFile">
@@ -377,8 +384,8 @@
                 <div class="banner-panel">
                     <div class="banner-panel-head">
                         <div>
-                            <h2>Saved Ads</h2>
-                            <p>Active ads appear on the website and portal.</p>
+                            <h2 id="bannerListTitle">Saved Ads</h2>
+                            <p id="bannerListSubtitle">Active ads appear in the mobile app/student portal.</p>
                         </div>
                     </div>
                     <div id="bannerList" class="banner-list"></div>
@@ -391,6 +398,41 @@
     <script src="script.js?v=20260520-sidebar-classes-restore"></script>
     <script>
         let bannerRecords = [];
+        let currentPlacement = window.location.hash === '#ads' ? 'ad' : 'banner';
+
+        function getPlacementLabel(placement = currentPlacement) {
+            return placement === 'banner' ? 'Banner' : 'Ad';
+        }
+
+        function normalizePlacement(value) {
+            return String(value || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
+        }
+
+        function getVisibleBannerRecords() {
+            return bannerRecords.filter((banner) => normalizePlacement(banner.placement) === currentPlacement);
+        }
+
+        function syncBannerMode() {
+            currentPlacement = window.location.hash === '#ads' ? 'ad' : 'banner';
+            const label = getPlacementLabel();
+            const plural = currentPlacement === 'banner' ? 'Banners' : 'Ads';
+            document.getElementById('bannerPlacement').value = currentPlacement;
+            document.getElementById('bannerPageTitle').textContent = plural;
+            document.getElementById('bannerPageSubtitle').textContent = currentPlacement === 'banner'
+                ? 'Manage desktop and laptop website banners.'
+                : 'Manage mobile app ad images.';
+            document.getElementById('bannerFormTitle').textContent = `${label} Details`;
+            document.getElementById('bannerFormSubtitle').textContent = currentPlacement === 'banner'
+                ? 'Upload a website banner, click URL, and display order.'
+                : 'Upload a mobile app ad, click URL, and display order.';
+            document.getElementById('bannerUploadLabel').textContent = `Upload ${label}`;
+            document.getElementById('bannerListTitle').textContent = `Saved ${plural}`;
+            document.getElementById('bannerListSubtitle').textContent = currentPlacement === 'banner'
+                ? 'Active banners appear on desktop and laptop website views.'
+                : 'Active ads appear in the mobile app/student portal.';
+            resetBannerForm();
+            renderBanners();
+        }
 
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -414,7 +456,7 @@
         }
 
         function getNextBannerOrder() {
-            const maxOrder = bannerRecords.reduce((max, banner) => {
+            const maxOrder = getVisibleBannerRecords().reduce((max, banner) => {
                 const order = Number(banner.displayOrder || 0);
                 return Number.isFinite(order) && order > max ? order : max;
             }, 0);
@@ -435,37 +477,42 @@
             document.getElementById('bannerId').value = '';
             document.getElementById('bannerExistingImage').value = '';
             document.getElementById('bannerForm').reset();
+            document.getElementById('bannerPlacement').value = currentPlacement;
             document.getElementById('bannerDisplayOrder').value = String(getNextBannerOrder());
             document.getElementById('bannerIsActive').checked = true;
-            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Save Ad';
+            document.getElementById('bannerSaveBtn').innerHTML = `<i data-lucide="save"></i> Save ${getPlacementLabel()}`;
             setBannerPreview('');
             if (window.lucide) window.lucide.createIcons();
         }
 
         function renderBanners() {
             const list = document.getElementById('bannerList');
-            if (!bannerRecords.length) {
+            const visibleRecords = getVisibleBannerRecords();
+            const label = getPlacementLabel().toLowerCase();
+            if (!visibleRecords.length) {
                 list.innerHTML = `
                     <div class="banner-empty">
                         <i data-lucide="image"></i>
-                        <strong>No ads saved yet</strong>
-                        <span>Upload an ad image and save it to show it here.</span>
+                        <strong>No ${label}s saved yet</strong>
+                        <span>Upload a ${label} image and save it to show it here.</span>
                     </div>
                 `;
                 if (window.lucide) window.lucide.createIcons();
                 return;
             }
 
-            const sortedBanners = [...bannerRecords].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+            const sortedBanners = [...visibleRecords].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
             list.innerHTML = sortedBanners.map((banner) => `
                 <article class="banner-card">
                     <img class="banner-thumb" src="${escapeHtml(banner.imageUrl)}" alt="${escapeHtml(banner.title)}">
                     <div class="banner-meta">
                         <div class="banner-pill-row">
                             <span class="banner-pill${banner.isActive ? '' : ' inactive'}">${banner.isActive ? 'Active' : 'Inactive'}</span>
+                            <span class="banner-pill">${escapeHtml(getPlacementLabel(normalizePlacement(banner.placement)))}</span>
                             <span class="banner-pill order">Order ${Number(banner.displayOrder || 0)}</span>
                         </div>
                         <h3>${escapeHtml(banner.title)}</h3>
+                        ${banner.linkUrl ? `<p>${escapeHtml(banner.linkUrl)}</p>` : ''}
                         <div class="banner-actions">
                             <button class="btn btn-outline" type="button" onclick="toggleBannerStatus('${escapeHtml(banner.id)}')">
                                 <i data-lucide="${banner.isActive ? 'eye-off' : 'eye'}"></i> ${banner.isActive ? 'Deactivate' : 'Activate'}
@@ -523,11 +570,14 @@
             if (!banner) return;
             document.getElementById('bannerId').value = banner.id;
             document.getElementById('bannerTitle').value = banner.title || '';
+            document.getElementById('bannerLinkUrl').value = banner.linkUrl || '';
+            currentPlacement = normalizePlacement(banner.placement);
+            document.getElementById('bannerPlacement').value = currentPlacement;
             document.getElementById('bannerExistingImage').value = banner.imageUrl || '';
             document.getElementById('bannerImageFile').value = '';
             document.getElementById('bannerDisplayOrder').value = Number(banner.displayOrder || 1);
             document.getElementById('bannerIsActive').checked = banner.isActive !== false;
-            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Update Ad';
+            document.getElementById('bannerSaveBtn').innerHTML = `<i data-lucide="save"></i> Update ${getPlacementLabel()}`;
             setBannerPreview(banner.imageUrl || '');
             if (window.lucide) window.lucide.createIcons();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -593,7 +643,8 @@
                 title: document.getElementById('bannerTitle').value.trim(),
                 subtitle: '',
                 imageUrl,
-                linkUrl: '',
+                linkUrl: document.getElementById('bannerLinkUrl').value.trim(),
+                placement: document.getElementById('bannerPlacement').value || currentPlacement,
                 displayOrder: Number(document.getElementById('bannerDisplayOrder').value || getNextBannerOrder()),
                 isActive: document.getElementById('bannerIsActive').checked
             };
@@ -629,6 +680,8 @@
             });
         }
 
+        window.addEventListener('hashchange', syncBannerMode);
+        syncBannerMode();
         loadBanners();
     </script>
 </body>

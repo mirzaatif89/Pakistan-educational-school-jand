@@ -1551,6 +1551,84 @@ app.delete('/api/special-notices/:id', async (req, res) => {
     }
 });
 
+function normalizeBannerPlacement(value) {
+    return String(value || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
+}
+
+function formatBanner(record) {
+    const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
+    return {
+        ...raw,
+        placement: normalizeBannerPlacement(raw?.placement),
+        displayOrder: Number(raw?.displayOrder || 0),
+        isActive: raw?.isActive !== false
+    };
+}
+
+app.get('/api/banners', async (_req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const records = await sequelize.models.Banner.findAll({
+            order: [['displayOrder', 'ASC'], ['updatedAt', 'DESC']]
+        });
+        res.json({ success: true, banners: records.map(formatBanner) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/banners', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const payload = req.body || {};
+        const title = String(payload.title || '').trim();
+        const imageUrl = String(payload.imageUrl || '').trim();
+
+        if (!title || !imageUrl) {
+            return res.status(400).json({ success: false, message: 'Banner title and image are required.' });
+        }
+
+        const banner = {
+            id: payload.id || `BANNER-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title,
+            subtitle: String(payload.subtitle || '').trim(),
+            imageUrl,
+            linkUrl: String(payload.linkUrl || '').trim(),
+            placement: normalizeBannerPlacement(payload.placement),
+            displayOrder: Number(payload.displayOrder || 0),
+            isActive: payload.isActive !== false
+        };
+
+        await sequelize.models.Banner.upsert(banner);
+        const records = await sequelize.models.Banner.findAll({
+            order: [['displayOrder', 'ASC'], ['updatedAt', 'DESC']]
+        });
+        const banners = records.map(formatBanner);
+        io.emit('banners_update', banners);
+        res.json({ success: true, banner: formatBanner(banner), banners });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/banners/:id', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const deletedCount = await sequelize.models.Banner.destroy({ where: { id: req.params.id } });
+        const records = await sequelize.models.Banner.findAll({
+            order: [['displayOrder', 'ASC'], ['updatedAt', 'DESC']]
+        });
+        const banners = records.map(formatBanner);
+        io.emit('banners_update', banners);
+        res.json({ success: true, deleted: deletedCount > 0, banners });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.post('/api/reset-data', authenticateToken, async (req, res) => {
     if (req.user.role !== 'Admin') {
         return res.status(403).json({ success: false, message: 'Admin access required.' });
@@ -3128,6 +3206,19 @@ function defineSpecialNoticeModel(db) {
     });
 }
 
+function defineBannerModel(db) {
+    return db.define('Banner', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        title: { type: DataTypes.STRING, allowNull: false },
+        subtitle: { type: DataTypes.STRING, allowNull: true },
+        imageUrl: { type: DataTypes.TEXT('long'), allowNull: false },
+        linkUrl: { type: DataTypes.STRING, allowNull: true },
+        placement: { type: DataTypes.STRING, defaultValue: 'ad' },
+        displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+        isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
+    });
+}
+
 function defineMessageModel(db) {
     return db.define('Message', {
         id: { type: DataTypes.STRING, primaryKey: true },
@@ -3487,6 +3578,11 @@ async function ensureLegacySchema() {
         senderName: { type: DataTypes.STRING, allowNull: true },
         createdAtLabel: { type: DataTypes.STRING, allowNull: true }
     });
+
+    await ensureTableColumns('Banners', {
+        placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'ad' },
+        linkUrl: { type: DataTypes.STRING, allowNull: true }
+    });
 }
 
 async function startServer() {
@@ -3521,6 +3617,7 @@ async function startServer() {
         defineStudentAttendanceModel(sequelize);
         defineTeacherAttendanceModel(sequelize);
         defineSpecialNoticeModel(sequelize);
+        defineBannerModel(sequelize);
         defineMessageModel(sequelize);
 
         // Avoid Sequelize's repeated ALTER-based index churn on MySQL.
