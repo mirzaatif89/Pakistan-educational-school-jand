@@ -3074,7 +3074,7 @@ function ensureBannersNav() {
     const navLinks = document.querySelector('.nav-links');
     const loggedInUser = getLoggedInUser();
     if (!navLinks || !loggedInUser) return;
-    if (navLinks.querySelector('[data-banners-link]')) return;
+    if (navLinks.querySelector('[data-banners-link]') && navLinks.querySelector('[data-ads-link]')) return;
 
     const permissions = (() => {
         try {
@@ -3094,14 +3094,22 @@ function ensureBannersNav() {
         .find((link) => normalizeClientPageName(link.getAttribute('href') || '') === 'students.html');
     const bannersLink = document.createElement('a');
     bannersLink.href = toRoutePath('banners.html');
-    bannersLink.className = `nav-item${currentPage === 'banners.html' ? ' active' : ''}`;
+    bannersLink.className = `nav-item${currentPage === 'banners.html' && window.location.hash !== '#ads' ? ' active' : ''}`;
     bannersLink.dataset.bannersLink = 'true';
-    bannersLink.innerHTML = '<i data-lucide="ad"></i><span>Ads</span>';
+    bannersLink.innerHTML = '<i data-lucide="image"></i><span>Banners</span>';
+
+    const adsLink = document.createElement('a');
+    adsLink.href = `${toRoutePath('banners.html')}#ads`;
+    adsLink.className = `nav-item${currentPage === 'banners.html' && window.location.hash === '#ads' ? ' active' : ''}`;
+    adsLink.dataset.adsLink = 'true';
+    adsLink.innerHTML = '<i data-lucide="ad"></i><span>Ads</span>';
 
     if (studentsLink) {
         studentsLink.insertAdjacentElement('afterend', bannersLink);
+        bannersLink.insertAdjacentElement('afterend', adsLink);
     } else {
         navLinks.appendChild(bannersLink);
+        navLinks.appendChild(adsLink);
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -3215,7 +3223,8 @@ function ensureAdminSidebarCompleteness() {
     const currentPage = getCurrentPageName();
     const completeLinks = [
         { page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
-        { page: 'banners.html', label: 'Ads', icon: 'ad' },
+        { page: 'banners.html', label: 'Banners', icon: 'image' },
+        { page: 'banners.html', hash: '#ads', label: 'Ads', icon: 'ad' },
         { page: 'classes.html', label: 'Classes', icon: 'school' },
         { page: 'students.html', label: 'Students', icon: 'users' },
         { page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },
@@ -3248,18 +3257,24 @@ function ensureAdminSidebarCompleteness() {
         { page: 'aboutme.html', label: 'About', icon: 'info' }
     ];
 
+    const navLinkKey = (href = '') => {
+        const raw = String(href || '');
+        const hash = raw.includes('#') ? `#${raw.split('#').pop()}` : '';
+        return `${normalizeClientPageName(raw)}${hash}`;
+    };
+    const itemKey = (item) => `${item.page}${item.hash || ''}`;
     const existingPages = () => new Set(Array.from(navLinks.querySelectorAll('a[href]'))
-        .map((link) => normalizeClientPageName(link.getAttribute('href') || '')));
+        .map((link) => navLinkKey(link.getAttribute('href') || '')));
 
     const logoutLink = Array.from(navLinks.querySelectorAll('a[href="#"]'))
         .find((link) => /logout/i.test(link.textContent || ''));
     let existing = existingPages();
 
     completeLinks.forEach((item) => {
-        if (existing.has(item.page)) return;
+        if (existing.has(itemKey(item))) return;
         const link = document.createElement('a');
-        link.href = toRoutePath(item.page);
-        link.className = `nav-item${currentPage === item.page ? ' active' : ''}`;
+        link.href = `${toRoutePath(item.page)}${item.hash || ''}`;
+        link.className = `nav-item${currentPage === item.page && (!item.hash || window.location.hash === item.hash) ? ' active' : ''}`;
         link.dataset.adminCompleteLink = 'true';
         link.innerHTML = `<i data-lucide="${item.icon}"></i><span>${item.label}</span>`;
         if (logoutLink) {
@@ -3314,7 +3329,8 @@ function renderAdminSidebarSequence() {
 
     const navItems = [
         { type: 'link', page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
-        { type: 'link', page: 'banners.html', label: 'Ads', icon: 'ad' },
+        { type: 'link', page: 'banners.html', label: 'Banners', icon: 'image' },
+        { type: 'link', page: 'banners.html', hash: '#ads', label: 'Ads', icon: 'ad' },
         { type: 'link', page: 'classes.html', label: 'Classes', icon: 'school' },
         { type: 'link', page: 'students.html', label: 'Students', icon: 'users' },
         { type: 'link', page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },
