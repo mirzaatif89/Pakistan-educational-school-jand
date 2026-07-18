@@ -3068,7 +3068,7 @@
 
         async function loadStudentPortalBanners() {
             try {
-                const response = await fetch(`${API_BASE_URL}/banners`);
+                const response = await fetch(`${API_BASE_URL}/banners?placement=ad`);
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data?.success === false) {
                     throw new Error(data?.message || 'Banners could not be loaded.');

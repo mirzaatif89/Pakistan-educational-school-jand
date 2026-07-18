@@ -5,26 +5,26 @@ const { authenticateToken } = require('../_lib/services');
 module.exports = createHandler({
     GET: async ({ req, res, db }) => {
         const user = authenticateToken(req);
-        if (user.role !== 'Student') {
-            sendJson(res, 403, { success: false, message: 'Student access only.' });
+        if (user.role !== 'Teacher') {
+            sendJson(res, 403, { success: false, message: 'Teacher access only.' });
             return;
         }
 
-        const student = await db.models.Student.findByPk(user.id, {
+        const teacher = await db.models.Teacher.findByPk(user.id, {
             attributes: { exclude: ['password'] }
         });
 
-        if (!student) {
-            sendJson(res, 404, { success: false, message: 'Student record not found.' });
+        if (!teacher) {
+            sendJson(res, 404, { success: false, message: 'Teacher record not found.' });
             return;
         }
 
-        sendJson(res, 200, student);
+        sendJson(res, 200, teacher);
     },
     POST: async ({ req, res, db, body }) => {
         const user = authenticateToken(req);
-        if (user.role !== 'Student') {
-            sendJson(res, 403, { success: false, message: 'Student access only.' });
+        if (user.role !== 'Teacher') {
+            sendJson(res, 403, { success: false, message: 'Teacher access only.' });
             return;
         }
 
@@ -34,16 +34,16 @@ module.exports = createHandler({
             return;
         }
 
-        const student = await db.models.Student.findByPk(user.id);
-        if (!student) {
-            sendJson(res, 404, { success: false, message: 'Student record not found.' });
+        const teacher = await db.models.Teacher.findByPk(user.id);
+        if (!teacher) {
+            sendJson(res, 404, { success: false, message: 'Teacher record not found.' });
             return;
         }
 
-        await student.update({ profileImage });
-        const refreshed = await db.models.Student.findByPk(user.id, {
+        await teacher.update({ profileImage });
+        const refreshed = await db.models.Teacher.findByPk(user.id, {
             attributes: { exclude: ['password'] }
         });
-        sendJson(res, 200, { success: true, student: refreshed });
+        sendJson(res, 200, { success: true, teacher: refreshed });
     }
 }, { getDb });

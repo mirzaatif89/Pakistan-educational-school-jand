@@ -1569,7 +1569,10 @@ app.get('/api/banners', async (_req, res) => {
     if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
 
     try {
+        const placement = normalizeBannerPlacement(_req.query?.placement);
+        const where = _req.query?.placement ? { placement } : undefined;
         const records = await sequelize.models.Banner.findAll({
+            where,
             order: [['displayOrder', 'ASC'], ['updatedAt', 'DESC']]
         });
         res.json({ success: true, banners: records.map(formatBanner) });
@@ -1779,6 +1782,264 @@ app.get('/api/student/me', authenticateToken, async (req, res) => {
         return res.json(student);
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/student/me', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Student') {
+        return res.status(403).json({ success: false, message: 'Student access only.' });
+    }
+
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const profileImage = String(req.body?.profileImage || '').trim();
+        if (!profileImage || !profileImage.startsWith('data:image/')) {
+            return res.status(400).json({ success: false, message: 'A profile image is required.' });
+        }
+
+        const student = await sequelize.models.Student.findByPk(req.user.id);
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Student record not found.' });
+        }
+
+        await student.update({ profileImage });
+        const refreshed = await sequelize.models.Student.findByPk(req.user.id, {
+            attributes: { exclude: ['password'] }
+        });
+        return res.json({ success: true, student: refreshed });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/teacher/me', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Teacher') {
+        return res.status(403).json({ success: false, message: 'Teacher access only.' });
+    }
+
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const teacher = await sequelize.models.Teacher.findByPk(req.user.id, {
+            attributes: { exclude: ['password'] }
+        });
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, message: 'Teacher record not found.' });
+        }
+
+        return res.json(teacher);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/teacher/me', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Teacher') {
+        return res.status(403).json({ success: false, message: 'Teacher access only.' });
+    }
+
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const profileImage = String(req.body?.profileImage || '').trim();
+        if (!profileImage || !profileImage.startsWith('data:image/')) {
+            return res.status(400).json({ success: false, message: 'A profile image is required.' });
+        }
+
+        const teacher = await sequelize.models.Teacher.findByPk(req.user.id);
+        if (!teacher) {
+            return res.status(404).json({ success: false, message: 'Teacher record not found.' });
+        }
+
+        await teacher.update({ profileImage });
+        const refreshed = await sequelize.models.Teacher.findByPk(req.user.id, {
+            attributes: { exclude: ['password'] }
+        });
+        return res.json({ success: true, teacher: refreshed });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+function formatLeaveRequest(record) {
+    const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
+    return {
+        ...raw,
+        applicantRole: String(raw?.applicantRole || '').trim(),
+        applicantId: String(raw?.applicantId || '').trim(),
+        applicantName: String(raw?.applicantName || '').trim(),
+        status: String(raw?.status || '').trim() || 'Pending'
+    };
+}
+
+function canReviewLeaveRequests(user = {}) {
+    return !['Student', 'Teacher'].includes(String(user.role || '').trim());
+}
+
+function getOwnLeaveWhere(user = {}) {
+    if (user.role === 'Student') return { applicantRole: 'Student', applicantId: String(user.id || '').trim() };
+    if (user.role === 'Teacher') return { applicantRole: 'Teacher', applicantId: String(user.id || '').trim() };
+    return {};
+}
+
+async function resolveLeaveApplicant(user) {
+    if (user.role === 'Student') {
+        const student = await sequelize.models.Student.findByPk(user.id);
+        if (!student) {
+            const error = new Error('Student record not found.');
+            error.statusCode = 404;
+            throw error;
+        }
+        return {
+            applicantRole: 'Student',
+            applicantId: String(student.id || '').trim(),
+            applicantName: student.fullName || user.fullName || 'Student',
+            email: student.email || user.email || '',
+            studentCode: student.studentCode || '',
+            rollNo: student.rollNo || '',
+            classGrade: student.classGrade || '',
+            campusName: student.campusName || user.campusName || ''
+        };
+    }
+
+    if (user.role === 'Teacher') {
+        const teacher = await sequelize.models.Teacher.findByPk(user.id);
+        if (!teacher) {
+            const error = new Error('Teacher record not found.');
+            error.statusCode = 404;
+            throw error;
+        }
+        return {
+            applicantRole: 'Teacher',
+            applicantId: String(teacher.id || '').trim(),
+            applicantName: teacher.fullName || user.fullName || 'Teacher',
+            email: teacher.email || user.email || '',
+            subject: teacher.subject || '',
+            campusName: teacher.campusName || user.campusName || ''
+        };
+    }
+
+    const error = new Error('Student or teacher portal access required.');
+    error.statusCode = 403;
+    throw error;
+}
+
+app.get('/api/leave-requests', authenticateToken, async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const role = String(req.query?.role || '').trim();
+        const where = getOwnLeaveWhere(req.user);
+        if (canReviewLeaveRequests(req.user) && ['Student', 'Teacher'].includes(role)) {
+            where.applicantRole = role;
+        }
+
+        const records = await sequelize.models.LeaveRequest.findAll({
+            where,
+            order: [['createdAt', 'DESC']]
+        });
+        return res.json({ success: true, leaveRequests: records.map(formatLeaveRequest) });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/leave-requests', authenticateToken, async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const fromDate = String(req.body?.fromDate || '').trim();
+        const toDate = String(req.body?.toDate || '').trim();
+        const reason = String(req.body?.reason || '').trim();
+        if (!fromDate || !toDate || !reason) {
+            return res.status(400).json({ success: false, message: 'Leave dates and reason are required.' });
+        }
+        if (toDate < fromDate) {
+            return res.status(400).json({ success: false, message: 'Leave end date cannot be before the start date.' });
+        }
+
+        const applicant = await resolveLeaveApplicant(req.user);
+        const id = String(req.body?.id || '').trim() || `${applicant.applicantRole === 'Teacher' ? 'TLEAVE' : 'LEAVE'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const existing = await sequelize.models.LeaveRequest.findByPk(id);
+        if (existing && (existing.applicantRole !== applicant.applicantRole || String(existing.applicantId) !== applicant.applicantId)) {
+            return res.status(403).json({ success: false, message: 'This leave request belongs to another portal user.' });
+        }
+        if (existing && String(existing.status || 'Pending') !== 'Pending') {
+            return res.status(409).json({ success: false, message: 'Reviewed leave requests cannot be edited.' });
+        }
+
+        await sequelize.models.LeaveRequest.upsert({
+            id,
+            ...applicant,
+            fromDate,
+            toDate,
+            reason,
+            fileName: String(req.body?.fileName || '').trim(),
+            fileType: String(req.body?.fileType || '').trim(),
+            fileData: req.body?.fileData ? String(req.body.fileData) : '',
+            status: 'Pending',
+            reviewReason: null,
+            reviewedAt: null,
+            reviewEmailSentAt: null
+        });
+        const leaveRequest = await sequelize.models.LeaveRequest.findByPk(id);
+        return res.json({ success: true, leaveRequest: formatLeaveRequest(leaveRequest) });
+    } catch (err) {
+        return res.status(err.statusCode || 500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/leave-requests/:id', authenticateToken, async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+    if (!canReviewLeaveRequests(req.user)) {
+        return res.status(403).json({ success: false, message: 'Admin or staff access required.' });
+    }
+
+    try {
+        const status = String(req.body?.status || '').trim();
+        const reviewReason = String(req.body?.reviewReason || '').trim();
+        if (!['Approved', 'Rejected'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Review status must be Approved or Rejected.' });
+        }
+        if (status === 'Rejected' && !reviewReason) {
+            return res.status(400).json({ success: false, message: 'Rejection reason is required.' });
+        }
+
+        const record = await sequelize.models.LeaveRequest.findByPk(req.params.id);
+        if (!record) return res.status(404).json({ success: false, message: 'Leave request not found.' });
+
+        await record.update({
+            status,
+            reviewReason: status === 'Rejected' ? reviewReason : '',
+            reviewedAt: new Date().toISOString()
+        });
+        return res.json({ success: true, leaveRequest: formatLeaveRequest(record) });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/leave-requests/:id', authenticateToken, async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const record = await sequelize.models.LeaveRequest.findByPk(req.params.id);
+        if (!record) return res.json({ success: true, deleted: false });
+
+        const ownPendingRequest = ['Student', 'Teacher'].includes(req.user.role)
+            && record.applicantRole === req.user.role
+            && String(record.applicantId) === String(req.user.id)
+            && String(record.status || 'Pending') === 'Pending';
+        if (!canReviewLeaveRequests(req.user) && !ownPendingRequest) {
+            return res.status(403).json({ success: false, message: 'Only pending portal leave requests can be deleted.' });
+        }
+
+        await record.destroy();
+        return res.json({ success: true, deleted: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -3194,6 +3455,31 @@ function defineTeacherAttendanceModel(db) {
     });
 }
 
+function defineLeaveRequestModel(db) {
+    return db.define('LeaveRequest', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        applicantRole: { type: DataTypes.STRING, allowNull: false },
+        applicantId: { type: DataTypes.STRING, allowNull: false },
+        applicantName: DataTypes.STRING,
+        email: DataTypes.STRING,
+        studentCode: DataTypes.STRING,
+        rollNo: DataTypes.STRING,
+        classGrade: DataTypes.STRING,
+        subject: DataTypes.STRING,
+        campusName: DataTypes.STRING,
+        fromDate: { type: DataTypes.STRING, allowNull: false },
+        toDate: { type: DataTypes.STRING, allowNull: false },
+        reason: { type: DataTypes.TEXT, allowNull: false },
+        fileName: DataTypes.STRING,
+        fileType: DataTypes.STRING,
+        fileData: DataTypes.TEXT('long'),
+        status: { type: DataTypes.STRING, defaultValue: 'Pending' },
+        reviewReason: DataTypes.TEXT,
+        reviewedAt: DataTypes.STRING,
+        reviewEmailSentAt: DataTypes.STRING
+    });
+}
+
 function defineSpecialNoticeModel(db) {
     return db.define('SpecialNotice', {
         id: { type: DataTypes.STRING, primaryKey: true },
@@ -3583,6 +3869,22 @@ async function ensureLegacySchema() {
         placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'ad' },
         linkUrl: { type: DataTypes.STRING, allowNull: true }
     });
+
+    await ensureTableColumns('LeaveRequests', {
+        applicantName: { type: DataTypes.STRING, allowNull: true },
+        email: { type: DataTypes.STRING, allowNull: true },
+        studentCode: { type: DataTypes.STRING, allowNull: true },
+        rollNo: { type: DataTypes.STRING, allowNull: true },
+        classGrade: { type: DataTypes.STRING, allowNull: true },
+        subject: { type: DataTypes.STRING, allowNull: true },
+        campusName: { type: DataTypes.STRING, allowNull: true },
+        fileName: { type: DataTypes.STRING, allowNull: true },
+        fileType: { type: DataTypes.STRING, allowNull: true },
+        fileData: { type: DataTypes.TEXT('long'), allowNull: true },
+        reviewReason: { type: DataTypes.TEXT, allowNull: true },
+        reviewedAt: { type: DataTypes.STRING, allowNull: true },
+        reviewEmailSentAt: { type: DataTypes.STRING, allowNull: true }
+    });
 }
 
 async function startServer() {
@@ -3616,6 +3918,7 @@ async function startServer() {
         defineClassFeeModel(sequelize);
         defineStudentAttendanceModel(sequelize);
         defineTeacherAttendanceModel(sequelize);
+        defineLeaveRequestModel(sequelize);
         defineSpecialNoticeModel(sequelize);
         defineBannerModel(sequelize);
         defineMessageModel(sequelize);

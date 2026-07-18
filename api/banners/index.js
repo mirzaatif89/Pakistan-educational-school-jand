@@ -1,14 +1,17 @@
 const { createHandler, sendJson } = require('../_lib/http');
 const { getDb } = require('../_lib/db');
 
+function normalizePlacement(value) {
+    return String(value || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
+}
+
 function formatBanner(record) {
     const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
-    const placement = String(raw.placement || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
     return {
         ...raw,
-        placement,
-        displayOrder: Number(raw.displayOrder || 0),
-        isActive: raw.isActive !== false
+        placement: normalizePlacement(raw?.placement),
+        displayOrder: Number(raw?.displayOrder || 0),
+        isActive: raw?.isActive !== false
     };
 }
 
@@ -27,9 +30,8 @@ module.exports = createHandler({
         const imageUrl = String(body?.imageUrl || '').trim();
 
         if (!title || !imageUrl) {
-            const error = new Error('Banner title and image URL are required.');
-            error.statusCode = 400;
-            throw error;
+            sendJson(res, 400, { success: false, message: 'Banner title and image URL are required.' });
+            return;
         }
 
         const banner = {
@@ -38,7 +40,7 @@ module.exports = createHandler({
             subtitle: String(body?.subtitle || '').trim(),
             imageUrl,
             linkUrl: String(body?.linkUrl || '').trim(),
-            placement: String(body?.placement || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad',
+            placement: normalizePlacement(body?.placement),
             displayOrder: Number(body?.displayOrder || 0),
             isActive: body?.isActive !== false
         };

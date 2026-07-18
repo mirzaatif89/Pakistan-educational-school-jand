@@ -251,6 +251,77 @@
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
         }
 
+        .teacher-portal-ads {
+            display: none;
+            gap: 14px;
+            margin: 0 0 18px;
+        }
+
+        .teacher-portal-ads.active {
+            display: grid;
+        }
+
+        .teacher-portal-ad-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--portal-border);
+            border-radius: 18px;
+            background: var(--portal-card);
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.09);
+        }
+
+        .teacher-portal-ad-link,
+        .teacher-portal-ad-media {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 7;
+            background: var(--portal-soft);
+        }
+
+        .teacher-portal-ad-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .teacher-portal-ad-caption {
+            display: grid;
+            gap: 3px;
+            padding: 0.85rem 1rem;
+        }
+
+        .teacher-portal-ad-caption strong {
+            color: var(--portal-text);
+            font-size: 0.98rem;
+        }
+
+        .teacher-portal-ad-caption span {
+            color: var(--portal-muted);
+            font-size: 0.86rem;
+        }
+
+        .teacher-portal-ad-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 36px;
+            height: 36px;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.72);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .teacher-portal-ad-close:hover {
+            background: rgba(15, 23, 42, 0.9);
+        }
+
         .avatar img {
             width: 100%;
             height: 100%;
@@ -1215,6 +1286,8 @@
             </button>
         </section>
 
+        <section class="teacher-portal-ads" id="teacherPortalAds" aria-label="School advertisements"></section>
+
         <section class="teacher-options" aria-label="Teacher portal options">
             <button class="teacher-option-btn" type="button" data-teacher-panel="attendancePanel">
                 <i data-lucide="calendar-check" width="16"></i>
@@ -1346,6 +1419,7 @@
         const TEACHER_LEAVE_KEY = 'eduCore_teacher_leave_requests';
         const TEACHER_SALARY_KEY = 'eduCore_teacher_salaries';
         const TEACHER_THEME_KEY = 'eduCore_teacher_portal_theme';
+        const TEACHER_PORTAL_DISMISSED_ADS_KEY = 'eduCore_teacher_portal_dismissed_ads';
         let currentTeacherProfile = null;
         let remoteTeacherLeaveRequests = null;
 
@@ -1424,6 +1498,90 @@
 
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+        }
+
+        function getDismissedTeacherPortalAdIds() {
+            try {
+                const ids = JSON.parse(localStorage.getItem(TEACHER_PORTAL_DISMISSED_ADS_KEY) || '[]');
+                return new Set(Array.isArray(ids) ? ids.map((id) => String(id || '')) : []);
+            } catch (_error) {
+                return new Set();
+            }
+        }
+
+        function saveDismissedTeacherPortalAdIds(ids) {
+            localStorage.setItem(TEACHER_PORTAL_DISMISSED_ADS_KEY, JSON.stringify(Array.from(ids).filter(Boolean)));
+        }
+
+        function renderTeacherPortalAds(banners = []) {
+            const container = document.getElementById('teacherPortalAds');
+            if (!container) return;
+
+            const dismissedIds = getDismissedTeacherPortalAdIds();
+            const activeAds = (Array.isArray(banners) ? banners : [])
+                .filter((banner) => banner && banner.isActive !== false && String(banner.imageUrl || '').trim())
+                .filter((banner) => String(banner.placement || '').trim().toLowerCase() === 'ad')
+                .filter((banner) => !dismissedIds.has(String(banner.id || banner.imageUrl || '')))
+                .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+
+            if (!activeAds.length) {
+                container.classList.remove('active');
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = activeAds.map((banner) => {
+                const bannerId = String(banner.id || banner.imageUrl || '').trim();
+                const title = String(banner.title || 'School Announcement').trim();
+                const subtitle = String(banner.subtitle || '').trim();
+                const imageMarkup = `<img src="${escapeHtml(banner.imageUrl)}" alt="${escapeHtml(title)}">`;
+                const mediaMarkup = String(banner.linkUrl || '').trim()
+                    ? `<a class="teacher-portal-ad-link" href="${escapeHtml(banner.linkUrl)}" target="_blank" rel="noopener">${imageMarkup}</a>`
+                    : `<div class="teacher-portal-ad-media">${imageMarkup}</div>`;
+
+                return `
+                    <article class="teacher-portal-ad-card" data-teacher-portal-ad="${escapeHtml(bannerId)}">
+                        <button class="teacher-portal-ad-close" type="button" aria-label="Hide advertisement" data-dismiss-teacher-ad="${escapeHtml(bannerId)}">
+                            <i data-lucide="x"></i>
+                        </button>
+                        ${mediaMarkup}
+                        <div class="teacher-portal-ad-caption">
+                            <strong>${escapeHtml(title)}</strong>
+                            ${subtitle ? `<span>${escapeHtml(subtitle)}</span>` : ''}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            container.classList.add('active');
+            container.querySelectorAll('[data-dismiss-teacher-ad]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const bannerId = String(button.getAttribute('data-dismiss-teacher-ad') || '').trim();
+                    const nextDismissedIds = getDismissedTeacherPortalAdIds();
+                    if (bannerId) nextDismissedIds.add(bannerId);
+                    saveDismissedTeacherPortalAdIds(nextDismissedIds);
+                    button.closest('.teacher-portal-ad-card')?.remove();
+                    if (!container.querySelector('.teacher-portal-ad-card')) {
+                        container.classList.remove('active');
+                    }
+                });
+            });
+
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        async function loadTeacherPortalAds() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/banners?placement=ad`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data?.success === false) {
+                    throw new Error(data?.message || 'Ads could not be loaded.');
+                }
+                renderTeacherPortalAds(Array.isArray(data?.banners) ? data.banners : []);
+            } catch (error) {
+                console.warn('Teacher portal ads could not be loaded:', error.message);
+                renderTeacherPortalAds([]);
+            }
         }
 
         function todayKey() {
@@ -2138,6 +2296,8 @@
 
         window.addEventListener('load', () => {
             bindTeacherMenu();
+            loadTeacherPortalAds();
+            window.setInterval(loadTeacherPortalAds, 60000);
             loadTeacherProfile();
             bindTeacherPortalOptions();
             document.getElementById('teacherPortalPhoto')?.addEventListener('change', updateTeacherPortalPhoto);
