@@ -5,6 +5,7 @@ const state = {
     branches: [],
     banners: []
 };
+const WEBSITE_SCHOOL_ADDRESS = 'Main Kohat Road Jand';
 let activeBannerIndex = 0;
 let bannerTimer = null;
 
@@ -45,9 +46,7 @@ function renderNotices() {
 }
 
 function renderContact() {
-    const activeBranch = state.branches.find((branch) => branch.isActive !== false) || state.branches[0];
-    if (!activeBranch) return;
-    const address = text(activeBranch?.campusName || activeBranch?.fullName, 'Main Campus');
+    const address = WEBSITE_SCHOOL_ADDRESS;
     setText('headerAddress', address);
     setText('contactAddress', address);
 }
