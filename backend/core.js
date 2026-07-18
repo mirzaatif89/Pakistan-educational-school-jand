@@ -2067,6 +2067,7 @@ app.post('/api/fees/manual-payment', async (req, res) => {
             session,
             amount,
             fullAmount,
+            paymentDate,
             challanNumber
         } = req.body || {};
 
@@ -2083,8 +2084,12 @@ app.post('/api/fees/manual-payment', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Student not found.' });
         }
 
-        const paymentAmount = Number(amount || 0);
-        const safeFullAmount = Number(fullAmount || amount || student.monthlyFee || 0);
+        const isZeroFeeStudent = student?.freeStudy === true ||
+            student?.freeStudy === 'true' ||
+            String(student?.zeroFeeReason || student?.freeStudyReason || '').trim() ||
+            String(student?.feesStatus || '').trim().toLowerCase() === 'zero fee student';
+        const paymentAmount = isZeroFeeStudent ? 0 : Number(amount || 0);
+        const safeFullAmount = isZeroFeeStudent ? 0 : Number(fullAmount || amount || student.monthlyFee || 0);
         const remainingDue = Math.max(safeFullAmount - paymentAmount, 0);
         const resolvedStatus = remainingDue > 0 ? 'Partial' : 'Paid';
 
@@ -2110,7 +2115,13 @@ app.post('/api/fees/manual-payment', async (req, res) => {
 
         const existingPayment = await FeePayment.findByPk(safeChallanNumber);
         const alreadyRecorded = existingPayment && ['Paid', 'Partial'].includes(String(existingPayment.status || ''));
-        const paidAt = existingPayment?.paidAt || new Date();
+        const parsePaymentDate = (value) => {
+            const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return null;
+            const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+        const paidAt = existingPayment?.paidAt || parsePaymentDate(paymentDate) || new Date();
         const paymentDateLabel = paidAt.toLocaleDateString('en-GB');
 
         const paymentRow = {
@@ -2333,8 +2344,12 @@ app.get('/api/fees/pay/:token', async (req, res) => {
         const paidAt = existingPayment?.paidAt || new Date();
         const paymentDateLabel = paidAt.toLocaleDateString('en-GB');
 
-        const paymentAmount = Number(payload.amount || student.monthlyFee || 0);
-        const fullAmount = Number(payload.fullAmount || payload.amount || student.monthlyFee || 0);
+        const isZeroFeeStudent = student?.freeStudy === true ||
+            student?.freeStudy === 'true' ||
+            String(student?.zeroFeeReason || student?.freeStudyReason || '').trim() ||
+            String(student?.feesStatus || '').trim().toLowerCase() === 'zero fee student';
+        const paymentAmount = isZeroFeeStudent ? 0 : Number(payload.amount || student.monthlyFee || 0);
+        const fullAmount = isZeroFeeStudent ? 0 : Number(payload.fullAmount || payload.amount || student.monthlyFee || 0);
         const remainingDue = Math.max(fullAmount - paymentAmount, 0);
         const resolvedStatus = remainingDue > 0 ? 'Partial' : 'Paid';
 

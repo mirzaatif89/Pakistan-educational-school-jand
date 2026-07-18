@@ -1310,6 +1310,23 @@
             return monthsList.find(month => lower.includes(month.toLowerCase()) || lower.includes(month.slice(0, 3).toLowerCase())) || raw;
         }
 
+        function getFeePaymentMonthKeys(payment = {}) {
+            if (typeof getDashboardPaymentMonthKeys === 'function') {
+                return getDashboardPaymentMonthKeys(payment.feeMonth || '', payment.paidAt || payment.paymentDateLabel || payment.createdAt);
+            }
+            return [];
+        }
+
+        function getCurrentFeeAcademicMonthKeyByName() {
+            const now = new Date();
+            const start = getAcademicFeeStartDate(now);
+            const map = new Map();
+            for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= new Date(now.getFullYear(), now.getMonth(), 1); cursor.setMonth(cursor.getMonth() + 1)) {
+                map.set(monthsList[cursor.getMonth()], `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+            }
+            return map;
+        }
+
         function getFeeMonthPaymentAmount(studentId, month) {
             const paymentDetails = JSON.parse(localStorage.getItem(STORAGE_KEY_PAYMENT_DETAILS) || '{}');
             return Math.max(Number(paymentDetails?.[studentId]?.[month]?.amount || 0), 0);
@@ -1558,7 +1575,9 @@
             return {
                 student,
                 months,
-                studentRemainingCharges: Math.max(Number(String(student.remainingAmount || 0).replace(/,/g, '')) || 0, 0)
+                studentRemainingCharges: getFeeStudentMonthlyAmount(student) > 0
+                    ? Math.max(Number(String(student.remainingAmount || 0).replace(/,/g, '')) || 0, 0)
+                    : 0
             };
         }
 
@@ -1570,22 +1589,30 @@
                 const payments = Array.isArray(result.payments) ? result.payments : [];
                 const monthlyFees = JSON.parse(localStorage.getItem(STORAGE_KEY_MONTHLY_FEES) || '{}');
                 const paymentDetails = {};
+                const academicMonthKeys = getCurrentFeeAcademicMonthKeyByName();
 
                 payments.forEach((payment) => {
                     if (!['Paid', 'Partial'].includes(String(payment.status || '')) || !payment.studentId) return;
                     if (String(payment.paymentSource || '').toLowerCase() === 'fine') return;
-                    const month = getLongMonthName(payment.feeMonth);
-                    if (!month) return;
+                    const paymentMonthKeys = getFeePaymentMonthKeys(payment);
+                    const matchedMonths = Array.from(academicMonthKeys.entries())
+                        .filter(([, monthKey]) => paymentMonthKeys.includes(monthKey))
+                        .map(([month]) => month);
+                    if (!matchedMonths.length) return;
+                    const amountPerMonth = Number(payment.amount || 0) / Math.max(paymentMonthKeys.length, 1);
                     paymentDetails[payment.studentId] = paymentDetails[payment.studentId] || {};
-                    const previous = paymentDetails[payment.studentId][month] || { amount: 0, challanNumbers: [] };
-                    paymentDetails[payment.studentId][month] = {
-                        amount: Number(previous.amount || 0) + Number(payment.amount || 0),
-                        challanNumbers: Array.from(new Set([...(previous.challanNumbers || []), payment.challanNumber || ''].filter(Boolean))),
-                        paymentDateLabel: payment.paymentDateLabel || previous.paymentDateLabel || ''
-                    };
-                    if (payment.status !== 'Paid') return;
-                    monthlyFees[payment.studentId] = monthlyFees[payment.studentId] || {};
-                    monthlyFees[payment.studentId][month] = 'Paid';
+                    matchedMonths.forEach((month) => {
+                        const previous = paymentDetails[payment.studentId][month] || { amount: 0, challanNumbers: [] };
+                        paymentDetails[payment.studentId][month] = {
+                            amount: Number(previous.amount || 0) + amountPerMonth,
+                            challanNumbers: Array.from(new Set([...(previous.challanNumbers || []), payment.challanNumber || ''].filter(Boolean))),
+                            paymentDateLabel: payment.paymentDateLabel || previous.paymentDateLabel || ''
+                        };
+                        if (payment.status === 'Paid') {
+                            monthlyFees[payment.studentId] = monthlyFees[payment.studentId] || {};
+                            monthlyFees[payment.studentId][month] = 'Paid';
+                        }
+                    });
                 });
 
                 localStorage.setItem(STORAGE_KEY_MONTHLY_FEES, JSON.stringify(monthlyFees));
@@ -2373,7 +2400,9 @@
             const totalFee = monthlyFee + fineAmount;
             const paidAmount = getFeeMonthPaymentAmount(studentId, month);
             const remainingAmount = Math.max(totalFee - paidAmount, 0);
-            const studentRemainingCharges = Math.max(Number(String(student.remainingAmount || 0).replace(/,/g, '')) || 0, 0);
+            const studentRemainingCharges = monthlyFee > 0
+                ? Math.max(Number(String(student.remainingAmount || 0).replace(/,/g, '')) || 0, 0)
+                : 0;
             const totalPaymentDue = remainingAmount + studentRemainingCharges;
             if (!(totalPaymentDue > 0)) {
                 alert(`${month} fee and remaining charges are already fully covered.`);

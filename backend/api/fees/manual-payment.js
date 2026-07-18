@@ -37,7 +37,11 @@ module.exports = createHandler({
         const requestedPaymentAmount = Math.max(Number(amount || 0), 0);
         const safeFineAmount = Math.max(Number(fineAmount || 0), 0);
         const fineOnly = String(paymentMode || '').toLowerCase() === 'fine' || (requestedPaymentAmount <= 0 && safeFineAmount > 0);
-        const safeFullAmount = Number(fullAmount || student.monthlyFee || 0);
+        const isZeroFeeStudent = student?.freeStudy === true ||
+            student?.freeStudy === 'true' ||
+            String(student?.zeroFeeReason || student?.freeStudyReason || '').trim() ||
+            String(student?.feesStatus || '').trim().toLowerCase() === 'zero fee student';
+        const safeFullAmount = isZeroFeeStudent ? 0 : Number(fullAmount || student.monthlyFee || 0);
 
         if (!fineOnly && safeFullAmount <= 0) {
             sendJson(res, 400, { success: false, message: 'Monthly fee is not set for this student.' });
@@ -62,6 +66,23 @@ module.exports = createHandler({
 
         const feeMonthRecorded = selectedMonths.length ? selectedMonths.join(', ') : 'Dues';
         const safeChallanNumber = String(challanNumber || '').trim() || `MAN-${Date.now()}`;
+        const parsePaymentDate = (value) => {
+            const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return null;
+            const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+        const selectedPaymentDate = parsePaymentDate(paymentDate) || new Date();
+        const getMonthKeys = (value, fallbackDate = selectedPaymentDate) => {
+            const lower = String(value || '').toLowerCase();
+            const yearMatch = lower.match(/\b(20\d{2})\b/);
+            const year = yearMatch ? Number(yearMatch[1]) : fallbackDate.getFullYear();
+            return MONTHS
+                .map((month, index) => ({ month, index }))
+                .filter(({ month }) => lower.includes(month.toLowerCase()) || lower.includes(month.slice(0, 3).toLowerCase()))
+                .map(({ index }) => `${year}-${String(index + 1).padStart(2, '0')}`);
+        };
+        const selectedMonthKeys = new Set(selectedMonths.flatMap((month) => getMonthKeys(month, selectedPaymentDate)));
         const existingMonthPayments = fineOnly ? [] : await FeePayment.findAll({
             where: {
                 studentId,
@@ -70,24 +91,21 @@ module.exports = createHandler({
             }
         });
         const existingPaidForMonth = existingMonthPayments.reduce((sum, payment) => {
-            const paymentMonths = extractMonthList(payment.feeMonth);
-            const overlaps = selectedMonths.some((month) => paymentMonths.includes(month));
+            const paymentDateValue = payment.paidAt || payment.paymentDateLabel || payment.createdAt || selectedPaymentDate;
+            const paymentDate = paymentDateValue instanceof Date ? paymentDateValue : (parsePaymentDate(paymentDateValue) || new Date(paymentDateValue));
+            const fallbackDate = Number.isNaN(paymentDate.getTime()) ? selectedPaymentDate : paymentDate;
+            const paymentMonths = getMonthKeys(payment.feeMonth, fallbackDate);
+            const overlaps = paymentMonths.some((monthKey) => selectedMonthKeys.has(monthKey));
             return overlaps ? sum + Number(payment.amount || 0) : sum;
         }, 0);
         const remainingBeforePayment = Math.max(safeFullAmount - existingPaidForMonth, 0);
-        const paymentAmount = fineOnly ? 0 : Math.min(requestedPaymentAmount, remainingBeforePayment);
+        const paymentAmount = (fineOnly || isZeroFeeStudent) ? 0 : Math.min(requestedPaymentAmount, remainingBeforePayment);
         const remainingDue = Math.max(safeFullAmount - existingPaidForMonth - paymentAmount, 0);
         const resolvedStatus = remainingDue > 0 ? 'Partial' : 'Paid';
 
         const existingPayment = fineOnly ? null : await FeePayment.findByPk(safeChallanNumber);
         const alreadyRecorded = existingPayment && ['Paid', 'Partial'].includes(String(existingPayment.status || ''));
-        const parsePaymentDate = (value) => {
-            const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (!match) return null;
-            const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-            return Number.isNaN(parsed.getTime()) ? null : parsed;
-        };
-        const paidAt = existingPayment?.paidAt || parsePaymentDate(paymentDate) || new Date();
+        const paidAt = existingPayment?.paidAt || selectedPaymentDate;
         const paymentDateLabel = new Date(paidAt).toLocaleDateString('en-GB');
 
         const paymentRow = !fineOnly && paymentAmount > 0 ? {

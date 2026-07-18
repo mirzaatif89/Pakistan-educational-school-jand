@@ -34,8 +34,12 @@ module.exports = createHandler({
         const paidAt = existingPayment?.paidAt || new Date();
         const paymentDateLabel = new Date(paidAt).toLocaleDateString('en-GB');
 
-        const paymentAmount = Number(payload.amount || student.monthlyFee || 0);
-        const fullAmount = Number(payload.fullAmount || payload.amount || student.monthlyFee || 0);
+        const isZeroFeeStudent = student?.freeStudy === true ||
+            student?.freeStudy === 'true' ||
+            String(student?.zeroFeeReason || student?.freeStudyReason || '').trim() ||
+            String(student?.feesStatus || '').trim().toLowerCase() === 'zero fee student';
+        const paymentAmount = isZeroFeeStudent ? 0 : Number(payload.amount || student.monthlyFee || 0);
+        const fullAmount = isZeroFeeStudent ? 0 : Number(payload.fullAmount || payload.amount || student.monthlyFee || 0);
         const remainingDue = Math.max(fullAmount - paymentAmount, 0);
         const resolvedStatus = remainingDue > 0 ? 'Partial' : 'Paid';
 

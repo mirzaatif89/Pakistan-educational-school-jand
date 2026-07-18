@@ -233,6 +233,112 @@
             font-weight: 800;
         }
 
+        .monthly-statement-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            margin-top: 1.5rem;
+        }
+
+        .monthly-statement-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .monthly-statement-head p {
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            font-size: 0.86rem;
+        }
+
+        .monthly-statement-search {
+            min-height: var(--app-control-height);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.8rem;
+            min-width: min(320px, 100%);
+        }
+
+        .monthly-statement-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .monthly-statement-summary div {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            background: #f8fafc;
+        }
+
+        .monthly-statement-summary span {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+
+        .monthly-statement-summary strong {
+            color: var(--text-primary);
+            font-size: 1.05rem;
+        }
+
+        .monthly-statement-table-wrap {
+            overflow-x: auto;
+        }
+
+        .monthly-statement-table {
+            width: 100%;
+            min-width: 980px;
+            border-collapse: collapse;
+        }
+
+        .monthly-statement-table th,
+        .monthly-statement-table td {
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .monthly-statement-table th {
+            color: var(--text-secondary);
+            background: #f8fafc;
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .monthly-statement-table td:nth-last-child(-n+3),
+        .monthly-statement-table th:nth-last-child(-n+3) {
+            text-align: right;
+            font-weight: 800;
+        }
+
+        .statement-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 76px;
+            border-radius: 999px;
+            padding: 0.28rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 900;
+        }
+
+        .statement-status.paid { background: #dcfce7; color: #166534; }
+        .statement-status.partial { background: #fef3c7; color: #92400e; }
+        .statement-status.pending { background: #fee2e2; color: #991b1b; }
+
         .revenue-summary-grid {
             display: grid;
             grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
@@ -281,6 +387,10 @@
         @media (max-width: 920px) {
             .revenue-summary-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .monthly-statement-summary {
+                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
@@ -521,6 +631,42 @@
                 </div>
             </div>
 
+            <section class="monthly-statement-panel">
+                <div class="monthly-statement-head">
+                    <div>
+                        <h3>Month-wise Paid / Pending Statement</h3>
+                        <p id="monthlyStatementMeta">Selected month statement will appear here.</p>
+                    </div>
+                    <input class="monthly-statement-search" id="monthlyStatementSearch" type="search" placeholder="Search student, class, roll no...">
+                </div>
+                <div class="monthly-statement-summary">
+                    <div><span>Total Students</span><strong id="statementStudentTotal">0</strong></div>
+                    <div><span>Paid / Partial</span><strong id="statementPaidTotal">0</strong></div>
+                    <div><span>Pending Students</span><strong id="statementPendingTotal">0</strong></div>
+                    <div><span>Pending Amount</span><strong id="statementPendingAmount">PKR 0</strong></div>
+                </div>
+                <div class="monthly-statement-table-wrap">
+                    <table class="monthly-statement-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Roll No</th>
+                                <th>Campus</th>
+                                <th>Status</th>
+                                <th>Paid Date</th>
+                                <th>Expected</th>
+                                <th>Paid</th>
+                                <th>Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyStatementBody">
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-secondary);">Loading statement...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <section class="daily-revenue-panel">
                 <div class="daily-revenue-head">
                     <div>
@@ -578,6 +724,7 @@
         let selectedRevenueDateKey = '';
         let dailyRevenueRows = [];
         let dailyRevenueTotalAmount = 0;
+        let monthlyStatementRows = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             selectedRevenueMonthKey = getCurrentMonthMeta().monthKey;
@@ -593,6 +740,7 @@
                 selectedRevenueDateKey = String(event.target.value || getTodayDateKey());
                 updateRevenueReport();
             });
+            document.getElementById('monthlyStatementSearch')?.addEventListener('input', renderMonthlyStatementRows);
 
             attachRevenueLiveUpdates();
             updateRevenueReport();
@@ -742,6 +890,10 @@
             const raw = String(value || '').trim();
             if (!raw) return '';
             if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            const slashDate = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (slashDate) {
+                return `${slashDate[3]}-${slashDate[2].padStart(2, '0')}-${slashDate[1].padStart(2, '0')}`;
+            }
             const parsed = new Date(raw);
             if (Number.isNaN(parsed.getTime())) return '';
             return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
@@ -774,12 +926,23 @@
             return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
         }
 
-        function getPaymentMonthKeys(value) {
+        function getPaymentFallbackYear(fallbackDate = '') {
+            if (typeof getDashboardPaymentFallbackYear === 'function') return getDashboardPaymentFallbackYear(fallbackDate);
+            const raw = String(fallbackDate || '').trim();
+            const slashDate = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (slashDate) return Number(slashDate[3]);
+            const parsed = new Date(raw);
+            if (!Number.isNaN(parsed.getTime())) return parsed.getFullYear();
+            return new Date().getFullYear();
+        }
+
+        function getPaymentMonthKeys(value, fallbackDate = '') {
+            if (typeof getDashboardPaymentMonthKeys === 'function') return getDashboardPaymentMonthKeys(value, fallbackDate);
             const raw = String(value || '').trim();
             if (!raw) return [];
             const lowered = raw.toLowerCase();
             const yearMatch = lowered.match(/\b(20\d{2})\b/);
-            const fallbackYear = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+            const fallbackYear = yearMatch ? Number(yearMatch[1]) : getPaymentFallbackYear(fallbackDate);
             const monthKeys = monthsNames
                 .map((month, monthIndex) => ({ month, monthIndex }))
                 .filter(({ month }) => lowered.includes(month.toLowerCase()) || lowered.includes(month.slice(0, 3).toLowerCase()))
@@ -787,6 +950,77 @@
             if (monthKeys.length) return Array.from(new Set(monthKeys));
             const single = normalizeFeeMonthToKey(raw);
             return single ? [single] : [];
+        }
+
+        function isRevenueFeePayment(payment = {}) {
+            if (typeof isDashboardFeeCollectionPayment === 'function') return isDashboardFeeCollectionPayment(payment);
+            const status = String(payment?.status || '').toLowerCase();
+            const source = String(payment?.paymentSource || payment?.paymentMode || '').toLowerCase();
+            return ['paid', 'partial'].includes(status) && !['fine', 'fine correction', 'correction'].includes(source);
+        }
+
+        function getRevenueStudentFee(student = {}) {
+            if (typeof getDashboardStudentFee === 'function') return Math.max(Number(getDashboardStudentFee(student) || 0), 0);
+            return (student?.freeStudy === true || student?.freeStudy === 'true' || String(student?.zeroFeeReason || student?.freeStudyReason || '').trim())
+                ? 0
+                : Math.max(Number(student.monthlyFee || student.fee || 0), 0);
+        }
+
+        function getRevenuePaymentAmountForMonth(payment = {}, monthKey = '') {
+            if (!isRevenueFeePayment(payment)) return 0;
+            const amount = Math.max(Number(payment.amount || 0), 0);
+            if (!(amount > 0)) return 0;
+            const paymentMonths = getPaymentMonthKeys(payment.feeMonth, payment.paidAt || payment.paymentDateLabel || payment.createdAt);
+            if (!paymentMonths.includes(monthKey)) return 0;
+            return amount / Math.max(paymentMonths.length, 1);
+        }
+
+        function buildMonthlyStatement(students = [], payments = [], monthMeta = getCurrentMonthMeta(), backendLoaded = true) {
+            const monthlyFeesData = (() => {
+                try { return JSON.parse(localStorage.getItem(STORAGE_KEY_MONTHLY_FEES) || '{}') || {}; }
+                catch (_error) { return {}; }
+            })();
+            const paymentMap = new Map();
+
+            payments.forEach((payment) => {
+                if (!payment || !payment.studentId) return;
+                const amountForMonth = getRevenuePaymentAmountForMonth(payment, monthMeta.monthKey);
+                if (!(amountForMonth > 0)) return;
+                const studentId = String(payment.studentId);
+                const existing = paymentMap.get(studentId) || { paidAmount: 0, dates: [], statuses: [] };
+                existing.paidAmount += amountForMonth;
+                const dateLabel = payment.paymentDateLabel || formatRevenueDateLabel(normalizeRevenueDateKey(payment.paidAt || payment.createdAt));
+                if (dateLabel && dateLabel !== '-') existing.dates.push(dateLabel);
+                if (payment.status) existing.statuses.push(String(payment.status));
+                paymentMap.set(studentId, existing);
+            });
+
+            return students
+                .filter((student) => studentAppliesToRevenueMonth(student, monthMeta))
+                .map((student) => {
+                    const studentId = String(student.id || '');
+                    const expected = getRevenueStudentFee(student);
+                    const payment = paymentMap.get(studentId) || { paidAmount: 0, dates: [], statuses: [] };
+                    const localPaid = !backendLoaded && monthlyFeesData?.[studentId]?.[monthMeta.monthName] === 'Paid';
+                    const paidAmount = Math.min(Math.max(payment.paidAmount || 0, localPaid ? expected : 0), expected);
+                    const pendingAmount = Math.max(expected - paidAmount, 0);
+                    const status = expected <= 0
+                        ? 'Paid'
+                        : (paidAmount >= expected ? 'Paid' : (paidAmount > 0 ? 'Partial' : 'Pending'));
+                    return {
+                        studentId,
+                        studentName: student.fullName || student.name || '-',
+                        className: getStandardClassName(student.classGrade || 'Unassigned Class'),
+                        rawClass: student.classGrade || '-',
+                        rollNo: student.rollNo || '-',
+                        campusName: student.campusName || student.branchName || student.campus || 'Main Campus',
+                        expected,
+                        paidAmount,
+                        pendingAmount,
+                        status,
+                        paidDate: Array.from(new Set(payment.dates)).join(', ') || '-'
+                    };
+                });
         }
 
         function studentAppliesToRevenueMonth(student, monthMeta) {
@@ -895,71 +1129,49 @@
                         throw new Error(result?.message || 'Fee payments could not be loaded.');
                     }
 
-                    return Array.isArray(result?.payments) ? result.payments : [];
+                    return { payments: Array.isArray(result?.payments) ? result.payments : [], loaded: true };
                 } catch (error) {
                     console.warn(`Revenue page could not load backend fee payments from ${endpoint}:`, error.message);
                 }
             }
 
-            return [];
+            return { payments: [], loaded: false };
         }
 
         async function updateRevenueReport() {
             const currentMonthMeta = getMonthMetaFromKey(selectedRevenueMonthKey || getCurrentMonthMeta().monthKey);
             const allStudents = getData(STORAGE_KEY_STUDENTS);
             const students = getRevenueScopedStudents();
-            const monthlyFeesData = JSON.parse(localStorage.getItem(STORAGE_KEY_MONTHLY_FEES)) || {};
             const salarySummary = getMonthlySalarySummary(currentMonthMeta.monthKey);
-            const feePayments = getRevenueScopedPayments(await fetchCollectedFeePayments(), allStudents);
+            const paymentResult = await fetchCollectedFeePayments();
+            const feePayments = getRevenueScopedPayments(paymentResult.payments, allStudents);
             renderDailyFeeCollection(feePayments);
             const monthDisplay = document.getElementById('currentMonthDisplay');
             if (monthDisplay) monthDisplay.innerText = `${currentMonthMeta.monthName} ${currentMonthMeta.year}`;
 
-            const backendCollectedMap = new Map();
-            let allMonthsCollected = 0;
-            feePayments.forEach(payment => {
-                if (!payment || !payment.studentId) return;
-                const paidAmount = Number(payment.amount || 0);
-                if (!(paidAmount > 0)) return;
-                allMonthsCollected += paidAmount;
-                const paymentMonths = getPaymentMonthKeys(payment.feeMonth);
-                if (!paymentMonths.includes(currentMonthMeta.monthKey)) return;
-                const amountForMonth = paidAmount / Math.max(paymentMonths.length, 1);
-                const previousAmount = backendCollectedMap.get(payment.studentId) || 0;
-                backendCollectedMap.set(payment.studentId, previousAmount + amountForMonth);
-            });
+            const validFeePayments = feePayments.filter(isRevenueFeePayment);
+            let allMonthsCollected = validFeePayments.reduce((sum, payment) => sum + Math.max(Number(payment.amount || 0), 0), 0);
+            monthlyStatementRows = buildMonthlyStatement(students, validFeePayments, currentMonthMeta, paymentResult.loaded);
+            renderMonthlyStatementRows();
 
-            let totalExpected = 0;
-            let totalCollected = 0;
+            const totalExpected = monthlyStatementRows.reduce((sum, row) => sum + Number(row.expected || 0), 0);
+            const totalCollected = monthlyStatementRows.reduce((sum, row) => sum + Number(row.paidAmount || 0), 0);
+            const totalPending = monthlyStatementRows.reduce((sum, row) => sum + Number(row.pendingAmount || 0), 0);
 
             const classCollection = {}; // { className: { expected: 0, collected: 0 } }
 
-            students.filter((student) => studentAppliesToRevenueMonth(student, currentMonthMeta)).forEach(s => {
-                const standardClass = getStandardClassName(s.classGrade);
-                const fee = (s?.freeStudy === true || s?.freeStudy === 'true' || String(s?.zeroFeeReason || s?.freeStudyReason || '').trim())
-                    ? 0
-                    : (parseInt(s.monthlyFee) || 0);
-                const isPaidLocally = (monthlyFeesData[s.id] && monthlyFeesData[s.id][currentMonthMeta.monthName] === 'Paid');
-                const collectedAmount = backendCollectedMap.has(s.id)
-                    ? backendCollectedMap.get(s.id)
-                    : (isPaidLocally ? fee : 0);
-
-                totalExpected += fee;
-                if (collectedAmount > 0) {
-                    totalCollected += collectedAmount;
+            monthlyStatementRows.forEach((row) => {
+                if (!classCollection[row.className]) {
+                    classCollection[row.className] = { expected: 0, collected: 0 };
                 }
-
-                if (!classCollection[standardClass]) {
-                    classCollection[standardClass] = { expected: 0, collected: 0 };
-                }
-                classCollection[standardClass].expected += fee;
-                if (collectedAmount > 0) classCollection[standardClass].collected += collectedAmount;
+                classCollection[row.className].expected += Number(row.expected || 0);
+                classCollection[row.className].collected += Number(row.paidAmount || 0);
             });
 
             // Update UI Stats
             const netExpected = totalExpected - salarySummary.expected;
             const netCollected = totalCollected - salarySummary.transferred;
-            const remainingBalance = netCollected + salarySummary.pending;
+            const remainingBalance = totalPending + salarySummary.pending;
             const paidBills = getPaidBillsAmount(currentMonthMeta.monthKey);
             const paidExpenses = salarySummary.transferred + paidBills;
             const profitLoss = totalCollected - paidExpenses;
@@ -969,7 +1181,7 @@
 
             document.getElementById('expectedRevenue').innerText = formatRevenueMoney(totalExpected);
             document.getElementById('collectedRevenue').innerText = formatRevenueMoney(totalCollected);
-            document.getElementById('pendingRevenue').innerText = formatRevenueMoney(Math.max(totalExpected - totalCollected, 0));
+            document.getElementById('pendingRevenue').innerText = formatRevenueMoney(totalPending);
             document.getElementById('salaryBudget').innerText = formatRevenueMoney(salarySummary.expected);
             document.getElementById('transferredSalaries').innerText = formatRevenueMoney(salarySummary.transferred);
             document.getElementById('pendingSalaries').innerText = formatRevenueMoney(salarySummary.pending);
@@ -1022,6 +1234,53 @@
             if (window.lucide) lucide.createIcons();
         }
 
+        function renderMonthlyStatementRows() {
+            const tbody = document.getElementById('monthlyStatementBody');
+            if (!tbody) return;
+            const term = String(document.getElementById('monthlyStatementSearch')?.value || '').trim().toLowerCase();
+            const rows = monthlyStatementRows.filter((row) => {
+                if (!term) return true;
+                return `${row.studentName} ${row.rawClass} ${row.className} ${row.rollNo} ${row.campusName} ${row.status}`.toLowerCase().includes(term);
+            });
+            const paidRows = rows.filter((row) => row.status === 'Paid' || row.status === 'Partial');
+            const pendingRows = rows.filter((row) => row.pendingAmount > 0);
+            const pendingAmount = rows.reduce((sum, row) => sum + Number(row.pendingAmount || 0), 0);
+            const monthLabel = getMonthMetaFromKey(selectedRevenueMonthKey || getCurrentMonthMeta().monthKey);
+
+            const meta = document.getElementById('monthlyStatementMeta');
+            if (meta) {
+                meta.textContent = `${monthLabel.monthName} ${monthLabel.year} | Expected ${formatRevenueMoney(rows.reduce((sum, row) => sum + row.expected, 0))} | Collected ${formatRevenueMoney(rows.reduce((sum, row) => sum + row.paidAmount, 0))}`;
+            }
+            document.getElementById('statementStudentTotal').textContent = String(rows.length);
+            document.getElementById('statementPaidTotal').textContent = String(paidRows.length);
+            document.getElementById('statementPendingTotal').textContent = String(pendingRows.length);
+            document.getElementById('statementPendingAmount').textContent = formatRevenueMoney(pendingAmount);
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-secondary);">No statement records found for selected filters.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows
+                .sort((a, b) => a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: 'base' }) || a.studentName.localeCompare(b.studentName))
+                .map((row) => {
+                    const statusClass = row.status.toLowerCase();
+                    return `
+                        <tr>
+                            <td><strong>${escapeHtml(row.studentName)}</strong></td>
+                            <td>${escapeHtml(row.rawClass)}</td>
+                            <td>${escapeHtml(row.rollNo)}</td>
+                            <td>${escapeHtml(row.campusName)}</td>
+                            <td><span class="statement-status ${statusClass}">${escapeHtml(row.status)}</span></td>
+                            <td>${escapeHtml(row.paidDate)}</td>
+                            <td>${formatRevenueMoney(row.expected)}</td>
+                            <td>${formatRevenueMoney(row.paidAmount)}</td>
+                            <td>${formatRevenueMoney(row.pendingAmount)}</td>
+                        </tr>
+                    `;
+                }).join('');
+        }
+
         function renderDailyFeeCollection(feePayments = []) {
             const tbody = document.getElementById('dailyRevenueTableBody');
             const meta = document.getElementById('dailyRevenueMeta');
@@ -1033,8 +1292,7 @@
 
             feePayments.forEach((payment) => {
                 if (!payment) return;
-                const status = String(payment.status || '').toLowerCase();
-                if (!['paid', 'partial'].includes(status)) return;
+                if (!isRevenueFeePayment(payment)) return;
                 if (normalizeRevenueDateKey(payment.paidAt || payment.paymentDateLabel || payment.createdAt) !== dateKey) return;
                 const amount = Number(payment.amount || 0);
                 if (!(amount > 0)) return;

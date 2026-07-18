@@ -13,6 +13,7 @@ module.exports = createHandler({
             session,
             amount,
             fullAmount,
+            paymentDate,
             challanNumber
         } = body || {};
 
@@ -28,8 +29,12 @@ module.exports = createHandler({
             return;
         }
 
-        const paymentAmount = Number(amount || 0);
-        const safeFullAmount = Number(fullAmount || amount || student.monthlyFee || 0);
+        const isZeroFeeStudent = student?.freeStudy === true ||
+            student?.freeStudy === 'true' ||
+            String(student?.zeroFeeReason || student?.freeStudyReason || '').trim() ||
+            String(student?.feesStatus || '').trim().toLowerCase() === 'zero fee student';
+        const paymentAmount = isZeroFeeStudent ? 0 : Number(amount || 0);
+        const safeFullAmount = isZeroFeeStudent ? 0 : Number(fullAmount || amount || student.monthlyFee || 0);
         const remainingDue = Math.max(safeFullAmount - paymentAmount, 0);
         const resolvedStatus = remainingDue > 0 ? 'Partial' : 'Paid';
 
@@ -54,7 +59,13 @@ module.exports = createHandler({
 
         const existingPayment = await FeePayment.findByPk(safeChallanNumber);
         const alreadyRecorded = existingPayment && ['Paid', 'Partial'].includes(String(existingPayment.status || ''));
-        const paidAt = existingPayment?.paidAt || new Date();
+        const parsePaymentDate = (value) => {
+            const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return null;
+            const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+        const paidAt = existingPayment?.paidAt || parsePaymentDate(paymentDate) || new Date();
         const paymentDateLabel = new Date(paidAt).toLocaleDateString('en-GB');
 
         const paymentRow = {

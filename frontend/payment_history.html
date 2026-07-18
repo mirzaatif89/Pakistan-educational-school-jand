@@ -395,6 +395,22 @@
             return String(value || '').trim().toLowerCase();
         }
 
+        function getHistoryPaymentMonthLabel(payment = {}) {
+            const rawMonth = String(payment.feeMonth || '').trim();
+            const fallbackDate = payment.paidAt || payment.paymentDateLabel || payment.createdAt;
+            const monthKeys = typeof getDashboardPaymentMonthKeys === 'function'
+                ? getDashboardPaymentMonthKeys(rawMonth, fallbackDate)
+                : [];
+            if (!monthKeys.length) return rawMonth || '-';
+            const labels = monthKeys.map((monthKey) => {
+                const [year, month] = String(monthKey).split('-').map(Number);
+                const parsed = new Date(year, month - 1, 1);
+                if (Number.isNaN(parsed.getTime())) return monthKey;
+                return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            });
+            return labels.join(', ');
+        }
+
         function getPaymentStatementSelectedCampus() {
             if (typeof getGlobalCampusFilterForCurrentUser === 'function') return getGlobalCampusFilterForCurrentUser();
             return String(localStorage.getItem('eduCore_dashboard_campus_filter') || 'all').trim() || 'all';
@@ -481,7 +497,7 @@
                         classGrade: payment.classGrade || studentRecord.classGrade || '-',
                         rollNo: payment.rollNo || studentRecord.rollNo || '-',
                         campusName: payment.campusName || studentRecord.campusName || studentRecord.branchName || studentRecord.campus || 'Main Campus',
-                        month: payment.feeMonth || '-',
+                        month: getHistoryPaymentMonthLabel(payment),
                         date: normalizeHistoryDate(rawDate),
                         dateKey: normalizeDateInput(rawDate),
                         challanNumber: payment.challanNumber || '-',
