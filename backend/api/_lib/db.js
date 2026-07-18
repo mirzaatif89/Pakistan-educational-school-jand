@@ -237,7 +237,7 @@ function defineBannerModel(db) {
         subtitle: { type: DataTypes.STRING, allowNull: true },
         imageUrl: { type: DataTypes.TEXT('long'), allowNull: false },
         linkUrl: { type: DataTypes.STRING, allowNull: true },
-        placement: { type: DataTypes.STRING, defaultValue: 'ad' },
+        placement: { type: DataTypes.STRING, defaultValue: 'banner' },
         displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
         isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
     });
@@ -486,7 +486,7 @@ async function ensureLegacySchema(db) {
     });
 
     await ensureTableColumns(db, 'Banners', {
-        placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'ad' },
+        placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'banner' },
         linkUrl: { type: DataTypes.STRING, allowNull: true }
     });
 }

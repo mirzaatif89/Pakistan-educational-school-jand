@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - PESS JAND</title>
     <link rel="icon" type="image/png" href="images/logo.png">
-    <link rel="stylesheet" href="style.css?v=20260627-welcome-logo">
+    <link rel="stylesheet" href="style.css?v=20260718-live-sidebar-refresh">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -343,6 +343,14 @@
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </a>
+                <a href="banners.html" class="nav-item">
+                    <i data-lucide="image"></i>
+                    <span>Banners</span>
+                </a>
+                <a href="ads.html" class="nav-item">
+                    <i data-lucide="ad"></i>
+                    <span>Ads</span>
+                </a>
                 <a href="students.html" class="nav-item">
                     <i data-lucide="users"></i>
                     <span>Students</span>
@@ -553,8 +561,8 @@
         </div>
     </div>
 
-    <script src="auth.js?v=20260627-welcome-logo"></script>
-    <script src="script.js?v=20260705-global-campus-filter"></script>
+    <script src="auth.js?v=20260718-live-sidebar-refresh"></script>
+    <script src="script.js?v=20260718-ads-under-banners"></script>
     <script>
         async function executeAllDashboardEmails() {
             const button = document.getElementById('dashboardExecuteEmailsBtn');

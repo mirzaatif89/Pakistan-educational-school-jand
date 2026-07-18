@@ -1572,7 +1572,7 @@
 
         async function loadTeacherPortalAds() {
             try {
-                const response = await fetch(`${API_BASE_URL}/banners?placement=ad`);
+                const response = await fetch(`${API_BASE_URL}/banners`);
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data?.success === false) {
                     throw new Error(data?.message || 'Ads could not be loaded.');

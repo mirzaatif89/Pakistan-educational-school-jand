@@ -3099,8 +3099,8 @@ function ensureBannersNav() {
     bannersLink.innerHTML = '<i data-lucide="image"></i><span>Banners</span>';
 
     const adsLink = document.createElement('a');
-    adsLink.href = `${toRoutePath('banners.html')}#ads`;
-    adsLink.className = `nav-item${currentPage === 'banners.html' && window.location.hash === '#ads' ? ' active' : ''}`;
+    adsLink.href = toRoutePath('ads.html');
+    adsLink.className = `nav-item${currentPage === 'ads.html' ? ' active' : ''}`;
     adsLink.dataset.adsLink = 'true';
     adsLink.innerHTML = '<i data-lucide="ad"></i><span>Ads</span>';
 
@@ -3224,7 +3224,7 @@ function ensureAdminSidebarCompleteness() {
     const completeLinks = [
         { page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
         { page: 'banners.html', label: 'Banners', icon: 'image' },
-        { page: 'banners.html', hash: '#ads', label: 'Ads', icon: 'ad' },
+        { page: 'ads.html', label: 'Ads', icon: 'ad' },
         { page: 'classes.html', label: 'Classes', icon: 'school' },
         { page: 'students.html', label: 'Students', icon: 'users' },
         { page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },
@@ -3330,7 +3330,7 @@ function renderAdminSidebarSequence() {
     const navItems = [
         { type: 'link', page: 'dashboard.html', label: 'Dashboard', icon: 'layout-dashboard' },
         { type: 'link', page: 'banners.html', label: 'Banners', icon: 'image' },
-        { type: 'link', page: 'banners.html', hash: '#ads', label: 'Ads', icon: 'ad' },
+        { type: 'link', page: 'ads.html', label: 'Ads', icon: 'ad' },
         { type: 'link', page: 'classes.html', label: 'Classes', icon: 'school' },
         { type: 'link', page: 'students.html', label: 'Students', icon: 'users' },
         { type: 'link', page: 'student_scheduling.html', label: 'Students Scheduling', icon: 'calendar-clock' },

@@ -41,7 +41,7 @@
     const navItems = [
         { type: 'link', page: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
         { type: 'link', page: 'banners', label: 'Banners', icon: 'image' },
-        { type: 'link', page: 'banners', hash: '#ads', label: 'Ads', icon: 'ad' },
+        { type: 'link', page: 'ads', label: 'Ads', icon: 'ad' },
         { type: 'link', page: 'online_admissions', label: 'Online Admissions', icon: 'clipboard-list' },
         { type: 'link', page: 'classes', label: 'Classes', icon: 'school' },
         { type: 'link', page: 'students', label: 'Students', icon: 'users' },

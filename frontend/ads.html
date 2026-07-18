@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Banners - PESS JAND</title>
+    <title>Ads - PESS JAND</title>
     <link rel="icon" type="image/png" href="images/logo.png">
     <link rel="stylesheet" href="style.css?v=20260718-live-sidebar-refresh">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -300,8 +300,8 @@
             <nav class="nav-links">
                 <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
                 <a href="students.html" class="nav-item"><i data-lucide="users"></i><span>Students</span></a>
-                <a href="banners.html" class="nav-item active" data-banners-link="true"><i data-lucide="image"></i><span>Banners</span></a>
-                <a href="ads.html" class="nav-item" data-ads-link="true"><i data-lucide="ad"></i><span>Ads</span></a>
+                <a href="banners.html" class="nav-item" data-banners-link="true"><i data-lucide="image"></i><span>Banners</span></a>
+                <a href="ads.html" class="nav-item active" data-ads-link="true"><i data-lucide="ad"></i><span>Ads</span></a>
                 <a href="teachers.html" class="nav-item"><i data-lucide="book-open"></i><span>Teachers</span></a>
                 <a href="staff.html" class="nav-item"><i data-lucide="briefcase"></i><span>Staff</span></a>
                 <a href="classes.html" class="nav-item"><i data-lucide="school"></i><span>Classes</span></a>
@@ -327,8 +327,8 @@
         <main class="main-content">
             <header class="header">
                 <div>
-                    <h1>Banners</h1>
-                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Manage website and portal banner images.</p>
+                    <h1>Ads</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.3rem;">Manage student and teacher portal ad images.</p>
                 </div>
             </header>
 
@@ -336,8 +336,8 @@
                 <div class="banner-panel">
                     <div class="banner-panel-head">
                         <div>
-                            <h2>Banner Details</h2>
-                            <p>Upload a wide image and control its display order.</p>
+                            <h2>Ad Details</h2>
+                            <p>Upload an ad image and control its display order.</p>
                         </div>
                     </div>
                     <form id="bannerForm" class="banner-form">
@@ -348,7 +348,7 @@
                             <input type="text" id="bannerTitle" placeholder="Admissions Open">
                         </div>
                         <div class="banner-field">
-                            <label>Upload Banner</label>
+                            <label>Upload Ad</label>
                             <div class="banner-upload-box">
                                 <div class="banner-preview" id="bannerImagePreview">No image selected</div>
                                 <label class="banner-file-action" for="bannerImageFile">
@@ -368,7 +368,7 @@
                             </label>
                         </div>
                         <div class="banner-actions">
-                            <button type="submit" class="btn btn-primary" id="bannerSaveBtn"><i data-lucide="save"></i> Save Banner</button>
+                            <button type="submit" class="btn btn-primary" id="bannerSaveBtn"><i data-lucide="save"></i> Save Ad</button>
                             <button type="button" class="btn btn-outline" id="bannerResetBtn"><i data-lucide="rotate-ccw"></i> Reset</button>
                         </div>
                     </form>
@@ -377,8 +377,8 @@
                 <div class="banner-panel">
                     <div class="banner-panel-head">
                         <div>
-                            <h2>Saved Banners</h2>
-                            <p>Active banners appear on the website and portal.</p>
+                            <h2>Saved Ads</h2>
+                            <p>Active ads appear only on student and teacher portals.</p>
                         </div>
                     </div>
                     <div id="bannerList" class="banner-list"></div>
@@ -390,10 +390,6 @@
     <script src="auth.js?v=20260718-live-sidebar-refresh"></script>
     <script src="script.js?v=20260718-ads-under-banners"></script>
     <script>
-        if (window.location.hash === '#ads') {
-            window.location.replace('/ads');
-        }
-
         let bannerRecords = [];
 
         function escapeHtml(value) {
@@ -429,7 +425,7 @@
             const preview = document.getElementById('bannerImagePreview');
             if (!preview) return;
             if (imageUrl) {
-                preview.innerHTML = `<img src="${escapeHtml(imageUrl)}" alt="Banner preview">`;
+                preview.innerHTML = `<img src="${escapeHtml(imageUrl)}" alt="Ad preview">`;
                 return;
             }
             preview.innerHTML = '<span>No image selected</span>';
@@ -441,7 +437,7 @@
             document.getElementById('bannerForm').reset();
             document.getElementById('bannerDisplayOrder').value = String(getNextBannerOrder());
             document.getElementById('bannerIsActive').checked = true;
-            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Save Banner';
+            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Save Ad';
             setBannerPreview('');
             if (window.lucide) window.lucide.createIcons();
         }
@@ -452,8 +448,8 @@
                 list.innerHTML = `
                     <div class="banner-empty">
                         <i data-lucide="image"></i>
-                        <strong>No banners saved yet</strong>
-                        <span>Upload a banner image and save it to show it here.</span>
+                        <strong>No ads saved yet</strong>
+                        <span>Upload an ad image and save it to show it here.</span>
                     </div>
                 `;
                 if (window.lucide) window.lucide.createIcons();
@@ -490,20 +486,20 @@
                 list.innerHTML = `
                     <div class="banner-empty">
                         <i data-lucide="loader-circle"></i>
-                        <strong>Loading banners</strong>
-                        <span>Please wait while saved banners are loaded.</span>
+                        <strong>Loading ads</strong>
+                        <span>Please wait while saved ads are loaded.</span>
                     </div>
                 `;
                 if (window.lucide) window.lucide.createIcons();
             }
             try {
-                const response = await fetch(`${API_BASE_URL}/banners?placement=banner`);
+                const response = await fetch(`${API_BASE_URL}/banners?placement=ad`);
                 const data = await response.json();
                 if (!response.ok || data.success === false) {
-                    throw new Error(data.message || 'Banners could not be loaded.');
+                    throw new Error(data.message || 'Ads could not be loaded.');
                 }
                 bannerRecords = (Array.isArray(data.banners) ? data.banners : [])
-                    .filter((banner) => String(banner.placement || 'banner').toLowerCase() === 'banner');
+                    .filter((banner) => String(banner.placement || '').toLowerCase() === 'ad');
                 renderBanners();
                 resetBannerForm();
             } catch (error) {
@@ -512,7 +508,7 @@
                     list.innerHTML = `
                         <div class="banner-empty">
                             <i data-lucide="circle-alert"></i>
-                            <strong>Banners could not be loaded</strong>
+                            <strong>Ads could not be loaded</strong>
                             <span>Refresh the page and try again.</span>
                         </div>
                     `;
@@ -532,7 +528,7 @@
             document.getElementById('bannerImageFile').value = '';
             document.getElementById('bannerDisplayOrder').value = Number(banner.displayOrder || 1);
             document.getElementById('bannerIsActive').checked = banner.isActive !== false;
-            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Update Banner';
+            document.getElementById('bannerSaveBtn').innerHTML = '<i data-lucide="save"></i> Update Ad';
             setBannerPreview(banner.imageUrl || '');
             if (window.lucide) window.lucide.createIcons();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -546,10 +542,10 @@
             });
             const data = await response.json();
             if (!response.ok || data.success === false) {
-                throw new Error(data.message || 'Banner save failed.');
+                throw new Error(data.message || 'Ad save failed.');
             }
             bannerRecords = (Array.isArray(data.banners) ? data.banners : [])
-                .filter((banner) => String(banner.placement || 'banner').toLowerCase() === 'banner');
+                .filter((banner) => String(banner.placement || '').toLowerCase() === 'ad');
             renderBanners();
             return data;
         }
@@ -564,20 +560,20 @@
                     isActive: banner.isActive === false
                 });
             } catch (error) {
-                alert(error.message || 'Banner status update failed.');
+                alert(error.message || 'Ad status update failed.');
             }
         }
 
         async function deleteBanner(id) {
-            if (!confirm('Delete this banner?')) return;
+            if (!confirm('Delete this ad?')) return;
             const response = await fetch(`${API_BASE_URL}/banners/${encodeURIComponent(id)}`, { method: 'DELETE' });
             const data = await response.json();
             if (!response.ok || data.success === false) {
-                alert(data.message || 'Banner delete failed.');
+                alert(data.message || 'Ad delete failed.');
                 return;
             }
             bannerRecords = (Array.isArray(data.banners) ? data.banners : [])
-                .filter((banner) => String(banner.placement || 'banner').toLowerCase() === 'banner');
+                .filter((banner) => String(banner.placement || '').toLowerCase() === 'ad');
             renderBanners();
         }
 
@@ -592,7 +588,7 @@
             }
             const imageUrl = fileData || document.getElementById('bannerExistingImage').value.trim();
             if (!imageUrl) {
-                alert('Please upload a banner image.');
+                alert('Please upload an ad image.');
                 return;
             }
             const payload = {
@@ -601,7 +597,7 @@
                 subtitle: '',
                 imageUrl,
                 linkUrl: '',
-                placement: 'banner',
+                placement: 'ad',
                 displayOrder: Number(document.getElementById('bannerDisplayOrder').value || getNextBannerOrder()),
                 isActive: document.getElementById('bannerIsActive').checked
             };
@@ -609,7 +605,7 @@
             try {
                 await saveBannerPayload(payload);
             } catch (error) {
-                alert(error.message || 'Banner save failed.');
+                alert(error.message || 'Ad save failed.');
                 return;
             }
             resetBannerForm();
@@ -630,7 +626,7 @@
         if (window.socket) {
             window.socket.on('banners_update', (records) => {
                 bannerRecords = (Array.isArray(records) ? records : [])
-                    .filter((banner) => String(banner.placement || 'banner').toLowerCase() === 'banner');
+                    .filter((banner) => String(banner.placement || '').toLowerCase() === 'ad');
                 renderBanners();
                 if (!document.getElementById('bannerId').value) {
                     document.getElementById('bannerDisplayOrder').value = String(getNextBannerOrder());

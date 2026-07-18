@@ -1552,7 +1552,7 @@ app.delete('/api/special-notices/:id', async (req, res) => {
 });
 
 function normalizeBannerPlacement(value) {
-    return String(value || '').trim().toLowerCase() === 'banner' ? 'banner' : 'ad';
+    return String(value || '').trim().toLowerCase() === 'ad' ? 'ad' : 'banner';
 }
 
 function formatBanner(record) {
@@ -3499,7 +3499,7 @@ function defineBannerModel(db) {
         subtitle: { type: DataTypes.STRING, allowNull: true },
         imageUrl: { type: DataTypes.TEXT('long'), allowNull: false },
         linkUrl: { type: DataTypes.STRING, allowNull: true },
-        placement: { type: DataTypes.STRING, defaultValue: 'ad' },
+        placement: { type: DataTypes.STRING, defaultValue: 'banner' },
         displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
         isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
     });
@@ -3866,7 +3866,7 @@ async function ensureLegacySchema() {
     });
 
     await ensureTableColumns('Banners', {
-        placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'ad' },
+        placement: { type: DataTypes.STRING, allowNull: true, defaultValue: 'banner' },
         linkUrl: { type: DataTypes.STRING, allowNull: true }
     });
 
