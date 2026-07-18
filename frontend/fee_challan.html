@@ -302,6 +302,8 @@
         .challan-school-name {
             display: inline-block;
             text-align: left;
+            max-width: calc(100% - 76px);
+            line-height: 1.12;
         }
 
         .challan-school-title {
@@ -957,7 +959,7 @@
             .preview-sheet {
                 border: 1px solid #475569;
                 margin: 0;
-                height: 89mm;
+                height: 100%;
                 overflow: hidden;
                 box-sizing: border-box;
                 display: flex;
@@ -973,15 +975,20 @@
             }
 
             .challan-bulk-group {
-                height: 269mm;
-                max-height: 269mm;
+                height: 143mm;
+                max-height: 143mm;
                 display: grid;
-                grid-template-rows: repeat(3, 1fr);
-                gap: 1mm;
+                grid-template-rows: 1fr;
+                gap: 0;
                 margin: 0;
                 overflow: hidden;
                 break-inside: avoid;
                 page-break-inside: avoid;
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .challan-bulk-group:nth-child(2n) {
                 break-after: page;
                 page-break-after: always;
             }
@@ -998,7 +1005,7 @@
             .challan-paper {
                 height: 100%;
                 box-sizing: border-box;
-                padding: 1mm 1.2mm 0.8mm;
+                padding: 2mm 2.2mm 1.4mm;
                 display: flex;
                 flex-direction: column;
                 width: 100%;
@@ -1006,15 +1013,15 @@
             }
 
             .challan-copy-label {
-                font-size: 7.2px;
+                font-size: 8px;
                 line-height: 1;
-                margin-bottom: 0.45mm;
+                margin-bottom: 0.75mm;
                 color: #334155;
             }
 
             .challan-table {
-                font-size: 7.7px;
-                line-height: 1.16;
+                font-size: 9px;
+                line-height: 1.18;
                 flex: 1 1 0;
                 min-height: 0;
                 border: 1px solid #475569;
@@ -1023,7 +1030,7 @@
             .challan-table td,
             .challan-table th {
                 border-color: #64748b;
-                padding: 0.62mm 0.75mm;
+                padding: 0.85mm 1mm;
                 white-space: normal;
                 vertical-align: middle;
             }
@@ -1034,36 +1041,37 @@
             }
 
             .challan-school-header {
-                min-height: 8mm;
-                gap: 2mm;
+                min-height: 14mm;
+                gap: 2.5mm;
             }
 
             .challan-school-logo {
-                width: 7mm;
-                height: 7mm;
-                max-width: 7mm;
-                max-height: 7mm;
+                width: 12mm;
+                height: 12mm;
+                max-width: 12mm;
+                max-height: 12mm;
                 object-fit: contain;
             }
 
             .challan-school-name {
                 text-align: left;
+                max-width: 155mm;
             }
 
             .challan-school-title {
-                font-size: 10.2px;
-                line-height: 1.05;
+                font-size: 13px;
+                line-height: 1.08;
                 letter-spacing: 0.03em;
             }
 
             .challan-school-subtitle {
-                font-size: 6.7px;
-                line-height: 1.08;
+                font-size: 8px;
+                line-height: 1.12;
             }
 
             .challan-urdu-note {
-                font-size: 6.5px;
-                line-height: 1.08;
+                font-size: 7.6px;
+                line-height: 1.12;
                 min-height: 0;
             }
 
@@ -1079,8 +1087,8 @@
             }
 
             .challan-subvalue {
-                font-size: 6.3px;
-                line-height: 1.08;
+                font-size: 7.2px;
+                line-height: 1.1;
             }
 
             .challan-month-picker-grid {
@@ -1088,31 +1096,31 @@
             }
 
             .challan-qr-cell {
-                width: 13mm;
+                width: 16mm;
                 text-align: center;
             }
 
             .challan-qr-cell img {
-                width: 8mm;
-                height: 8mm;
+                width: 11mm;
+                height: 11mm;
                 object-fit: contain;
             }
 
             .challan-qr-svg svg {
-                width: 8mm;
-                height: 8mm;
+                width: 11mm;
+                height: 11mm;
             }
 
             .challan-qr-note {
-                font-size: 6px;
-                line-height: 1.08;
+                font-size: 7.2px;
+                line-height: 1.1;
             }
 
             .challan-footer {
                 gap: 4px;
-                font-size: 6.2px;
+                font-size: 7.2px;
                 line-height: 1.1;
-                padding: 0.65mm 0.4mm 0;
+                padding: 1mm 0.5mm 0;
                 flex: 0 0 auto;
             }
         }
@@ -1299,7 +1307,7 @@
                                 </div>
                                 <div class="field-block">
                                     <label for="schoolName">School Name</label>
-                                    <input type="text" id="schoolName" placeholder="PESS JAND">
+                                    <input type="text" id="schoolName" placeholder="Pakistan Educational School System Jand">
                                 </div>
                                 <div class="field-block full">
                                     <label for="schoolAddress">Address / Campus</label>
@@ -1442,7 +1450,8 @@
             }
         };
         const challanFormFields = ['challanNumber', 'challanStudent', 'studentSid', 'studentAdmNo', 'studentClass', 'studentRollNo', 'fatherName', 'fatherMobile', 'challanSession', 'challanMonth', 'feeMonth', 'dueDate', 'baseAmount', 'payNowAmount', 'additionalCharges', 'discountValue', 'particulars', 'schoolName', 'schoolAddress', 'urduNote', 'challanNotes'];
-        const printCopies = ['Parents Copy', 'School Copy', 'Information Copy'];
+        const DEFAULT_CHALLAN_SCHOOL_NAME = 'Pakistan Educational School System Jand';
+        const printCopies = ['Student Copy'];
         const CHALLAN_MONTHLY_FEES_KEY = 'eduCore_monthly_fees';
         const CHALLAN_PAYMENT_DETAILS_KEY = 'eduCore_payment_details';
         const CHALLAN_MONTHS = [
@@ -2200,7 +2209,7 @@
             document.getElementById('challanMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
             document.getElementById('feeMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
             document.getElementById('particulars').value = 'Tuition Fee';
-            document.getElementById('schoolName').value = 'PESS JAND';
+            document.getElementById('schoolName').value = DEFAULT_CHALLAN_SCHOOL_NAME;
             applyBranchDetailsToChallan('Main branch');
             document.getElementById('urduNote').value = 'Note: Fees will not be accepted after the due date.';
             document.getElementById('challanNotes').value = 'No additional instructions.';
@@ -3149,7 +3158,7 @@
                 discountLabel: discountInput || '0',
                 discountAmount,
                 particulars: document.getElementById('particulars').value.trim() || 'Tuition Fee',
-                schoolName: document.getElementById('schoolName').value.trim() || 'PESS JAND',
+                schoolName: document.getElementById('schoolName').value.trim() || DEFAULT_CHALLAN_SCHOOL_NAME,
                 schoolAddress: document.getElementById('schoolAddress').value.trim() || `${CHALLAN_BRANCH_CONTACTS.main.campusLabel} - ${CHALLAN_BRANCH_CONTACTS.main.addressLine}`,
                 urduNote: document.getElementById('urduNote').value.trim() || '',
                 notes: document.getElementById('challanNotes').value.trim() || 'No additional instructions.',
@@ -3412,7 +3421,7 @@
                 const numericDiscount = Number(discountInput);
                 const discountAmount = Number.isNaN(numericDiscount) ? 0 : numericDiscount;
                 const particulars = document.getElementById('particulars').value.trim() || 'Tuition Fee';
-                const schoolName = document.getElementById('schoolName').value.trim() || 'PESS JAND';
+                const schoolName = document.getElementById('schoolName').value.trim() || DEFAULT_CHALLAN_SCHOOL_NAME;
                 const schoolAddress = document.getElementById('schoolAddress').value.trim() || `${CHALLAN_BRANCH_CONTACTS.main.campusLabel} - ${CHALLAN_BRANCH_CONTACTS.main.addressLine}`;
                 const urduNote = document.getElementById('urduNote').value.trim() || '';
                 const notes = document.getElementById('challanNotes').value.trim() || 'No additional instructions.';
@@ -3627,7 +3636,7 @@
             const discountAmount = Number.isNaN(numericDiscount) ? 0 : numericDiscount;
 
             const particulars = document.getElementById('particulars').value.trim() || 'Tuition Fee';
-            const schoolName = document.getElementById('schoolName').value.trim() || 'PESS JAND';
+            const schoolName = document.getElementById('schoolName').value.trim() || DEFAULT_CHALLAN_SCHOOL_NAME;
             const schoolAddress = document.getElementById('schoolAddress').value.trim() || `${CHALLAN_BRANCH_CONTACTS.main.campusLabel} - ${CHALLAN_BRANCH_CONTACTS.main.addressLine}`;
             const useFormAddressForBulk = !!selectedCampus;
             const urduNote = document.getElementById('urduNote').value.trim() || '';
@@ -3847,7 +3856,7 @@
             const numericDiscount = Number(discountInput);
             const discountAmount = Number.isNaN(numericDiscount) ? 0 : numericDiscount;
             const particulars = document.getElementById('particulars').value.trim() || 'Tuition Fee';
-            const schoolName = document.getElementById('schoolName').value.trim() || 'PESS JAND';
+            const schoolName = document.getElementById('schoolName').value.trim() || DEFAULT_CHALLAN_SCHOOL_NAME;
             const schoolAddress = document.getElementById('schoolAddress').value.trim() || 'School Address';
             const urduNote = document.getElementById('urduNote').value.trim() || '';
             const notes = document.getElementById('challanNotes').value.trim() || 'No additional instructions.';
