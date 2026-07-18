@@ -182,6 +182,15 @@
             height: 126px;
             padding: 0.95rem 1rem;
             border-radius: 8px;
+            --dashboard-card-accent: #14b8a6;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(20, 184, 166, 0.14);
+            --dashboard-card-icon-ring: rgba(20, 184, 166, 0.22);
+            --dashboard-card-icon-glow: rgba(20, 184, 166, 0.16);
+        }
+
+        #dashboardStatsGrid .card::before {
+            background: linear-gradient(90deg, var(--dashboard-card-accent), var(--dashboard-card-accent-2));
         }
 
         #dashboardStatsGrid .card-title {
@@ -207,6 +216,82 @@
             height: 34px;
             right: 0.75rem;
             top: 0.75rem;
+            border-radius: 10px;
+            color: var(--dashboard-card-accent-2);
+            background:
+                radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.86), transparent 34%),
+                linear-gradient(135deg, var(--dashboard-card-icon-bg), rgba(255, 255, 255, 0.82));
+            border: 1px solid var(--dashboard-card-icon-ring);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.72),
+                0 10px 20px var(--dashboard-card-icon-glow);
+            opacity: 1;
+        }
+
+        #dashboardStatsGrid .card-icon svg {
+            width: 19px;
+            height: 19px;
+            stroke-width: 2.3;
+        }
+
+        #dashboardStatsGrid .card:hover .card-icon {
+            transform: translateY(-1px) scale(1.04);
+        }
+
+        #dashboardStatsGrid .dashboard-card-students {
+            --dashboard-card-accent: #14b8a6;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(20, 184, 166, 0.18);
+            --dashboard-card-icon-ring: rgba(20, 184, 166, 0.28);
+            --dashboard-card-icon-glow: rgba(20, 184, 166, 0.18);
+        }
+
+        #dashboardStatsGrid .dashboard-card-teachers {
+            --dashboard-card-accent: #f59e0b;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(245, 158, 11, 0.18);
+            --dashboard-card-icon-ring: rgba(245, 158, 11, 0.3);
+            --dashboard-card-icon-glow: rgba(245, 158, 11, 0.16);
+        }
+
+        #dashboardStatsGrid .dashboard-card-staff {
+            --dashboard-card-accent: #22c55e;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(34, 197, 94, 0.16);
+            --dashboard-card-icon-ring: rgba(34, 197, 94, 0.28);
+            --dashboard-card-icon-glow: rgba(34, 197, 94, 0.16);
+        }
+
+        #dashboardStatsGrid .dashboard-card-revenue {
+            --dashboard-card-accent: #06b6d4;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(6, 182, 212, 0.17);
+            --dashboard-card-icon-ring: rgba(6, 182, 212, 0.3);
+            --dashboard-card-icon-glow: rgba(6, 182, 212, 0.16);
+        }
+
+        #dashboardStatsGrid .dashboard-card-logins {
+            --dashboard-card-accent: #38bdf8;
+            --dashboard-card-accent-2: #0e7490;
+            --dashboard-card-icon-bg: rgba(56, 189, 248, 0.18);
+            --dashboard-card-icon-ring: rgba(56, 189, 248, 0.3);
+            --dashboard-card-icon-glow: rgba(56, 189, 248, 0.16);
+        }
+
+        #dashboardStatsGrid .dashboard-card-complaints {
+            --dashboard-card-accent: #2dd4bf;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(45, 212, 191, 0.18);
+            --dashboard-card-icon-ring: rgba(45, 212, 191, 0.3);
+            --dashboard-card-icon-glow: rgba(45, 212, 191, 0.16);
+        }
+
+        #dashboardStatsGrid .dashboard-card-banners {
+            --dashboard-card-accent: #facc15;
+            --dashboard-card-accent-2: #0f766e;
+            --dashboard-card-icon-bg: rgba(250, 204, 21, 0.18);
+            --dashboard-card-icon-ring: rgba(250, 204, 21, 0.32);
+            --dashboard-card-icon-glow: rgba(250, 204, 21, 0.16);
         }
 
         .dashboard-revenue-card .card-value {
@@ -356,7 +441,7 @@
 
             <!-- Stats Grid -->
             <div class="stats-grid" id="dashboardStatsGrid">
-                <a href="students.html" class="card" data-dashboard-card>
+                <a href="students.html" class="card dashboard-card-students" data-dashboard-card>
                     <div class="card-title">Total Students</div>
                     <div class="card-value" id="dashStudentCount">...</div>
                     <div class="card-trend trend-up">
@@ -367,7 +452,7 @@
                     </div>
                 </a>
 
-                <a href="teachers.html" class="card" data-dashboard-card>
+                <a href="teachers.html" class="card dashboard-card-teachers" data-dashboard-card>
                     <div class="card-title">Total Teachers</div>
                     <div class="card-value" id="dashTeacherCount">...</div>
                     <div class="card-trend trend-up">
@@ -378,7 +463,7 @@
                     </div>
                 </a>
 
-                <a href="staff.html" class="card" data-dashboard-card>
+                <a href="staff.html" class="card dashboard-card-staff" data-dashboard-card>
                     <div class="card-title">Total Staff</div>
                     <div class="card-value" id="dashStaffCount">...</div>
                     <div class="card-trend trend-up">
@@ -389,7 +474,7 @@
                     </div>
                 </a>
 
-                <a href="revenue.html" class="card dashboard-revenue-card" data-dashboard-card>
+                <a href="revenue.html" class="card dashboard-revenue-card dashboard-card-revenue" data-dashboard-card>
                     <div class="card-title">Total Revenue</div>
                     <div class="card-value" id="dashRevenue">...</div>
                     <div class="card-trend trend-up" id="dashRevenueDetail">
@@ -400,7 +485,7 @@
                     </div>
                 </a>
 
-                <div class="card card-clickable" data-admin-only-card id="activeLoginsCard" title="View active sessions">
+                <div class="card card-clickable dashboard-card-logins" data-admin-only-card id="activeLoginsCard" title="View active sessions">
                     <div class="card-title">Active Portal Logins</div>
                     <div class="card-value" id="dashActiveLogins">...</div>
                     <div class="card-trend trend-up" id="dashActiveLoginsDetail">
@@ -411,7 +496,7 @@
                     </div>
                 </div>
 
-                <a href="complain_box.html" class="card" data-dashboard-card>
+                <a href="complain_box.html" class="card dashboard-card-complaints" data-dashboard-card>
                     <div class="card-title">Total Complaints</div>
                     <div class="card-value" id="dashComplaintCount">...</div>
                     <div class="card-trend trend-up" id="dashComplaintDetail">
@@ -422,7 +507,7 @@
                     </div>
                 </a>
 
-                <a href="banners.html" class="card" data-dashboard-card>
+                <a href="banners.html" class="card dashboard-card-banners" data-dashboard-card>
                     <div class="card-title">Live Banners</div>
                     <div class="card-value" id="dashLiveBannerCount">...</div>
                     <div class="card-trend trend-up" id="dashLiveBannerDetail">
