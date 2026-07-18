@@ -108,7 +108,7 @@
         const FEE_LOGO_SETTINGS_KEY = 'eduCore_settings';
 
         function getFeeLogoSettings() {
-            const fallback = { schoolName: 'PESS JAND', phone: '0340-5983088,03015060130,0572622364', email: 'pessjand@gmail.com', address: '', schoolAddress: '', logoDataUrl: '' };
+            const fallback = { schoolName: 'PESS JAND', phone: '0340-5983088,03015060130,0572622364', email: 'pessjand@gmail.com', address: 'Main Kohat Road Jand', schoolAddress: 'Main Kohat Road Jand', logoDataUrl: '' };
             try {
                 const globalBranding = typeof getBrandingSettings === 'function' ? getBrandingSettings() : {};
                 const saved = JSON.parse(localStorage.getItem(FEE_LOGO_SETTINGS_KEY) || '{}') || {};

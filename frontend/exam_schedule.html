@@ -1224,7 +1224,7 @@
         let selectedDateSheetFile = null;
 
         function getExamBrandingSettings() {
-            const fallback = { schoolName: 'PESS JAND', schoolTitle: 'PESS JAND', phone: '0340-5983088,03015060130,0572622364', email: 'pessjand@gmail.com', address: '', schoolAddress: '', logoDataUrl: '' };
+            const fallback = { schoolName: 'PESS JAND', schoolTitle: 'PESS JAND', phone: '0340-5983088,03015060130,0572622364', email: 'pessjand@gmail.com', address: 'Main Kohat Road Jand', schoolAddress: 'Main Kohat Road Jand', logoDataUrl: '' };
             try {
                 return { ...fallback, ...((typeof getBrandingSettings === 'function' ? getBrandingSettings() : {}) || {}) };
             } catch (_error) {

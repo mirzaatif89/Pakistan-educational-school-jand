@@ -1299,8 +1299,8 @@ function getBrandingSettings() {
         session: '',
         phone: '0340-5983088,03015060130,0572622364',
         email: 'pessjand@gmail.com',
-        address: '',
-        schoolAddress: '',
+        address: 'Main Kohat Road Jand',
+        schoolAddress: 'Main Kohat Road Jand',
         logoDataUrl: ''
     };
     try {
