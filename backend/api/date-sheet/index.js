@@ -27,6 +27,7 @@ function normalizeDateSheetPayload(data = {}) {
         uploadedDateSheetFile: {
             name: String(uploadedFile.name || '').trim(),
             type: String(uploadedFile.type || '').trim(),
+            size: Number(uploadedFile.size) || 0,
             dataUrl: String(uploadedFile.dataUrl || '').trim()
         },
         scheduleRows,

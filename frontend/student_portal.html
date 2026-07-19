@@ -4806,6 +4806,7 @@
                     await loadExecutedDateSheet();
                     applyStudentAttendance(student);
                     applyStudentPerformance(student);
+                    applyDateSheet(student);
                     updateStudentNotifications(student);
                 } catch (_error) {
                     updateStudentNotifications(student);
@@ -5384,6 +5385,45 @@
             return wordsToNumbers[normalized] || normalized;
         }
 
+        function normalizeDateSheetCampus(value) {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        }
+
+        function dateSheetMatchesStudentClass(targetClass = '', studentClass = '') {
+            const target = normalizeClassName(targetClass);
+            const student = normalizeClassName(studentClass);
+            if (!target || !student) return true;
+            const targetBase = target.replace(/\s*\([^)]*\)\s*$/g, '').trim();
+            const studentBase = student.replace(/\s*\([^)]*\)\s*$/g, '').trim();
+            return target === student || targetBase === studentBase;
+        }
+
+        function dateSheetMatchesStudentCampus(targetCampus = '', student = {}) {
+            const target = normalizeDateSheetCampus(targetCampus);
+            if (!target) return true;
+            const studentCampus = normalizeDateSheetCampus(student.campusName || student.branchName || student.campus || '');
+            if (!studentCampus) return true;
+            return target === studentCampus;
+        }
+
+        function getStudentDateSheetRows(state = {}, student = {}) {
+            if (state.status !== 'executed' || !dateSheetMatchesStudentCampus(state.dateSheetCampus, student)) return [];
+            const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
+            const studentClass = student.classGrade || student.className || student.grade || '';
+            const headerMatches = dateSheetMatchesStudentClass(state.dateSheetClassGroup, studentClass);
+            return rows.filter((row) => {
+                const rowClass = String(row.className || '').trim();
+                if (rowClass) return dateSheetMatchesStudentClass(rowClass, studentClass);
+                return headerMatches;
+            });
+        }
+
+        function studentCanSeeDateSheet(state = {}, student = {}) {
+            if (state.status !== 'executed') return false;
+            return dateSheetMatchesStudentCampus(state.dateSheetCampus, student) &&
+                dateSheetMatchesStudentClass(state.dateSheetClassGroup, student.classGrade || student.className || student.grade || '');
+        }
+
         function compareLectureRows(a, b) {
             const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
             const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -5458,13 +5498,10 @@
             const emptyState = document.getElementById('studentDateSheetEmpty');
             const table = document.getElementById('studentDateSheetTable');
             const fileNote = document.getElementById('studentDateSheetFileNote');
-            const className = String(student.classGrade || '').trim().toLowerCase();
-            const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
             const uploadedFile = state.uploadedDateSheetFile || {};
-            const hasUploadedFile = Boolean(state.status === 'executed' && uploadedFile.name && uploadedFile.dataUrl);
-            const filteredRows = state.status === 'executed'
-                ? rows.filter((row) => !className || String(row.className || '').trim().toLowerCase().includes(className))
-                : [];
+            const filteredRows = getStudentDateSheetRows(state, student);
+            const canSeePublishedFile = studentCanSeeDateSheet(state, student);
+            const hasUploadedFile = Boolean(canSeePublishedFile && uploadedFile.name && uploadedFile.dataUrl);
 
             if (!filteredRows.length) {
                 tbody.innerHTML = '';
@@ -5489,13 +5526,14 @@
 
         function downloadDateSheet() {
             const state = loadDateSheetState();
-            const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
+            const student = getCurrentPortalStudent();
+            const rows = getStudentDateSheetRows(state, student);
             const uploadedFile = state.uploadedDateSheetFile || {};
-            if (state.status === 'executed' && uploadedFile.dataUrl) {
+            if (studentCanSeeDateSheet(state, student) && uploadedFile.dataUrl) {
                 downloadPortalDataUrl(uploadedFile.dataUrl, uploadedFile.name || 'date-sheet');
                 return;
             }
-            if (state.status !== 'executed' || !rows.length) {
+            if (!rows.length) {
                 alert('No date sheet is available to download yet.');
                 return;
             }
@@ -5613,6 +5651,7 @@
             applyStudentAttendance(student);
             initializeStudentResultLookup(student);
             applyStudentPerformance(student);
+            applyDateSheet(student);
 
             sessionStorage.setItem(STUDENT_PROFILE_CACHE_KEY, JSON.stringify(student));
             updateStudentNotifications(student);
