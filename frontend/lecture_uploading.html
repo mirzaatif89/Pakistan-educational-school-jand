@@ -10,9 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .upload-panel { background:#fff; border:1px solid #cfe8e5; border-radius:16px; padding:1.35rem; margin-bottom:1.5rem; box-shadow:0 12px 30px rgba(15,23,42,.07); }
-        .upload-grid { display:grid; grid-template-columns:minmax(0,160px) repeat(auto-fit,minmax(220px,1fr)); gap:0.75rem; align-items:end; }
-        .upload-grid > div:first-child { max-width: 160px; }
-        .upload-grid > div:last-child { grid-column: 1 / span 2; max-width: 280px; }
+        .upload-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.75rem; align-items:end; }
         .upload-grid > div { margin-bottom: 0; }
         .upload-panel label { display:block; color:#334155; font-size:.82rem; font-weight:800; margin-bottom:.35rem; }
         .upload-panel input,.upload-panel select,.upload-panel textarea { width:100%; min-height:42px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; color:#0f172a; padding:.65rem .75rem; font:inherit; outline:none; }
@@ -46,6 +44,7 @@
                 <form id="lectureUploadForm">
                     <input type="hidden" id="lectureUploadId">
                     <div class="upload-grid">
+                        <div><label>Campus</label><select id="lectureCampus" required></select></div>
                         <div><label>Class</label><select id="lectureClass" required></select></div>
                         <div><label>Lecture Title</label><input type="text" id="lectureTitle" required placeholder="e.g. Chapter 3 Lecture"></div>
                         <div><label>Subject</label><input type="text" id="lectureSubject" placeholder="e.g. Science"></div>
@@ -62,15 +61,61 @@
     <script src="auth.js?v=20260520-sidebar-requested-order"></script>
     <script src="script.js?v=20260520-sidebar-classes-restore"></script>
     <script>
+        const API_BASE_URL = '/api';
         const LECTURE_KEY = 'eduCore_uploaded_lectures';
         function data(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (_e) { return []; } }
         function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_e) { showAppAlert('File/data is too large to save.', 'Storage Full'); return false; } }
         function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
+        async function populateCampuses() {
+            const campusMap = new Map();
+            const addCampus = (value) => {
+                const campus = String(value || '').trim();
+                if (!campus) return;
+                const key = campus.toLowerCase();
+                if (!campusMap.has(key)) campusMap.set(key, campus);
+            };
+            if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+            if (typeof loadRegisteredCampusNames === 'function') {
+                try { (await loadRegisteredCampusNames()).forEach(addCampus); } catch (_error) {}
+            }
+            data('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+            data('eduCore_students').forEach((student) => addCampus(student?.campusName || student?.branchName || student?.campus));
+            data('eduCore_teachers').forEach((teacher) => addCampus(teacher?.campusName || teacher?.branchName || teacher?.campus));
+            data('eduCore_staff').forEach((staff) => addCampus(staff?.campusName || staff?.branchName || staff?.campus));
+            const campuses = Array.from(campusMap.values()).sort();
+            if (!campuses.length) campuses.push('Main Campus');
+            lectureCampus.innerHTML = '<option value="">Select Campus</option>' + campuses.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+            const globalCampus = typeof getGlobalCampusFilterForCurrentUser === 'function' ? getGlobalCampusFilterForCurrentUser() : '';
+            if (globalCampus && globalCampus !== 'all' && campuses.some((name) => name.toLowerCase() === String(globalCampus).toLowerCase())) {
+                lectureCampus.value = globalCampus;
+            }
+        }
         function populateClasses() {
             const students = data('eduCore_students');
             const classes = data('eduCore_classes');
             const names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
             lectureClass.innerHTML = '<option value="">Select Class</option>' + names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+        }
+        async function loadUploadedLecturesFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/uploaded-lectures`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Lectures could not be loaded.');
+                if (Array.isArray(result.lectures)) localStorage.setItem(LECTURE_KEY, JSON.stringify(result.lectures));
+            } catch (error) {
+                console.warn('Uploaded lectures API load failed:', error.message);
+            }
+        }
+        async function saveUploadedLectureToApi(item) {
+            const response = await fetch(`${API_BASE_URL}/uploaded-lectures`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Lecture could not be uploaded.');
+            if (Array.isArray(result.lectures)) localStorage.setItem(LECTURE_KEY, JSON.stringify(result.lectures));
+            return result;
         }
         function readFile(input) {
             const file = input.files?.[0];
@@ -80,30 +125,39 @@
         function render() {
             const items = data(LECTURE_KEY).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
             if (!items.length) { lectureUploadList.innerHTML = '<div class="empty-note">No lecture uploaded yet.</div>'; return; }
-            lectureUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Class</th><th>Lecture</th><th>Link / File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.subject || '-')}<br>${esc(item.details)}</td><td>${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">Open Link</a><br>` : ''}${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'lecture-file')}">${esc(item.file.name || 'Download')}</a>` : (!item.url ? '-' : '')}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
+            lectureUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Campus</th><th>Class</th><th>Lecture</th><th>Link / File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.subject || '-')}<br>${esc(item.details)}</td><td>${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">Open Link</a><br>` : ''}${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'lecture-file')}">${esc(item.file.name || 'Download')}</a>` : (!item.url ? '-' : '')}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
             if (window.lucide) lucide.createIcons();
         }
         function editItem(id) {
             const item = data(LECTURE_KEY).find((entry) => entry.id === id);
             if (!item) return;
-            lectureUploadId.value = item.id; lectureClass.value = item.classGrade || ''; lectureTitle.value = item.title || ''; lectureSubject.value = item.subject || ''; lectureUrl.value = item.url || ''; lectureDetails.value = item.details || '';
+            lectureUploadId.value = item.id; lectureCampus.value = item.campusName || item.branchName || item.campus || ''; lectureClass.value = item.classGrade || ''; lectureTitle.value = item.title || ''; lectureSubject.value = item.subject || ''; lectureUrl.value = item.url || ''; lectureDetails.value = item.details || '';
             lectureSaveBtn.innerHTML = '<i data-lucide="save"></i> Update Lecture';
             lectureUploadForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (window.lucide) lucide.createIcons();
         }
-        function deleteItem(id) { save(LECTURE_KEY, data(LECTURE_KEY).filter((item) => item.id !== id)); render(); }
+        async function deleteItem(id) {
+            save(LECTURE_KEY, data(LECTURE_KEY).filter((item) => item.id !== id));
+            try { await fetch(`${API_BASE_URL}/uploaded-lectures?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (_error) {}
+            render();
+        }
         lectureUploadForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const editId = lectureUploadId.value;
             const existing = data(LECTURE_KEY).find((item) => item.id === editId);
             const file = await readFile(lectureFile);
-            const item = { id: editId || `LECTURE-${Date.now()}`, classGrade: lectureClass.value, title: lectureTitle.value.trim(), subject: lectureSubject.value.trim(), url: lectureUrl.value.trim(), details: lectureDetails.value.trim(), file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
-            if (!item.classGrade || !item.title || !item.details) { showAppAlert('Class, title, and notes are required.', 'Missing Lecture'); return; }
+            const item = { id: editId || `LECTURE-${Date.now()}`, campusName: lectureCampus.value, classGrade: lectureClass.value, title: lectureTitle.value.trim(), subject: lectureSubject.value.trim(), url: lectureUrl.value.trim(), details: lectureDetails.value.trim(), file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+            if (!item.campusName || !item.classGrade || !item.title || !item.details) { showAppAlert('Campus, class, title, and notes are required.', 'Missing Lecture'); return; }
             const items = data(LECTURE_KEY); const index = items.findIndex((entry) => entry.id === editId);
             if (index >= 0) items[index] = item; else items.push(item);
             if (!save(LECTURE_KEY, items)) return;
+            try {
+                await saveUploadedLectureToApi(item);
+            } catch (error) {
+                showAppAlert(`Lecture saved locally, but API upload failed: ${error.message}`, 'API Sync Failed');
+            }
             event.target.reset(); lectureUploadId.value = ''; lectureSaveBtn.innerHTML = '<i data-lucide="save"></i> Save Lecture'; render(); showSuccessModal(editId ? 'Lecture Updated!' : 'Lecture Uploaded!', 'Lecture is visible in student portal.');
         });
-        populateClasses(); render(); if (window.lucide) lucide.createIcons();
+        populateCampuses(); populateClasses(); loadUploadedLecturesFromApi().then(render); if (window.lucide) lucide.createIcons();
     </script>
 </body>
 

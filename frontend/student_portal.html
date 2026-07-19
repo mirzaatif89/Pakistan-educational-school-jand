@@ -3552,6 +3552,13 @@
                         if (response.ok && result?.success !== false && Array.isArray(result.assignments)) {
                             localStorage.setItem(STUDENT_UPLOADED_ASSIGNMENT_KEY, JSON.stringify(result.assignments));
                         }
+                    }),
+                fetch(`${API_BASE_URL}/uploaded-lectures`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.lectures)) {
+                            localStorage.setItem(STUDENT_UPLOADED_LECTURE_KEY, JSON.stringify(result.lectures));
+                        }
                     })
             ];
             await Promise.allSettled(loaders);
@@ -4030,7 +4037,7 @@
             list.innerHTML = items.map((item) => `
                 <article class="portal-content-card">
                     <h4>${escapeHtml(item.title || 'Lecture')}</h4>
-                    <div class="portal-content-meta">${escapeHtml(item.subject || item.classGrade || '-')}</div>
+                    <div class="portal-content-meta">${escapeHtml(item.subject || '-')} | ${escapeHtml(item.campusName || '-')} | ${escapeHtml(item.classGrade || '-')}</div>
                     <p>${escapeHtml(item.details || '-')}</p>
                     <div class="portal-action-row">
                         ${item.url ? `<a class="portal-download-btn" href="${escapeHtml(item.url)}" target="_blank" rel="noopener"><i data-lucide="external-link" width="16"></i> Open Link</a>` : ''}

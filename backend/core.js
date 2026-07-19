@@ -34,6 +34,7 @@ const PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions.json');
 const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json');
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
 const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json');
+const UPLOADED_LECTURES_FILE = path.join(DATA_DIR, 'uploaded_lectures.json');
 const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
 const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
 const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
@@ -957,6 +958,25 @@ function normalizeUploadedAssignment(raw = {}) {
     };
 }
 
+function normalizeUploadedLecture(raw = {}) {
+    return {
+        id: String(raw.id || `LECTURE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        campusName: String(raw.campusName || raw.branchName || raw.campus || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        title: String(raw.title || '').trim(),
+        subject: String(raw.subject || '').trim(),
+        url: String(raw.url || '').trim(),
+        details: String(raw.details || '').trim(),
+        file: raw.file && typeof raw.file === 'object' ? {
+            name: String(raw.file.name || '').trim(),
+            type: String(raw.file.type || '').trim(),
+            dataUrl: String(raw.file.dataUrl || '').trim()
+        } : null,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+}
+
 function normalizeStudentDiary(raw = {}) {
     return {
         id: String(raw.id || `DIARY-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
@@ -1147,6 +1167,26 @@ app.delete('/api/uploaded-assignments', (req, res) => {
     const id = String(req.query.id || '');
     const assignments = writeJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment).filter((entry) => String(entry.id) !== id), normalizeUploadedAssignment);
     res.json({ success: true, assignments });
+});
+
+app.get('/api/uploaded-lectures', (req, res) => {
+    res.json({ success: true, lectures: readJsonArrayFile(UPLOADED_LECTURES_FILE, normalizeUploadedLecture) });
+});
+
+app.post('/api/uploaded-lectures', (req, res) => {
+    const item = normalizeUploadedLecture(req.body || {});
+    if (!item.campusName || !item.classGrade || !item.title || !item.details) {
+        return res.status(400).json({ success: false, message: 'Campus, class, title, and notes are required.' });
+    }
+    const existing = readJsonArrayFile(UPLOADED_LECTURES_FILE, normalizeUploadedLecture);
+    const lectures = writeJsonArrayFile(UPLOADED_LECTURES_FILE, [item, ...existing.filter((entry) => String(entry.id) !== String(item.id))], normalizeUploadedLecture);
+    res.json({ success: true, lecture: item, lectures });
+});
+
+app.delete('/api/uploaded-lectures', (req, res) => {
+    const id = String(req.query.id || '');
+    const lectures = writeJsonArrayFile(UPLOADED_LECTURES_FILE, readJsonArrayFile(UPLOADED_LECTURES_FILE, normalizeUploadedLecture).filter((entry) => String(entry.id) !== id), normalizeUploadedLecture);
+    res.json({ success: true, lectures });
 });
 
 app.get('/api/student-diaries', (req, res) => {
