@@ -3671,10 +3671,31 @@
                     <div class="portal-content-meta">
                         Start: ${escapeHtml(item.startDate || '-')} | Due: ${escapeHtml(item.dueDate || '-')}
                     </div>
-                    ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${STUDENT_UPLOADED_ASSIGNMENT_KEY}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download Assignment</button>` : ''}
+                    <div class="portal-action-row" style="justify-content:flex-start; margin-top:.9rem;">
+                        ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${STUDENT_UPLOADED_ASSIGNMENT_KEY}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download Assignment</button>` : ''}
+                        <button type="button" class="portal-download-btn" onclick="openAssignmentSubmission('${escapeHtml(item.id || '')}')"><i data-lucide="upload" width="16"></i> Upload Assignment</button>
+                    </div>
                 </article>
             `).join('');
             if (window.lucide) window.lucide.createIcons();
+        }
+
+        function openAssignmentSubmission(assignmentId = '') {
+            const item = getPortalData(STUDENT_UPLOADED_ASSIGNMENT_KEY).find((entry) => String(entry.id || '') === String(assignmentId || ''));
+            const target = document.getElementById('studentSubmitAssignmentSection');
+            if (!item || !target) return;
+
+            const titleInput = document.getElementById('studentAssignmentTitle');
+            const subjectInput = document.getElementById('studentAssignmentSubject');
+            if (titleInput) {
+                titleInput.value = item.title || item.assignmentTitle || item.file?.name || 'Assignment';
+                titleInput.dataset.sourceAssignmentId = item.id || '';
+            }
+            if (subjectInput && !subjectInput.value) {
+                subjectInput.value = item.subject || '';
+            }
+            openStudentPortalScreen(target);
+            document.getElementById('studentAssignmentFile')?.focus();
         }
 
         function updateStudentAssignmentFileLabel() {
@@ -3717,6 +3738,7 @@
                 studentName: student.fullName || loggedInUser.fullName || 'Student',
                 rollNo: student.rollNo || '',
                 classGrade: student.classGrade || '',
+                sourceAssignmentId: document.getElementById('studentAssignmentTitle')?.dataset.sourceAssignmentId || '',
                 assignmentTitle: title,
                 subject,
                 note,
@@ -3754,6 +3776,7 @@
             }
 
             document.getElementById('studentAssignmentForm').reset();
+            delete document.getElementById('studentAssignmentTitle').dataset.sourceAssignmentId;
             updateStudentAssignmentFileLabel();
             renderStudentAssignmentSubmissions(student);
             updateStudentNotifications(student);
