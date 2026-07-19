@@ -275,6 +275,67 @@ class scope is only for Student and requires campusName + classGrade.
 individual scope requires recipientId.
 ```
 
+### Complaints
+
+| Method | Endpoint | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/complaints` | No in current core | List all complaints |
+| GET | `/api/complaints?role=Student` | No in current core | List student complaints |
+| GET | `/api/complaints?role=Teacher` | No in current core | List teacher complaints |
+| GET | `/api/complaints?role=Family` | No in current core | List parent/family complaints |
+| POST | `/api/complaints` | No in current core | Submit a complaint |
+| POST | `/api/complaints/:id` | No in current core | Update status, reply, or action taken |
+| DELETE | `/api/complaints/:id` | No in current core | Delete complaint |
+
+Submit complaint:
+
+```json
+{
+  "senderRole": "Student",
+  "senderId": "STU-1",
+  "senderName": "Student Name",
+  "senderClass": "Class 1",
+  "campusName": "Main Campus",
+  "subject": "Bus issue",
+  "message": "Complaint details",
+  "file": {
+    "name": "proof.jpg",
+    "type": "image/jpeg",
+    "dataUrl": "data:image/jpeg;base64,..."
+  }
+}
+```
+
+For parent/family complaints, send:
+
+```json
+{
+  "senderRole": "Family",
+  "senderName": "Parent Name",
+  "senderClass": "03000000000",
+  "subject": "Complaint subject",
+  "message": "Complaint details"
+}
+```
+
+Update/reply:
+
+```json
+{
+  "status": "Replied",
+  "reply": "We have received your complaint.",
+  "replyRole": "Admin",
+  "replyName": "Admin",
+  "actionTaken": "Forwarded to branch office"
+}
+```
+
+Valid statuses:
+
+```text
+Pending, In Progress, Replied, Resolved, Closed
+```
+
 ### Leave Requests
 
 | Method | Endpoint | Auth | Purpose |
@@ -715,6 +776,8 @@ GET,POST         /api/teachers
 DELETE           /api/teachers/:id
 GET,POST         /api/banners
 DELETE           /api/banners/:id
+GET,POST         /api/complaints
+POST,DELETE      /api/complaints/:id
 ```
 
 ## Referenced But Not Implemented In Current Backend Scan
@@ -759,6 +822,7 @@ Profile: GET /api/student/me
 Attendance: GET /api/student-attendance, filter by student id
 Fees: GET /api/fees/payments, GET /api/fees/due-balances, GET /api/students for fee status
 Messages: GET /api/messages
+Complaints: GET/POST /api/complaints
 Notices: GET /api/special-notices?portal=student
 Date sheet: GET /api/date-sheet
 Leave: /api/leave-requests if exposed from backend/api
@@ -774,6 +838,7 @@ Profile photo: POST /api/teacher/me
 Attendance: GET /api/teacher-attendance, filter by teacher id
 Schedule: GET /api/teachers and parse teacher.schedule
 Messages: GET /api/messages
+Complaints: GET/POST /api/complaints
 Notices: GET /api/special-notices?portal=teacher
 Leave: GET/POST /api/leave-requests
 Ads: GET /api/banners?placement=ad
@@ -785,6 +850,7 @@ Admin app:
 Dashboard data: GET /api/students, /api/teachers, /api/staff
 Admissions: /api/online-admissions
 Messages: /api/messages
+Complaints: /api/complaints
 Notices: /api/special-notices
 Fees: /api/class-fees, /api/fees/payments, /api/fees/due-balances
 Attendance: /api/student-attendance, /api/teacher-attendance

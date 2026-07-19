@@ -35,6 +35,7 @@ const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
 const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
 const ONLINE_ADMISSIONS_FILE = path.join(MOBILE_STORE_DIR, 'online_admissions.json');
+const COMPLAINTS_FILE = path.join(MOBILE_STORE_DIR, 'complaints.json');
 const ADMIN_CREDENTIALS_FILE = path.join(DATA_DIR, 'admin_credentials.json');
 const PRINCIPAL_USERNAME = process.env.PRINCIPAL_USERNAME || 'principal@school.com';
 const PRINCIPAL_PASSWORD = process.env.PRINCIPAL_PASSWORD || 'Principal123';
@@ -942,6 +943,23 @@ function writeOnlineAdmissions(records = []) {
     return normalized;
 }
 
+function readComplaints() {
+    try {
+        if (!fs.existsSync(COMPLAINTS_FILE)) return [];
+        const parsed = JSON.parse(fs.readFileSync(COMPLAINTS_FILE, 'utf8'));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_error) {
+        return [];
+    }
+}
+
+function writeComplaints(records = []) {
+    fs.mkdirSync(MOBILE_STORE_DIR, { recursive: true });
+    const normalized = Array.isArray(records) ? records : [];
+    fs.writeFileSync(COMPLAINTS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+    return normalized;
+}
+
 function normalizeOnlineAdmission(payload = {}, existing = {}) {
     const raw = payload && typeof payload === 'object' ? payload : {};
     const now = new Date().toISOString();
@@ -960,6 +978,52 @@ function normalizeOnlineAdmission(payload = {}, existing = {}) {
         address: String(raw.address ?? existing.address ?? '').trim(),
         message: String(raw.message ?? existing.message ?? '').trim(),
         status: String(raw.status || existing.status || 'New').trim() || 'New',
+        createdAt: existing.createdAt || raw.createdAt || now,
+        updatedAt: now
+    };
+}
+
+function normalizeComplaintStatus(status = 'Pending') {
+    const value = String(status || 'Pending').trim().toLowerCase();
+    if (value === 'in progress' || value === 'in-progress') return 'In Progress';
+    if (value === 'reply' || value === 'replied') return 'Replied';
+    if (value === 'resolve' || value === 'resolved' || value === 'action taken') return 'Resolved';
+    if (value === 'closed') return 'Closed';
+    return 'Pending';
+}
+
+function normalizeComplaintRole(role = 'Student') {
+    const value = String(role || 'Student').trim().toLowerCase();
+    if (value === 'teacher') return 'Teacher';
+    if (value === 'family' || value === 'parent' || value === 'parents') return 'Family';
+    return 'Student';
+}
+
+function normalizeComplaint(payload = {}, existing = {}) {
+    const raw = payload && typeof payload === 'object' ? payload : {};
+    const now = new Date().toISOString();
+    const thread = Array.isArray(raw.thread)
+        ? raw.thread
+        : (Array.isArray(existing.thread) ? existing.thread : []);
+
+    return {
+        ...existing,
+        ...raw,
+        id: String(raw.id || existing.id || `CMP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        senderRole: normalizeComplaintRole(raw.senderRole || existing.senderRole),
+        senderId: String(raw.senderId ?? existing.senderId ?? '').trim(),
+        senderName: String(raw.senderName ?? existing.senderName ?? '').trim(),
+        senderClass: String(raw.senderClass ?? existing.senderClass ?? '').trim(),
+        campusName: String(raw.campusName ?? existing.campusName ?? '').trim(),
+        subject: String(raw.subject ?? existing.subject ?? '').trim(),
+        message: String(raw.message ?? existing.message ?? '').trim(),
+        status: normalizeComplaintStatus(raw.status || existing.status || 'Pending'),
+        thread,
+        reply: String(raw.reply ?? existing.reply ?? '').trim(),
+        actionTaken: String(raw.actionTaken ?? existing.actionTaken ?? '').trim(),
+        actionAt: raw.actionAt || existing.actionAt || null,
+        repliedAt: raw.repliedAt || existing.repliedAt || null,
+        file: raw.file || existing.file || null,
         createdAt: existing.createdAt || raw.createdAt || now,
         updatedAt: now
     };
@@ -1022,6 +1086,80 @@ app.delete('/api/online-admissions/:id', (req, res) => {
     const applications = writeOnlineAdmissions(readOnlineAdmissions().filter((item) => String(item.id) !== String(req.params.id)));
     if (io) io.emit('online_admissions_update', applications);
     res.json({ success: true, deleted: true, applications });
+});
+
+app.get('/api/complaints', (req, res) => {
+    const role = String(req.query.role || '').trim();
+    const senderRole = role ? normalizeComplaintRole(role) : '';
+    const complaints = readComplaints()
+        .filter((item) => !senderRole || normalizeComplaintRole(item.senderRole) === senderRole)
+        .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+
+    res.json({ success: true, complaints });
+});
+
+app.post('/api/complaints', (req, res) => {
+    try {
+        const payload = req.body || {};
+        const subject = String(payload.subject || '').trim();
+        const message = String(payload.message || '').trim();
+        const senderRole = normalizeComplaintRole(payload.senderRole);
+
+        if (!subject || !message) {
+            return res.status(400).json({ success: false, message: 'Subject and message are required.' });
+        }
+        if (senderRole === 'Family' && !String(payload.senderName || '').trim()) {
+            return res.status(400).json({ success: false, message: 'Family complainant name is required.' });
+        }
+
+        const complaints = readComplaints();
+        const complaint = normalizeComplaint({ ...payload, senderRole });
+        complaints.unshift(complaint);
+        const saved = writeComplaints(complaints);
+        if (io) io.emit('complaints_update', saved);
+        return res.json({ success: true, complaint, complaints: saved });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Complaint could not be submitted.' });
+    }
+});
+
+app.post('/api/complaints/:id', (req, res) => {
+    try {
+        const complaints = readComplaints();
+        const index = complaints.findIndex((item) => String(item.id) === String(req.params.id));
+        if (index < 0) return res.status(404).json({ success: false, message: 'Complaint not found.' });
+
+        const payload = req.body || {};
+        const reply = String(payload.reply || '').trim();
+        const thread = Array.isArray(complaints[index].thread) ? [...complaints[index].thread] : [];
+        const now = new Date().toISOString();
+
+        if (reply) {
+            thread.push({
+                role: String(payload.replyRole || 'Admin').trim() || 'Admin',
+                name: String(payload.replyName || 'Admin').trim() || 'Admin',
+                message: reply,
+                createdAt: now
+            });
+        }
+
+        complaints[index] = normalizeComplaint({
+            ...payload,
+            ...(reply ? { thread, repliedAt: now } : {})
+        }, complaints[index]);
+
+        const saved = writeComplaints(complaints);
+        if (io) io.emit('complaints_update', saved);
+        return res.json({ success: true, complaint: complaints[index], complaints: saved });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Complaint could not be updated.' });
+    }
+});
+
+app.delete('/api/complaints/:id', (req, res) => {
+    const complaints = writeComplaints(readComplaints().filter((item) => String(item.id) !== String(req.params.id)));
+    if (io) io.emit('complaints_update', complaints);
+    res.json({ success: true, deleted: true, complaints });
 });
 
 app.post('/api/login', async (req, res) => {
