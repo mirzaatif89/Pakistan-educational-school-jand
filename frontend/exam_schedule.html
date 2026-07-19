@@ -157,7 +157,11 @@
                                     <label>School Name<input type="text" id="dateSheetSchoolName" value="PESS JAND" placeholder="Enter school name"></label>
                                     <label>Exam Title<input type="text" id="dateSheetExamTitle" placeholder="Enter exam title"></label>
                                     <label>Session<input type="text" id="dateSheetSession" placeholder="Enter session"></label>
-                                    <label>Target Class / Group<input type="text" id="dateSheetClassGroup" placeholder="Enter class / group"></label>
+                                    <label>Target Class / Group
+                                        <select id="dateSheetClassGroup">
+                                            <option value="">Select class / group</option>
+                                        </select>
+                                    </label>
                                     <label>Campus / Branch
                                         <select id="dateSheetCampus">
                                             <option value="Main Campus">Main Campus</option>
@@ -693,8 +697,10 @@
         }
 
         .result-form-fields input,
+        .result-form-fields select,
         .result-form-fields textarea,
-        .dynamic-row input {
+        .dynamic-row input,
+        .dynamic-row select {
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 0.8rem 0.9rem;
@@ -1346,11 +1352,86 @@
             });
         }
 
+        function escapeDateSheetOptionValue(value = '') {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function collectDateSheetClasses() {
+            const classMap = new Map();
+            const addClass = (className) => {
+                const normalized = String(className || '').trim();
+                if (!normalized) return;
+                const key = normalized.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+                if (!classMap.has(key)) classMap.set(key, normalized);
+            };
+
+            if (typeof getAvailableStudentClassOptions === 'function') {
+                getAvailableStudentClassOptions().forEach(addClass);
+            } else if (typeof DEFAULT_STUDENT_CLASS_ORDER !== 'undefined' && Array.isArray(DEFAULT_STUDENT_CLASS_ORDER)) {
+                DEFAULT_STUDENT_CLASS_ORDER.forEach(addClass);
+            }
+
+            try {
+                const classes = typeof getData === 'function'
+                    ? getData('eduCore_classes')
+                    : JSON.parse(localStorage.getItem('eduCore_classes') || '[]');
+                if (Array.isArray(classes)) {
+                    classes.forEach((item) => addClass(item?.section ? `${item.name} (${item.section})` : item?.name));
+                }
+            } catch (error) {
+                // Keep defaults if class records are unavailable.
+            }
+
+            try {
+                const students = typeof getData === 'function'
+                    ? getData('eduCore_students')
+                    : JSON.parse(localStorage.getItem('eduCore_students') || '[]');
+                if (Array.isArray(students)) {
+                    students.forEach((student) => addClass(student?.classGrade || student?.className || student?.grade));
+                }
+            } catch (error) {
+                // Keep defaults if student records are unavailable.
+            }
+
+            return Array.from(classMap.values());
+        }
+
+        function buildDateSheetClassOptions(selectedClass = '', includeBlank = false) {
+            const classes = collectDateSheetClasses();
+            const previousValue = String(selectedClass || '').trim();
+            const hasPrevious = previousValue && classes.some((className) => className.toLowerCase() === previousValue.toLowerCase());
+            if (previousValue && !hasPrevious) classes.push(previousValue);
+
+            const blankOption = includeBlank ? '<option value="">Select class / group</option>' : '';
+            return blankOption + classes.map((className) => {
+                const escaped = escapeDateSheetOptionValue(className);
+                const selected = previousValue && className.toLowerCase() === previousValue.toLowerCase() ? ' selected' : '';
+                return `<option value="${escaped}"${selected}>${escaped}</option>`;
+            }).join('');
+        }
+
+        function populateDateSheetClassOptions(selectedClass = '') {
+            const classSelect = document.getElementById('dateSheetClassGroup');
+            if (!classSelect) return;
+
+            const previousValue = selectedClass || classSelect.value || '';
+            const matchingClass = collectDateSheetClasses().find((className) => className.toLowerCase() === String(previousValue).toLowerCase());
+            classSelect.innerHTML = buildDateSheetClassOptions(previousValue, true);
+            if (previousValue) classSelect.value = matchingClass || previousValue;
+        }
+
         function createScheduleRow(row = {}) {
+            const classOptions = buildDateSheetClassOptions(row.className || document.getElementById('dateSheetClassGroup')?.value || '', true);
             return `
                 <div class="dynamic-row schedule-row">
                     <label>Subject<input type="text" class="schedule-subject" value="${row.subject || ''}"></label>
-                    <label>Class<input type="text" class="schedule-class" value="${row.className || ''}"></label>
+                    <label>Class<select class="schedule-class">${classOptions}</select></label>
                     <label>Date<input type="date" class="schedule-date" value="${row.examDate || ''}"></label>
                     <label>Start<input type="time" class="schedule-start" value="${row.startTime || ''}"></label>
                     <label>End<input type="time" class="schedule-end" value="${row.endTime || ''}"></label>
@@ -1401,19 +1482,24 @@
             const previousValue = selectedCampus || campusSelect.value || 'Main Campus';
             const campuses = collectDateSheetCampuses();
             if (!campuses.length) campuses.push('Main Campus');
-
-            campusSelect.innerHTML = campuses.map((campusName) => `<option value="${campusName}">${campusName}</option>`).join('');
             const hasPrevious = campuses.some((campusName) => campusName.toLowerCase() === previousValue.toLowerCase());
-            campusSelect.value = hasPrevious ? previousValue : campuses[0];
+            if (previousValue && !hasPrevious) campuses.push(previousValue);
+
+            campusSelect.innerHTML = campuses.map((campusName) => {
+                const escaped = escapeDateSheetOptionValue(campusName);
+                return `<option value="${escaped}">${escaped}</option>`;
+            }).join('');
+            const matchingCampus = campuses.find((campusName) => campusName.toLowerCase() === previousValue.toLowerCase());
+            campusSelect.value = matchingCampus || campuses[0];
         }
 
         function fillDateSheetForm(savedState = {}) {
             populateDateSheetCampusOptions(savedState.dateSheetCampus);
+            populateDateSheetClassOptions(savedState.dateSheetClassGroup);
             [
                 'dateSheetSchoolName',
                 'dateSheetExamTitle',
                 'dateSheetSession',
-                'dateSheetClassGroup',
                 'dateSheetCampus',
                 'dateSheetDefaultStart',
                 'dateSheetInstructions'
@@ -1716,6 +1802,7 @@
             selectedDateSheetFile = null;
             document.getElementById('dateSheetForm').reset();
             populateDateSheetCampusOptions('Main Campus');
+            populateDateSheetClassOptions('');
             applyExamBrandingDefaults(true);
             renderScheduleRows({});
             updateDateSheetUploadNote();
@@ -1918,6 +2005,7 @@
             });
 
             document.getElementById('dateSheetForm').addEventListener('input', refreshDateSheetPreview);
+            document.getElementById('dateSheetForm').addEventListener('change', refreshDateSheetPreview);
             document.getElementById('addScheduleRowBtn').addEventListener('click', () => {
                 document.getElementById('scheduleRowsEditor').insertAdjacentHTML('beforeend', createScheduleRow({
                     className: document.getElementById('dateSheetClassGroup').value,
