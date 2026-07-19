@@ -35,6 +35,7 @@ const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
 const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json');
 const UPLOADED_LECTURES_FILE = path.join(DATA_DIR, 'uploaded_lectures.json');
+const STUDENT_COURSES_FILE = path.join(DATA_DIR, 'student_courses.json');
 const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
 const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
@@ -983,6 +984,25 @@ function normalizeUploadedLecture(raw = {}) {
     };
 }
 
+function normalizeStudentCourse(raw = {}) {
+    return {
+        id: String(raw.id || `COURSE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        campusName: String(raw.campusName || raw.branchName || raw.campus || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        title: String(raw.title || '').trim(),
+        details: String(raw.details || '').trim(),
+        file: raw.file && typeof raw.file === 'object' ? {
+            name: String(raw.file.name || '').trim(),
+            type: String(raw.file.type || '').trim(),
+            dataUrl: String(raw.file.dataUrl || '').trim(),
+            url: String(raw.file.url || '').trim(),
+            size: Number(raw.file.size || 0) || 0
+        } : null,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+}
+
 function sanitizeUploadFileName(name = 'lecture-file') {
     const ext = path.extname(String(name || '')).replace(/[^a-z0-9.]/gi, '').slice(0, 16);
     const base = path.basename(String(name || 'lecture-file'), path.extname(String(name || '')))
@@ -1224,6 +1244,53 @@ app.delete('/api/uploaded-lectures', (req, res) => {
     const id = String(req.query.id || '');
     const lectures = writeJsonArrayFile(UPLOADED_LECTURES_FILE, readJsonArrayFile(UPLOADED_LECTURES_FILE, normalizeUploadedLecture).filter((entry) => String(entry.id) !== id), normalizeUploadedLecture);
     res.json({ success: true, lectures });
+});
+
+app.post('/api/student-courses/file', express.raw({ type: '*/*', limit: '512mb' }), (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) {
+        return res.status(400).json({ success: false, message: 'Course file is required.' });
+    }
+
+    const originalName = decodeURIComponent(String(req.headers['x-file-name'] || 'course-file'));
+    const safeName = sanitizeUploadFileName(originalName);
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+    const targetPath = path.join(UPLOADS_DIR, uniqueName);
+    fs.writeFileSync(targetPath, req.body);
+
+    res.json({
+        success: true,
+        file: {
+            name: safeName,
+            type: String(req.headers['content-type'] || '').trim(),
+            size: req.body.length,
+            url: `/uploads/${uniqueName}`
+        }
+    });
+});
+
+app.get('/api/student-courses', (req, res) => {
+    const campus = String(req.query.campus || '').trim().toLowerCase();
+    const classGrade = String(req.query.classGrade || req.query.class || '').trim().toLowerCase();
+    let courses = readJsonArrayFile(STUDENT_COURSES_FILE, normalizeStudentCourse);
+    if (campus) courses = courses.filter((item) => String(item.campusName || '').trim().toLowerCase() === campus);
+    if (classGrade) courses = courses.filter((item) => String(item.classGrade || '').trim().toLowerCase() === classGrade);
+    res.json({ success: true, courses });
+});
+
+app.post('/api/student-courses', (req, res) => {
+    const item = normalizeStudentCourse(req.body || {});
+    if (!item.campusName || !item.classGrade || !item.title || !item.details) {
+        return res.status(400).json({ success: false, message: 'Campus, class, title, and details are required.' });
+    }
+    const existing = readJsonArrayFile(STUDENT_COURSES_FILE, normalizeStudentCourse);
+    const courses = writeJsonArrayFile(STUDENT_COURSES_FILE, [item, ...existing.filter((entry) => String(entry.id) !== String(item.id))], normalizeStudentCourse);
+    res.json({ success: true, course: item, courses });
+});
+
+app.delete('/api/student-courses', (req, res) => {
+    const id = String(req.query.id || '');
+    const courses = writeJsonArrayFile(STUDENT_COURSES_FILE, readJsonArrayFile(STUDENT_COURSES_FILE, normalizeStudentCourse).filter((entry) => String(entry.id) !== id), normalizeStudentCourse);
+    res.json({ success: true, courses });
 });
 
 app.get('/api/student-diaries', (req, res) => {

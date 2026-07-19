@@ -48,6 +48,7 @@
                 <form id="studentCourseForm">
                     <input type="hidden" id="studentCourseId">
                     <div class="schedule-grid">
+                        <div><label>Campus</label><select id="studentCourseCampus" required></select></div>
                         <div><label>Class</label><select id="studentCourseClass" required></select></div>
                         <div><label>Subject / Course Title</label><input type="text" id="studentCourseTitle" required placeholder="e.g. Mathematics"></div>
                         <div><label>Attach File</label><input type="file" id="studentCourseFile"></div>
@@ -67,45 +68,122 @@
         function data(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (_e) { return []; } }
         function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_e) { showAppAlert('File/data is too large to save.', 'Storage Full'); return false; } }
         function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
+        async function populateCampuses() {
+            const campusMap = new Map();
+            const addCampus = (value) => {
+                const campus = String(value || '').trim();
+                if (!campus) return;
+                const key = campus.toLowerCase();
+                if (!campusMap.has(key)) campusMap.set(key, campus);
+            };
+            if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+            if (typeof loadRegisteredCampusNames === 'function') {
+                try { (await loadRegisteredCampusNames()).forEach(addCampus); } catch (_error) {}
+            }
+            data('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+            data('eduCore_students').forEach((student) => addCampus(student?.campusName || student?.branchName || student?.campus));
+            data('eduCore_teachers').forEach((teacher) => addCampus(teacher?.campusName || teacher?.branchName || teacher?.campus));
+            data('eduCore_staff').forEach((staff) => addCampus(staff?.campusName || staff?.branchName || staff?.campus));
+            const campuses = Array.from(campusMap.values()).sort();
+            if (!campuses.length) campuses.push('Main Campus');
+            studentCourseCampus.innerHTML = '<option value="">Select Campus</option>' + campuses.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+            const globalCampus = typeof getGlobalCampusFilterForCurrentUser === 'function' ? getGlobalCampusFilterForCurrentUser() : '';
+            if (globalCampus && globalCampus !== 'all' && campuses.some((name) => name.toLowerCase() === String(globalCampus).toLowerCase())) {
+                studentCourseCampus.value = globalCampus;
+            }
+        }
         function populateClasses() {
             const students = data('eduCore_students');
             const classes = data('eduCore_classes');
             const names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
             studentCourseClass.innerHTML = '<option value="">Select Class</option>' + names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
         }
-        function readFile(input) {
+        async function loadCoursesFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/student-courses`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Courses could not be loaded.');
+                if (Array.isArray(result.courses)) localStorage.setItem(STUDENT_COURSE_KEY, JSON.stringify(result.courses));
+            } catch (error) {
+                console.warn('Student courses API load failed:', error.message);
+            }
+        }
+        async function uploadCourseFile(input) {
             const file = input.files?.[0];
-            if (!file) return Promise.resolve(null);
-            return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ name: file.name, dataUrl: reader.result }); reader.onerror = reject; reader.readAsDataURL(file); });
+            if (!file) return null;
+            const response = await fetch(`${API_BASE_URL}/student-courses/file`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                    'X-File-Name': encodeURIComponent(file.name || 'course-file')
+                },
+                body: file
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false || !result.file?.url) throw new Error(result?.message || 'Course file could not be uploaded.');
+            return result.file;
+        }
+        async function saveCourseToApi(item) {
+            const response = await fetch(`${API_BASE_URL}/student-courses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Course could not be saved.');
+            if (Array.isArray(result.courses)) {
+                try { localStorage.setItem(STUDENT_COURSE_KEY, JSON.stringify(result.courses)); } catch (_error) {}
+            }
+            return result;
         }
         function render() {
             const courses = data(STUDENT_COURSE_KEY).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
             if (!courses.length) { studentCourseList.innerHTML = '<div class="empty-note">No class course added yet.</div>'; return; }
-            studentCourseList.innerHTML = `<table class="schedule-table"><thead><tr><th>Class</th><th>Title</th><th>Details</th><th>File</th><th>Action</th></tr></thead><tbody>${courses.map((item) => `<tr><td>${esc(item.classGrade)}</td><td>${esc(item.title)}</td><td>${esc(item.details)}</td><td>${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'file')}">${esc(item.file.name || 'Download')}</a>` : '-'}</td><td><div class="schedule-actions"><button class="schedule-action-btn edit" onclick="editCourse('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="schedule-action-btn delete" onclick="deleteCourse('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
+            studentCourseList.innerHTML = `<table class="schedule-table"><thead><tr><th>Campus</th><th>Class</th><th>Title</th><th>Details</th><th>File</th><th>Action</th></tr></thead><tbody>${courses.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade)}</td><td>${esc(item.title)}</td><td>${esc(item.details)}</td><td>${item.file?.url ? `<a href="${esc(item.file.url)}" target="_blank" rel="noopener">${esc(item.file.name || 'Open File')}</a>` : (item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'file')}">${esc(item.file.name || 'Download')}</a>` : '-')}</td><td><div class="schedule-actions"><button class="schedule-action-btn edit" onclick="editCourse('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="schedule-action-btn delete" onclick="deleteCourse('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
             lucide.createIcons();
         }
         function editCourse(id) {
             const item = data(STUDENT_COURSE_KEY).find((entry) => entry.id === id);
             if (!item) return;
-            studentCourseId.value = item.id; studentCourseClass.value = item.classGrade || ''; studentCourseTitle.value = item.title || ''; studentCourseDetails.value = item.details || '';
+            studentCourseId.value = item.id; studentCourseCampus.value = item.campusName || item.branchName || item.campus || ''; studentCourseClass.value = item.classGrade || ''; studentCourseTitle.value = item.title || ''; studentCourseDetails.value = item.details || '';
             document.querySelector('#studentCourseForm button[type="submit"]').innerHTML = '<i data-lucide="save"></i> Update Course';
             studentCourseForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); lucide.createIcons();
         }
-        function deleteCourse(id) { save(STUDENT_COURSE_KEY, data(STUDENT_COURSE_KEY).filter((item) => item.id !== id)); render(); }
+        async function deleteCourse(id) {
+            save(STUDENT_COURSE_KEY, data(STUDENT_COURSE_KEY).filter((item) => item.id !== id));
+            try { await fetch(`${API_BASE_URL}/student-courses?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (_error) {}
+            render();
+        }
         studentCourseForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const editId = studentCourseId.value;
             const existing = data(STUDENT_COURSE_KEY).find((item) => item.id === editId);
-            const file = await readFile(studentCourseFile);
-            const item = { id: editId || `COURSE-${Date.now()}`, classGrade: studentCourseClass.value, title: studentCourseTitle.value.trim(), details: studentCourseDetails.value.trim(), file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
-            if (!item.classGrade || !item.title || !item.details) { showAppAlert('Class, title, and details are required.', 'Missing Course'); return; }
+            const campusName = studentCourseCampus.value;
+            const classGrade = studentCourseClass.value;
+            const title = studentCourseTitle.value.trim();
+            const details = studentCourseDetails.value.trim();
+            if (!campusName || !classGrade || !title || !details) { showAppAlert('Campus, class, title, and details are required.', 'Missing Course'); return; }
+            let file = existing?.file || null;
+            try {
+                const uploadedFile = await uploadCourseFile(studentCourseFile);
+                if (uploadedFile) file = uploadedFile;
+            } catch (error) {
+                showAppAlert(error.message || 'Course file could not be uploaded.', 'Upload Failed');
+                return;
+            }
+            const item = { id: editId || `COURSE-${Date.now()}`, campusName, classGrade, title, details, file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
             const items = data(STUDENT_COURSE_KEY);
             const index = items.findIndex((entry) => entry.id === editId);
             if (index >= 0) items[index] = item; else items.push(item);
-            if (!save(STUDENT_COURSE_KEY, items)) return;
+            save(STUDENT_COURSE_KEY, items);
+            try {
+                await saveCourseToApi(item);
+            } catch (error) {
+                showAppAlert(`Course saved locally, but API sync failed: ${error.message}`, 'API Sync Failed');
+            }
             event.target.reset(); studentCourseId.value = ''; document.querySelector('#studentCourseForm button[type="submit"]').innerHTML = '<i data-lucide="save"></i> Save Course'; render(); showSuccessModal(editId ? 'Course Updated!' : 'Course Saved!', 'Class course is visible in student portal.');
         });
-        populateClasses(); render(); lucide.createIcons();
+        populateCampuses(); populateClasses(); loadCoursesFromApi().then(render); lucide.createIcons();
     </script>
 </body>
 

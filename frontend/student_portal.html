@@ -3548,6 +3548,13 @@
                             localStorage.setItem(STUDENT_DIARY_KEY, JSON.stringify(result.diaries));
                         }
                     }),
+                fetch(`${API_BASE_URL}/student-courses`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.courses)) {
+                            localStorage.setItem(STUDENT_COURSE_KEY, JSON.stringify(result.courses));
+                        }
+                    }),
                 fetch(`${API_BASE_URL}/student-assignments`, {
                     headers: { Authorization: `Bearer ${authToken}` }
                 })
@@ -3653,9 +3660,9 @@
             list.innerHTML = items.map((item) => `
                 <article class="portal-content-card">
                     <h4>${escapeHtml(item.title || '-')}</h4>
-                    <div class="portal-content-meta">${escapeHtml(item.date || item.classGrade || '-')}</div>
+                    <div class="portal-content-meta">${escapeHtml(item.date || item.campusName || '-')} | ${escapeHtml(item.classGrade || '-')}</div>
                     <p>${escapeHtml(item.details || '-')}</p>
-                    ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(storageKey)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
+                    ${item.file?.url || item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(storageKey)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
                 </article>
             `).join('');
             if (window.lucide) window.lucide.createIcons();
