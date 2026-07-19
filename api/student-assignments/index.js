@@ -27,6 +27,32 @@ function formatSubmission(record) {
     };
 }
 
+function normalizeSubmission(body = {}) {
+    const submittedAt = new Date().toISOString();
+    return {
+        id: body.id || `ASG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        studentId: body.studentId || '',
+        studentCode: body.studentCode || '',
+        studentName: body.studentName || 'Student',
+        rollNo: body.rollNo || '',
+        campusName: body.campusName || '',
+        classGrade: body.classGrade || '',
+        sourceAssignmentId: body.sourceAssignmentId || '',
+        assignmentTitle: body.assignmentTitle || '',
+        subject: body.subject || '',
+        note: body.note || '',
+        fileName: body.fileName || body.file?.name || '',
+        fileType: body.fileType || body.file?.type || '',
+        fileData: body.fileData || body.file?.dataUrl || '',
+        totalMarks: body.totalMarks || '',
+        passMarks: body.passMarks || '',
+        obtainedMarks: body.obtainedMarks || '',
+        resultStatus: body.resultStatus || '',
+        submittedAt: body.submittedAt || submittedAt,
+        status: body.status || body.resultStatus || 'Submitted'
+    };
+}
+
 module.exports = createHandler({
     GET: async ({ res, db }) => {
         const records = await db.models.StudentAssignmentSubmission.findAll({
@@ -35,30 +61,7 @@ module.exports = createHandler({
         sendJson(res, 200, { success: true, assignments: records.map(formatSubmission) });
     },
     POST: async ({ res, db, body }) => {
-        const submittedAt = new Date().toISOString();
-        const record = {
-            id: body.id || `ASG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            studentId: body.studentId || '',
-            studentCode: body.studentCode || '',
-            studentName: body.studentName || 'Student',
-            rollNo: body.rollNo || '',
-            campusName: body.campusName || '',
-            classGrade: body.classGrade || '',
-            sourceAssignmentId: body.sourceAssignmentId || '',
-            assignmentTitle: body.assignmentTitle || '',
-            subject: body.subject || '',
-            note: body.note || '',
-            fileName: body.fileName || body.file?.name || '',
-            fileType: body.fileType || body.file?.type || '',
-            fileData: body.fileData || body.file?.dataUrl || '',
-            totalMarks: body.totalMarks || '',
-            passMarks: body.passMarks || '',
-            obtainedMarks: body.obtainedMarks || '',
-            resultStatus: body.resultStatus || '',
-            submittedAt: body.submittedAt || submittedAt,
-            status: body.status || body.resultStatus || 'Submitted'
-        };
-
+        const record = normalizeSubmission(body || {});
         if (!record.assignmentTitle) {
             sendJson(res, 400, { success: false, message: 'Assignment title is required.' });
             return;

@@ -3690,6 +3690,8 @@
             if (titleInput) {
                 titleInput.value = item.title || item.assignmentTitle || item.file?.name || 'Assignment';
                 titleInput.dataset.sourceAssignmentId = item.id || '';
+                titleInput.dataset.assignmentTotalMarks = item.totalMarks || '';
+                titleInput.dataset.assignmentPassMarks = item.passMarks || '';
             }
             if (subjectInput && !subjectInput.value) {
                 subjectInput.value = item.subject || '';
@@ -3737,8 +3739,11 @@
                 studentCode: student.studentCode || '',
                 studentName: student.fullName || loggedInUser.fullName || 'Student',
                 rollNo: student.rollNo || '',
+                campusName: student.campusName || student.branchName || student.campus || '',
                 classGrade: student.classGrade || '',
                 sourceAssignmentId: document.getElementById('studentAssignmentTitle')?.dataset.sourceAssignmentId || '',
+                totalMarks: document.getElementById('studentAssignmentTitle')?.dataset.assignmentTotalMarks || '',
+                passMarks: document.getElementById('studentAssignmentTitle')?.dataset.assignmentPassMarks || '',
                 assignmentTitle: title,
                 subject,
                 note,
@@ -3776,7 +3781,10 @@
             }
 
             document.getElementById('studentAssignmentForm').reset();
-            delete document.getElementById('studentAssignmentTitle').dataset.sourceAssignmentId;
+            const titleInput = document.getElementById('studentAssignmentTitle');
+            delete titleInput.dataset.sourceAssignmentId;
+            delete titleInput.dataset.assignmentTotalMarks;
+            delete titleInput.dataset.assignmentPassMarks;
             updateStudentAssignmentFileLabel();
             renderStudentAssignmentSubmissions(student);
             updateStudentNotifications(student);

@@ -156,6 +156,31 @@ function defineTeacherAttendanceModel(db) {
     });
 }
 
+function defineStudentAssignmentSubmissionModel(db) {
+    return db.define('StudentAssignmentSubmission', {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        studentId: DataTypes.STRING,
+        studentCode: DataTypes.STRING,
+        studentName: DataTypes.STRING,
+        rollNo: DataTypes.STRING,
+        campusName: DataTypes.STRING,
+        classGrade: DataTypes.STRING,
+        sourceAssignmentId: DataTypes.STRING,
+        assignmentTitle: DataTypes.STRING,
+        subject: DataTypes.STRING,
+        note: DataTypes.TEXT,
+        fileName: DataTypes.STRING,
+        fileType: DataTypes.STRING,
+        fileData: DataTypes.TEXT('long'),
+        totalMarks: DataTypes.STRING,
+        passMarks: DataTypes.STRING,
+        obtainedMarks: DataTypes.STRING,
+        resultStatus: DataTypes.STRING,
+        submittedAt: DataTypes.STRING,
+        status: { type: DataTypes.STRING, defaultValue: 'Submitted' }
+    });
+}
+
 function defineSpecialNoticeModel(db) {
     return db.define('SpecialNotice', {
         id: { type: DataTypes.STRING, primaryKey: true },
@@ -320,6 +345,28 @@ async function ensureLegacySchema(db) {
         senderName: { type: DataTypes.STRING, allowNull: true },
         createdAtLabel: { type: DataTypes.STRING, allowNull: true }
     });
+
+    await ensureTableColumns(db, 'StudentAssignmentSubmissions', {
+        studentId: { type: DataTypes.STRING, allowNull: true },
+        studentCode: { type: DataTypes.STRING, allowNull: true },
+        studentName: { type: DataTypes.STRING, allowNull: true },
+        rollNo: { type: DataTypes.STRING, allowNull: true },
+        campusName: { type: DataTypes.STRING, allowNull: true },
+        classGrade: { type: DataTypes.STRING, allowNull: true },
+        sourceAssignmentId: { type: DataTypes.STRING, allowNull: true },
+        assignmentTitle: { type: DataTypes.STRING, allowNull: true },
+        subject: { type: DataTypes.STRING, allowNull: true },
+        note: { type: DataTypes.TEXT, allowNull: true },
+        fileName: { type: DataTypes.STRING, allowNull: true },
+        fileType: { type: DataTypes.STRING, allowNull: true },
+        fileData: { type: DataTypes.TEXT('long'), allowNull: true },
+        totalMarks: { type: DataTypes.STRING, allowNull: true },
+        passMarks: { type: DataTypes.STRING, allowNull: true },
+        obtainedMarks: { type: DataTypes.STRING, allowNull: true },
+        resultStatus: { type: DataTypes.STRING, allowNull: true },
+        submittedAt: { type: DataTypes.STRING, allowNull: true },
+        status: { type: DataTypes.STRING, allowNull: true }
+    });
 }
 
 async function getDb() {
@@ -351,6 +398,7 @@ async function getDb() {
             defineFeeDueBalanceModel(db);
             defineStudentAttendanceModel(db);
             defineTeacherAttendanceModel(db);
+            defineStudentAssignmentSubmissionModel(db);
             defineAppSettingModel(db);
             defineSpecialNoticeModel(db);
             defineMessageModel(db);

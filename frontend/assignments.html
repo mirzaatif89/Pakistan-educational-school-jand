@@ -51,6 +51,24 @@
             white-space: pre-wrap;
             color: var(--text-secondary);
         }
+
+        .assignment-marks-field {
+            width: 88px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.65rem;
+            font: inherit;
+        }
+
+        .assignment-grade-cell {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .assignment-grade-meta {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 
@@ -114,17 +132,20 @@
                     <thead>
                         <tr>
                             <th>Class</th>
+                            <th>Campus</th>
                             <th>Student</th>
                             <th>Roll No</th>
                             <th>Assignment</th>
                             <th>Subject</th>
+                            <th>Marks</th>
+                            <th>Result</th>
                             <th>Submitted</th>
                             <th>File</th>
                             <th>Note</th>
                         </tr>
                     </thead>
                     <tbody id="assignmentTableBody">
-                        <tr><td colspan="8">Loading assignments...</td></tr>
+                        <tr><td colspan="11">Loading assignments...</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -188,12 +209,13 @@
             const search = normalizeAssignmentText(document.getElementById('assignmentSearch').value);
             const classFilter = document.getElementById('assignmentClassFilter').value;
             const rows = assignmentRows.filter((item) => {
-                const haystack = [
-                    item.studentName,
-                    item.rollNo,
-                    item.classGrade,
-                    item.assignmentTitle,
-                    item.subject,
+            const haystack = [
+                item.studentName,
+                item.rollNo,
+                item.campusName,
+                item.classGrade,
+                item.assignmentTitle,
+                item.subject,
                     item.fileName
                 ].map(normalizeAssignmentText).join(' ');
                 return (!search || haystack.includes(search)) &&
@@ -202,19 +224,29 @@
 
             updateAssignmentSummary(rows);
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="8">No assignment submissions found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11">No assignment submissions found.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = rows.map((item) => {
                 const originalIndex = assignmentRows.indexOf(item);
+                const totalMarks = item.totalMarks || '-';
+                const passMarks = item.passMarks || '-';
                 return `
                     <tr>
                         <td>${escapeAssignmentHtml(item.classGrade || '-')}</td>
+                        <td>${escapeAssignmentHtml(item.campusName || '-')}</td>
                         <td>${escapeAssignmentHtml(item.studentName || '-')}</td>
                         <td>${escapeAssignmentHtml(item.rollNo || '-')}</td>
                         <td>${escapeAssignmentHtml(item.assignmentTitle || '-')}</td>
                         <td>${escapeAssignmentHtml(item.subject || '-')}</td>
+                        <td>
+                            <div class="assignment-grade-cell">
+                                <input class="assignment-marks-field" type="number" min="0" max="${escapeAssignmentHtml(item.totalMarks || '')}" value="${escapeAssignmentHtml(item.obtainedMarks || '')}" placeholder="Marks" onchange="saveAssignmentMarks(${originalIndex}, this.value)">
+                                <span class="assignment-grade-meta">Total ${escapeAssignmentHtml(totalMarks)} | Pass ${escapeAssignmentHtml(passMarks)}</span>
+                            </div>
+                        </td>
+                        <td>${escapeAssignmentHtml(item.resultStatus || item.gradeStatus || '-')}</td>
                         <td>${escapeAssignmentHtml(item.submittedAt ? new Date(item.submittedAt).toLocaleString() : '-')}</td>
                         <td>${item.fileData ? `<button type="button" class="assignment-file-link" onclick="downloadAssignmentFile(${originalIndex})"><i data-lucide="download" width="15"></i>${escapeAssignmentHtml(item.fileName || 'Download')}</button>` : '-'}</td>
                         <td><div class="assignment-note">${escapeAssignmentHtml(item.note || '-')}</div></td>
@@ -222,6 +254,38 @@
                 `;
             }).join('');
             if (window.lucide) window.lucide.createIcons();
+        }
+
+        async function saveAssignmentMarks(index, value) {
+            const item = assignmentRows[index];
+            if (!item) return;
+            const obtained = String(value || '').trim();
+            const total = Number(item.totalMarks || 0);
+            const pass = Number(item.passMarks || 0);
+            if (obtained && total && Number(obtained) > total) {
+                alert('Obtained marks cannot be greater than total marks.');
+                renderAssignments();
+                return;
+            }
+            item.obtainedMarks = obtained;
+            item.resultStatus = obtained === '' ? '' : (pass ? (Number(obtained) >= pass ? 'Pass' : 'Fail') : 'Checked');
+            item.status = item.resultStatus || 'Submitted';
+            localStorage.setItem(ASSIGNMENT_LOCAL_KEY, JSON.stringify(assignmentRows));
+            renderAssignments();
+
+            const token = sessionStorage.getItem('eduCore_token') || '';
+            try {
+                await fetch(`${API_BASE_URL}/student-assignments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify(item)
+                });
+            } catch (_error) {
+                // Local grade remains visible if the remote sync is unavailable.
+            }
         }
 
         async function loadAssignments() {
