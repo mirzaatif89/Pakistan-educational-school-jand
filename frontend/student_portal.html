@@ -3285,6 +3285,17 @@
 
         function downloadPortalAttachment(storageKey, itemId) {
             const item = getPortalData(storageKey).find((entry) => String(entry.id || '') === String(itemId || ''));
+            if (item?.file?.url) {
+                const link = document.createElement('a');
+                link.href = item.file.url;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.download = item.file.name || 'attachment';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                return;
+            }
             if (!item?.file?.dataUrl) {
                 showAppAlert('Attachment file was not found.', 'Download Failed');
                 return;
@@ -4041,7 +4052,7 @@
                     <p>${escapeHtml(item.details || '-')}</p>
                     <div class="portal-action-row">
                         ${item.url ? `<a class="portal-download-btn" href="${escapeHtml(item.url)}" target="_blank" rel="noopener"><i data-lucide="external-link" width="16"></i> Open Link</a>` : ''}
-                        ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(STUDENT_UPLOADED_LECTURE_KEY)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
+                        ${item.file?.url || item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(STUDENT_UPLOADED_LECTURE_KEY)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
                     </div>
                 </article>
             `).join('');

@@ -116,15 +116,27 @@
             if (Array.isArray(result.lectures)) localStorage.setItem(LECTURE_KEY, JSON.stringify(result.lectures));
             return result;
         }
-        function readFile(input) {
+        async function uploadLectureFile(input) {
             const file = input.files?.[0];
-            if (!file) return Promise.resolve(null);
-            return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ name: file.name, dataUrl: reader.result, type: file.type || '' }); reader.onerror = reject; reader.readAsDataURL(file); });
+            if (!file) return null;
+            const response = await fetch(`${API_BASE_URL}/uploaded-lectures/file`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                    'X-File-Name': encodeURIComponent(file.name || 'lecture-file')
+                },
+                body: file
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false || !result.file?.url) {
+                throw new Error(result?.message || 'Lecture file could not be uploaded.');
+            }
+            return result.file;
         }
         function render() {
             const items = data(LECTURE_KEY).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
             if (!items.length) { lectureUploadList.innerHTML = '<div class="empty-note">No lecture uploaded yet.</div>'; return; }
-            lectureUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Campus</th><th>Class</th><th>Lecture</th><th>Link / File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.subject || '-')}<br>${esc(item.details)}</td><td>${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">Open Link</a><br>` : ''}${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'lecture-file')}">${esc(item.file.name || 'Download')}</a>` : (!item.url ? '-' : '')}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
+            lectureUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Campus</th><th>Class</th><th>Lecture</th><th>Link / File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.subject || '-')}<br>${esc(item.details)}</td><td>${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">Open Link</a><br>` : ''}${item.file?.url ? `<a href="${esc(item.file.url)}" target="_blank" rel="noopener">${esc(item.file.name || 'Open File')}</a>` : (item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'lecture-file')}">${esc(item.file.name || 'Download')}</a>` : (!item.url ? '-' : ''))}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
             if (window.lucide) lucide.createIcons();
         }
         function editItem(id) {
@@ -141,11 +153,28 @@
         }
         lectureUploadForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            lectureSaveBtn.disabled = true;
             const editId = lectureUploadId.value;
             const existing = data(LECTURE_KEY).find((item) => item.id === editId);
-            const file = await readFile(lectureFile);
-            const item = { id: editId || `LECTURE-${Date.now()}`, campusName: lectureCampus.value, classGrade: lectureClass.value, title: lectureTitle.value.trim(), subject: lectureSubject.value.trim(), url: lectureUrl.value.trim(), details: lectureDetails.value.trim(), file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
-            if (!item.campusName || !item.classGrade || !item.title || !item.details) { showAppAlert('Campus, class, title, and notes are required.', 'Missing Lecture'); return; }
+            const campusName = lectureCampus.value;
+            const classGrade = lectureClass.value;
+            const title = lectureTitle.value.trim();
+            const details = lectureDetails.value.trim();
+            if (!campusName || !classGrade || !title || !details) {
+                lectureSaveBtn.disabled = false;
+                showAppAlert('Campus, class, title, and notes are required.', 'Missing Lecture');
+                return;
+            }
+            let file = existing?.file || null;
+            try {
+                const uploadedFile = await uploadLectureFile(lectureFile);
+                if (uploadedFile) file = uploadedFile;
+            } catch (error) {
+                lectureSaveBtn.disabled = false;
+                showAppAlert(error.message || 'Lecture file could not be uploaded.', 'Upload Failed');
+                return;
+            }
+            const item = { id: editId || `LECTURE-${Date.now()}`, campusName, classGrade, title, subject: lectureSubject.value.trim(), url: lectureUrl.value.trim(), details, file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
             const items = data(LECTURE_KEY); const index = items.findIndex((entry) => entry.id === editId);
             if (index >= 0) items[index] = item; else items.push(item);
             if (!save(LECTURE_KEY, items)) return;
@@ -154,7 +183,7 @@
             } catch (error) {
                 showAppAlert(`Lecture saved locally, but API upload failed: ${error.message}`, 'API Sync Failed');
             }
-            event.target.reset(); lectureUploadId.value = ''; lectureSaveBtn.innerHTML = '<i data-lucide="save"></i> Save Lecture'; render(); showSuccessModal(editId ? 'Lecture Updated!' : 'Lecture Uploaded!', 'Lecture is visible in student portal.');
+            event.target.reset(); lectureUploadId.value = ''; lectureSaveBtn.disabled = false; lectureSaveBtn.innerHTML = '<i data-lucide="save"></i> Save Lecture'; render(); showSuccessModal(editId ? 'Lecture Updated!' : 'Lecture Uploaded!', 'Lecture is visible in student portal.');
         });
         populateCampuses(); populateClasses(); loadUploadedLecturesFromApi().then(render); if (window.lucide) lucide.createIcons();
     </script>

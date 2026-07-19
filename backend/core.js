@@ -37,6 +37,7 @@ const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json
 const UPLOADED_LECTURES_FILE = path.join(DATA_DIR, 'uploaded_lectures.json');
 const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
 const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
 const ONLINE_ADMISSIONS_FILE = path.join(MOBILE_STORE_DIR, 'online_admissions.json');
 const COMPLAINTS_FILE = path.join(MOBILE_STORE_DIR, 'complaints.json');
@@ -45,6 +46,8 @@ const PRINCIPAL_USERNAME = process.env.PRINCIPAL_USERNAME || 'principal@school.c
 const PRINCIPAL_PASSWORD = process.env.PRINCIPAL_PASSWORD || 'Principal123';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const corsOptions = {
     origin: true,
@@ -65,6 +68,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use('/uploads', express.static(UPLOADS_DIR));
 const RESERVED_ROUTE_NAMES = new Set(['api', 'health', 'socket.io']);
 
 function resolvePageFileByRoute(routeName = '') {
@@ -970,11 +974,22 @@ function normalizeUploadedLecture(raw = {}) {
         file: raw.file && typeof raw.file === 'object' ? {
             name: String(raw.file.name || '').trim(),
             type: String(raw.file.type || '').trim(),
-            dataUrl: String(raw.file.dataUrl || '').trim()
+            dataUrl: String(raw.file.dataUrl || '').trim(),
+            url: String(raw.file.url || '').trim(),
+            size: Number(raw.file.size || 0) || 0
         } : null,
         createdAt: raw.createdAt || new Date().toISOString(),
         updatedAt: raw.updatedAt || new Date().toISOString()
     };
+}
+
+function sanitizeUploadFileName(name = 'lecture-file') {
+    const ext = path.extname(String(name || '')).replace(/[^a-z0-9.]/gi, '').slice(0, 16);
+    const base = path.basename(String(name || 'lecture-file'), path.extname(String(name || '')))
+        .replace(/[^a-z0-9_-]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || 'lecture-file';
+    return `${base}${ext || ''}`;
 }
 
 function normalizeStudentDiary(raw = {}) {
@@ -1167,6 +1182,28 @@ app.delete('/api/uploaded-assignments', (req, res) => {
     const id = String(req.query.id || '');
     const assignments = writeJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment).filter((entry) => String(entry.id) !== id), normalizeUploadedAssignment);
     res.json({ success: true, assignments });
+});
+
+app.post('/api/uploaded-lectures/file', express.raw({ type: '*/*', limit: '2048mb' }), (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) {
+        return res.status(400).json({ success: false, message: 'Lecture file is required.' });
+    }
+
+    const originalName = decodeURIComponent(String(req.headers['x-file-name'] || 'lecture-file'));
+    const safeName = sanitizeUploadFileName(originalName);
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+    const targetPath = path.join(UPLOADS_DIR, uniqueName);
+    fs.writeFileSync(targetPath, req.body);
+
+    res.json({
+        success: true,
+        file: {
+            name: safeName,
+            type: String(req.headers['content-type'] || '').trim(),
+            size: req.body.length,
+            url: `/uploads/${uniqueName}`
+        }
+    });
 });
 
 app.get('/api/uploaded-lectures', (req, res) => {

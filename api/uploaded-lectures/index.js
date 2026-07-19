@@ -15,7 +15,9 @@ function normalizeItem(raw = {}) {
         file: raw.file && typeof raw.file === 'object' ? {
             name: String(raw.file.name || '').trim(),
             type: String(raw.file.type || '').trim(),
-            dataUrl: String(raw.file.dataUrl || '').trim()
+            dataUrl: String(raw.file.dataUrl || '').trim(),
+            url: String(raw.file.url || '').trim(),
+            size: Number(raw.file.size || 0) || 0
         } : null,
         createdAt: raw.createdAt || new Date().toISOString(),
         updatedAt: raw.updatedAt || new Date().toISOString()
