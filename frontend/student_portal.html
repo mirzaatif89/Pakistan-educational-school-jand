@@ -4363,6 +4363,11 @@
             document.querySelectorAll('[data-student-action-target]').forEach((button) => {
                 button.addEventListener('click', async () => {
                     const targetId = button.getAttribute('data-student-action-target');
+                    if (targetId === 'studentDateSheetSection') {
+                        const student = getCurrentPortalStudent();
+                        await loadExecutedDateSheet();
+                        applyDateSheet(student);
+                    }
                     const target = document.getElementById(targetId);
                     if (target) {
                         openStudentPortalScreen(target);
@@ -5403,25 +5408,27 @@
             if (!target) return true;
             const studentCampus = normalizeDateSheetCampus(student.campusName || student.branchName || student.campus || '');
             if (!studentCampus) return true;
-            return target === studentCampus;
+            return target === studentCampus || target.includes(studentCampus) || studentCampus.includes(target);
         }
 
         function getStudentDateSheetRows(state = {}, student = {}) {
-            if (state.status !== 'executed' || !dateSheetMatchesStudentCampus(state.dateSheetCampus, student)) return [];
+            if (state.status !== 'executed') return [];
             const rows = Array.isArray(state.scheduleRows) ? state.scheduleRows : [];
             const studentClass = student.classGrade || student.className || student.grade || '';
             const headerMatches = dateSheetMatchesStudentClass(state.dateSheetClassGroup, studentClass);
-            return rows.filter((row) => {
+            const classMatchedRows = rows.filter((row) => {
                 const rowClass = String(row.className || '').trim();
                 if (rowClass) return dateSheetMatchesStudentClass(rowClass, studentClass);
                 return headerMatches;
             });
+            if (classMatchedRows.length && dateSheetMatchesStudentCampus(state.dateSheetCampus, student)) return classMatchedRows;
+            return headerMatches ? rows : classMatchedRows;
         }
 
         function studentCanSeeDateSheet(state = {}, student = {}) {
             if (state.status !== 'executed') return false;
-            return dateSheetMatchesStudentCampus(state.dateSheetCampus, student) &&
-                dateSheetMatchesStudentClass(state.dateSheetClassGroup, student.classGrade || student.className || student.grade || '');
+            const classMatches = dateSheetMatchesStudentClass(state.dateSheetClassGroup, student.classGrade || student.className || student.grade || '');
+            return classMatches || dateSheetMatchesStudentCampus(state.dateSheetCampus, student);
         }
 
         function compareLectureRows(a, b) {
