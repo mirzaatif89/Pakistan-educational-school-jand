@@ -3264,7 +3264,11 @@
 
         async function downloadPortalDiaryGroup(encodedGroupKey) {
             const groupKey = decodeURIComponent(encodedGroupKey || '');
-            const items = getPortalData(STUDENT_DIARY_KEY).filter((entry) => `${entry.classGrade || '-'}|${entry.date || '-'}` === groupKey);
+            const items = getPortalData(STUDENT_DIARY_KEY).filter((entry) => {
+                const campusKey = `${entry.campusName || '-'}|${entry.classGrade || '-'}|${entry.date || '-'}`;
+                const legacyKey = `${entry.classGrade || '-'}|${entry.date || '-'}`;
+                return campusKey === groupKey || legacyKey === groupKey;
+            });
             if (!items.length) {
                 showAppAlert('Diary entry was not found.', 'Download Failed');
                 return;
@@ -3522,18 +3526,25 @@
 
         function getClassWiseItems(key, student = {}) {
             const studentClass = normalizeClassName(student.classGrade);
+            const studentCampus = normalizeLoose(student.campusName || student.branchName || student.campus || '');
             return getPortalData(key)
-                .filter((item) => normalizeClassName(item.classGrade) === studentClass)
+                .filter((item) => {
+                    const classMatches = normalizeClassName(item.classGrade) === studentClass;
+                    if (!classMatches) return false;
+                    const itemCampus = normalizeLoose(item.campusName || item.branchName || item.campus || '');
+                    return !itemCampus || !studentCampus || itemCampus === studentCampus;
+                })
                 .sort((a, b) => String(b.date || b.updatedAt || b.createdAt || '').localeCompare(String(a.date || a.updatedAt || a.createdAt || '')));
         }
 
         function groupPortalDiaryItems(items = []) {
             const groups = new Map();
             items.forEach((item) => {
-                const key = `${item.classGrade || '-'}|${item.date || '-'}`;
+                const key = `${item.campusName || '-'}|${item.classGrade || '-'}|${item.date || '-'}`;
                 if (!groups.has(key)) {
                     groups.set(key, {
                         key,
+                        campusName: item.campusName || '',
                         classGrade: item.classGrade || '-',
                         date: item.date || '-',
                         items: []
@@ -3560,7 +3571,7 @@
             list.innerHTML = groups.map((group) => `
                 <article class="portal-content-card">
                     <h4>${escapeHtml(group.classGrade)} Class Diary</h4>
-                    <div class="portal-content-meta">${escapeHtml(group.date)} - ${group.items.length} subject${group.items.length === 1 ? '' : 's'}</div>
+                    <div class="portal-content-meta">${escapeHtml(group.date)}${group.campusName ? ` - ${escapeHtml(group.campusName)}` : ''} - ${group.items.length} subject${group.items.length === 1 ? '' : 's'}</div>
                     <div class="portal-diary-subjects">
                         ${group.items.map((item) => `
                             <div class="portal-diary-subject">
