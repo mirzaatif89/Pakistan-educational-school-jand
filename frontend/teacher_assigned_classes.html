@@ -174,9 +174,13 @@
         async function persistTeachers(teachers) {
             localStorage.setItem('eduCore_teachers', JSON.stringify(teachers));
             try {
+                const token = sessionStorage.getItem('eduCore_token') || '';
                 const response = await fetch(`${API_BASE_URL}/teachers`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
                     body: JSON.stringify(teachers)
                 });
                 const result = await response.json().catch(() => ({}));
@@ -239,14 +243,31 @@
             await persistTeachers(teachers);
         }
 
+        function mergeClassAssignments(primary = [], secondary = []) {
+            const merged = new Map();
+            [...secondary, ...primary].forEach((item) => {
+                if (!item?.id) return;
+                merged.set(String(item.id), { ...(merged.get(String(item.id)) || {}), ...item });
+            });
+            return Array.from(merged.values());
+        }
+
         async function loadClassAssignments() {
+            const cachedAssignments = assignmentData(CLASS_ASSIGNMENT_KEY);
             try {
                 const response = await fetch(`${API_BASE_URL}/teacher-class-assignments`);
                 const result = await response.json().catch(() => ({}));
                 if (!response.ok || result?.success === false || !Array.isArray(result.assignments)) {
                     throw new Error(result?.message || 'Class assignments could not be loaded.');
                 }
-                saveAssignments(result.assignments);
+                const mergedAssignments = mergeClassAssignments(cachedAssignments, result.assignments);
+                saveAssignments(mergedAssignments);
+                const serverIds = new Set(result.assignments.map((item) => String(item.id || '')));
+                for (const assignment of mergedAssignments) {
+                    if (!serverIds.has(String(assignment.id || ''))) {
+                        await saveClassAssignmentToServer(assignment);
+                    }
+                }
             } catch (_error) {
                 // Keep using local cache if the server is unavailable.
             }

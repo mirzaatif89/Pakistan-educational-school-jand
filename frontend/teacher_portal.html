@@ -1602,6 +1602,22 @@
             return String(value || '').trim().toLowerCase().replace(/^teacher_/, '');
         }
 
+        function getTeacherIdentityValues() {
+            const values = [
+                currentTeacherProfile?.id,
+                currentTeacherProfile?.employeeCode,
+                currentTeacherProfile?.username,
+                currentTeacherProfile?.email,
+                currentTeacherProfile?.fullName,
+                loggedInUser?.id,
+                loggedInUser?.profileId,
+                loggedInUser?.username,
+                loggedInUser?.email,
+                loggedInUser?.fullName
+            ];
+            return new Set(values.map(normalizeTeacherIdentity).filter(Boolean));
+        }
+
         function getTeacherSalaryPayment(month = monthKey()) {
             const teacherId = getTeacherIdentity();
             const records = readLocal(TEACHER_SALARY_KEY);
@@ -1634,11 +1650,21 @@
         }
 
         function getTeacherClassAssignments() {
-            const teacherId = normalizeTeacherIdentity(getTeacherIdentity());
+            const teacherIds = getTeacherIdentityValues();
             const source = Array.isArray(remoteTeacherClassAssignments)
                 ? remoteTeacherClassAssignments
                 : readLocal(CLASS_ASSIGNMENT_KEY);
-            return source.filter((item) => normalizeTeacherIdentity(item.teacherId) === teacherId);
+            return source.filter((item) => {
+                const candidates = [
+                    item.teacherId,
+                    item.employeeCode,
+                    item.teacherCode,
+                    item.username,
+                    item.email,
+                    item.teacherName
+                ].map(normalizeTeacherIdentity).filter(Boolean);
+                return candidates.some((candidate) => teacherIds.has(candidate));
+            });
         }
 
         function getAssignedClassRows() {
@@ -2290,7 +2316,14 @@
 
         function getTeacherFallback() {
             const teachers = JSON.parse(localStorage.getItem('eduCore_teachers') || '[]');
-            return teachers.find((teacher) => String(teacher.id) === String(loggedInUser?.id));
+            const teacherIds = getTeacherIdentityValues();
+            return teachers.find((teacher) => [
+                teacher.id,
+                teacher.employeeCode,
+                teacher.username,
+                teacher.email,
+                teacher.fullName
+            ].map(normalizeTeacherIdentity).some((candidate) => teacherIds.has(candidate)));
         }
 
         function renderTeacherMessages(messages = []) {
