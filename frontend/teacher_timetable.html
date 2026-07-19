@@ -180,6 +180,10 @@
                             <select id="teacherScheduleTeacher" required></select>
                         </div>
                         <div class="input-group">
+                            <label>Campus</label>
+                            <select id="teacherScheduleCampus" required></select>
+                        </div>
+                        <div class="input-group">
                             <label>Class</label>
                             <select id="teacherScheduleClass" required></select>
                         </div>
@@ -266,19 +270,56 @@
             }
         }
 
-        function populateTeacherSchedulingOptions() {
-            const teacherSelect = document.getElementById('teacherScheduleTeacher');
-            const classSelect = document.getElementById('teacherScheduleClass');
-            const teachers = getScheduleData('eduCore_teachers');
+        function collectTeacherScheduleCampuses() {
+            const campusMap = new Map();
+            const addCampus = (value) => {
+                const campus = String(value || '').trim();
+                if (!campus) return;
+                const key = campus.toLowerCase();
+                if (!campusMap.has(key)) campusMap.set(key, campus);
+            };
+            if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+            getScheduleData('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+            getScheduleData('eduCore_teachers').forEach((teacher) => {
+                addCampus(teacher?.campusName || teacher?.branchName || teacher?.campus);
+                parseSchedule(teacher?.schedule).forEach((item) => addCampus(item?.campusName));
+            });
+            getScheduleData('eduCore_students').forEach((student) => addCampus(student?.campusName || student?.branchName || student?.campus));
+            const campuses = Array.from(campusMap.values()).sort((a, b) => a.localeCompare(b));
+            return campuses.length ? campuses : ['Main Campus'];
+        }
+
+        function collectTeacherScheduleClasses(campusName = '') {
+            const selectedCampus = String(campusName || '').trim().toLowerCase();
             const students = getScheduleData('eduCore_students');
             const classes = getScheduleData('eduCore_classes');
-            const classNames = [...new Set([
+            return [...new Set([
                 ...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name),
-                ...students.map((student) => student?.classGrade)
+                ...students
+                    .filter((student) => !selectedCampus || String(student?.campusName || student?.branchName || student?.campus || '').trim().toLowerCase() === selectedCampus)
+                    .map((student) => student?.classGrade)
             ].map((value) => String(value || '').trim()).filter(Boolean))].sort();
+        }
 
-            teacherSelect.innerHTML = '<option value="">Select Teacher</option>' + teachers.map((teacher) => `<option value="${teacher.id}">${teacher.fullName || 'Teacher'}${teacher.subject ? ` - ${teacher.subject}` : ''}</option>`).join('');
+        function populateTeacherScheduleClassOptions(selectedClass = '') {
+            const classSelect = document.getElementById('teacherScheduleClass');
+            const campusName = document.getElementById('teacherScheduleCampus')?.value || '';
+            const classNames = collectTeacherScheduleClasses(campusName);
             classSelect.innerHTML = '<option value="">Select Class</option>' + classNames.map((name) => `<option value="${name}">${name}</option>`).join('');
+            if (selectedClass && classNames.some((name) => name.toLowerCase() === String(selectedClass).toLowerCase())) {
+                classSelect.value = selectedClass;
+            }
+        }
+
+        function populateTeacherSchedulingOptions() {
+            const teacherSelect = document.getElementById('teacherScheduleTeacher');
+            const campusSelect = document.getElementById('teacherScheduleCampus');
+            const teachers = getScheduleData('eduCore_teachers');
+            const campuses = collectTeacherScheduleCampuses();
+
+            teacherSelect.innerHTML = '<option value="">Select Teacher</option>' + teachers.map((teacher) => `<option value="${teacher.id}" data-campus="${teacher.campusName || teacher.branchName || teacher.campus || ''}">${teacher.fullName || 'Teacher'}${teacher.subject ? ` - ${teacher.subject}` : ''}${teacher.campusName ? ` - ${teacher.campusName}` : ''}</option>`).join('');
+            campusSelect.innerHTML = '<option value="">Select Campus</option>' + campuses.map((name) => `<option value="${name}">${name}</option>`).join('');
+            populateTeacherScheduleClassOptions();
         }
 
         function getAllTeacherScheduleRows() {
@@ -286,7 +327,8 @@
                 return parseSchedule(teacher.schedule).map((item) => ({
                     ...item,
                     teacherId: teacher.id,
-                    teacherName: teacher.fullName || 'Teacher'
+                    teacherName: teacher.fullName || 'Teacher',
+                    teacherCampusName: teacher.campusName || teacher.branchName || teacher.campus || ''
                 }));
             });
         }
@@ -303,11 +345,12 @@
             list.innerHTML = `
                 <div class="schedule-table-wrap">
                 <table class="schedule-table">
-                    <thead><tr><th>Teacher</th><th>Class</th><th>Day</th><th>Lecture</th><th>Time</th><th>Room</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Teacher</th><th>Assigned Campus</th><th>Class</th><th>Day</th><th>Lecture</th><th>Time</th><th>Room</th><th>Action</th></tr></thead>
                     <tbody>
                         ${rows.map((item) => `
                             <tr>
-                                <td>${item.teacherName || '-'}</td>
+                                <td>${item.teacherName || '-'}${item.teacherCampusName ? `<br><small>${item.teacherCampusName}</small>` : ''}</td>
+                                <td>${item.campusName || item.teacherCampusName || '-'}</td>
                                 <td>${item.classGrade || '-'}</td>
                                 <td>${item.day || '-'}</td>
                                 <td>${item.subject || '-'}</td>
@@ -351,7 +394,8 @@
 
             document.getElementById('teacherScheduleEditId').value = schedule.id;
             document.getElementById('teacherScheduleTeacher').value = teacher.id;
-            document.getElementById('teacherScheduleClass').value = schedule.classGrade || '';
+            document.getElementById('teacherScheduleCampus').value = schedule.campusName || teacher.campusName || '';
+            populateTeacherScheduleClassOptions(schedule.classGrade || '');
             document.getElementById('teacherScheduleDay').value = schedule.day || 'Monday';
             document.getElementById('teacherScheduleSubject').value = schedule.subject || '';
             document.getElementById('teacherScheduleStart').value = schedule.startTime || '';
@@ -376,6 +420,7 @@
 
             const schedule = {
                 id: editId || `SCH-${Date.now()}`,
+                campusName: document.getElementById('teacherScheduleCampus').value,
                 classGrade: document.getElementById('teacherScheduleClass').value,
                 day: document.getElementById('teacherScheduleDay').value,
                 subject: document.getElementById('teacherScheduleSubject').value.trim(),
@@ -384,8 +429,8 @@
                 room: document.getElementById('teacherScheduleRoom').value.trim(),
                 note: document.getElementById('teacherScheduleNote').value.trim()
             };
-            if (!schedule.classGrade || !schedule.subject || !schedule.startTime || !schedule.endTime) {
-                showAppAlert('Class, lecture, start time, and end time are required.', 'Missing Schedule');
+            if (!schedule.campusName || !schedule.classGrade || !schedule.subject || !schedule.startTime || !schedule.endTime) {
+                showAppAlert('Campus, class, lecture, start time, and end time are required.', 'Missing Schedule');
                 return;
             }
 
@@ -406,6 +451,14 @@
             showSuccessModal(editId ? 'Schedule Updated!' : 'Schedule Saved!', editId ? 'Teacher schedule has been updated successfully.' : 'Teacher schedule has been saved successfully.');
         });
 
+        document.getElementById('teacherScheduleCampus')?.addEventListener('change', () => populateTeacherScheduleClassOptions());
+        document.getElementById('teacherScheduleTeacher')?.addEventListener('change', () => {
+            const teacher = getScheduleData('eduCore_teachers').find((item) => String(item.id) === String(document.getElementById('teacherScheduleTeacher').value));
+            if (teacher?.campusName && !document.getElementById('teacherScheduleCampus').value) {
+                document.getElementById('teacherScheduleCampus').value = teacher.campusName;
+                populateTeacherScheduleClassOptions();
+            }
+        });
         populateTeacherSchedulingOptions();
         applyTeacherScheduleMode();
         renderTeacherSchedules();

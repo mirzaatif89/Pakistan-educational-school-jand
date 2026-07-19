@@ -8126,7 +8126,41 @@ function getTeacherScheduleSummary(teacher) {
     }
 
     const uniqueDays = [...new Set(schedule.map(item => item.day).filter(Boolean))];
-    return `<div style="font-size:0.75rem;color:var(--text-secondary);">${schedule.length} lectures ${uniqueDays.length ? `on ${uniqueDays.length} days` : ''}</div>`;
+    const uniqueCampuses = [...new Set(schedule.map(item => item.campusName).filter(Boolean))];
+    return `<div style="font-size:0.75rem;color:var(--text-secondary);">${schedule.length} lectures ${uniqueDays.length ? `on ${uniqueDays.length} days` : ''}${uniqueCampuses.length ? `<br>${uniqueCampuses.length} campus${uniqueCampuses.length === 1 ? '' : 'es'}` : ''}</div>`;
+}
+
+function collectTeacherScheduleCampusOptions(teacher = {}) {
+    const campusMap = new Map();
+    const addCampus = (value) => {
+        const campus = String(value || '').trim();
+        if (!campus) return;
+        const key = campus.toLowerCase();
+        if (!campusMap.has(key)) campusMap.set(key, campus);
+    };
+    if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+    addCampus(teacher.campusName || teacher.branchName || teacher.campus);
+    getArrayData('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+    getArrayData(STORAGE_KEY_TEACHERS).forEach((item) => {
+        addCampus(item?.campusName || item?.branchName || item?.campus);
+        normalizeTeacherSchedule(item?.schedule).forEach((scheduleItem) => addCampus(scheduleItem?.campusName));
+    });
+    getArrayData(STORAGE_KEY_STUDENTS).forEach((item) => addCampus(item?.campusName || item?.branchName || item?.campus));
+    const campuses = Array.from(campusMap.values()).sort((a, b) => a.localeCompare(b));
+    return campuses.length ? campuses : ['Main Campus'];
+}
+
+function populateTeacherScheduleCampusSelect(teacher = {}) {
+    const select = document.getElementById('scheduleCampus');
+    if (!select) return;
+    const campuses = collectTeacherScheduleCampusOptions(teacher);
+    select.innerHTML = '<option value="">Select Campus</option>' + campuses.map((campusName) => (
+        `<option value="${escapeHtml(campusName)}">${escapeHtml(campusName)}</option>`
+    )).join('');
+    const teacherCampus = teacher.campusName || teacher.branchName || teacher.campus || '';
+    if (teacherCampus && campuses.some((campusName) => campusName.toLowerCase() === String(teacherCampus).toLowerCase())) {
+        select.value = teacherCampus;
+    }
 }
 
 function openTeacherSchedule(teacherId) {
@@ -8138,6 +8172,7 @@ function openTeacherSchedule(teacherId) {
     teacherScheduleDraft = normalizeTeacherSchedule(teacher.schedule).map(item => ({ ...item }));
     document.getElementById('scheduleTeacherId').value = teacher.id;
     document.getElementById('scheduleModalTitle').innerText = `Schedule: ${teacher.fullName}`;
+    populateTeacherScheduleCampusSelect(teacher);
     clearTeacherScheduleDraft();
     renderTeacherScheduleDraft();
     modal.style.display = 'flex';
@@ -8158,6 +8193,7 @@ function clearTeacherScheduleDraft() {
 }
 
 function addTeacherScheduleItem() {
+    const campusName = document.getElementById('scheduleCampus')?.value.trim() || '';
     const day = document.getElementById('scheduleDay').value;
     const classGrade = document.getElementById('scheduleClass').value.trim();
     const subject = document.getElementById('scheduleSubject').value.trim();
@@ -8166,8 +8202,8 @@ function addTeacherScheduleItem() {
     const room = document.getElementById('scheduleRoom').value.trim();
     const note = document.getElementById('scheduleNote').value.trim();
 
-    if (!day || !classGrade || !subject || !startTime || !endTime) {
-        alert('Please add day, class, lecture, start time, and end time.');
+    if (!campusName || !day || !classGrade || !subject || !startTime || !endTime) {
+        alert('Please add campus, day, class, lecture, start time, and end time.');
         return;
     }
 
@@ -8178,6 +8214,7 @@ function addTeacherScheduleItem() {
 
     teacherScheduleDraft.push({
         id: generateUniqueRecordId('SCH'),
+        campusName,
         day,
         classGrade,
         subject,
@@ -8215,7 +8252,7 @@ function renderTeacherScheduleDraft() {
     list.innerHTML = teacherScheduleDraft.map((item) => `
         <div class="schedule-row">
             <div><strong>${item.day}</strong><br><span>${formatScheduleTime(item.startTime, item.endTime)}</span></div>
-            <div><strong>${item.subject}</strong><br><span>${item.classGrade}</span></div>
+            <div><strong>${item.subject}</strong><br><span>${item.campusName || '-'} | ${item.classGrade}</span></div>
             <div><strong>${item.room || '-'}</strong><br><span>${item.note || 'No note'}</span></div>
             <div><span>Lecture</span></div>
             <button type="button" class="action-btn btn-delete" onclick="removeTeacherScheduleItem('${item.id}')">

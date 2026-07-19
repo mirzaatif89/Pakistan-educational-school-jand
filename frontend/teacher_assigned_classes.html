@@ -105,7 +105,7 @@
                         </div>
                         <div>
                             <label for="classAssignmentCampus">Campus</label>
-                            <input type="text" id="classAssignmentCampus" placeholder="Main Campus">
+                            <select id="classAssignmentCampus" required></select>
                         </div>
                         <div>
                             <label for="classAssignmentNote">Note</label>
@@ -170,14 +170,35 @@
                     : ((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
         }
 
+        function collectCampusNames() {
+            const campuses = new Map();
+            const addCampus = (value) => {
+                const campus = String(value || '').trim();
+                if (!campus) return;
+                const key = campus.toLowerCase();
+                if (!campuses.has(key)) campuses.set(key, campus);
+            };
+            if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+            assignmentData('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+            assignmentData('eduCore_teachers').forEach((teacher) => addCampus(teacher?.campusName || teacher?.branchName || teacher?.campus));
+            assignmentData('eduCore_students').forEach((student) => addCampus(student?.campusName || student?.branchName || student?.campus));
+            assignmentData('eduCore_class_assignments').forEach((item) => addCampus(item?.campusName));
+            const names = Array.from(campuses.values()).sort((a, b) => a.localeCompare(b));
+            return names.length ? names : ['Main Campus'];
+        }
+
         function populateClassAssignmentOptions() {
             const teachers = assignmentData('eduCore_teachers');
             const classes = collectClassNames();
+            const campuses = collectCampusNames();
             classAssignmentTeacher.innerHTML = '<option value="">Select Teacher</option>' + teachers.map((teacher) => (
-                `<option value="${escapeAssignmentText(teacher.id)}">${escapeAssignmentText(teacher.fullName || 'Teacher')}${teacher.subject ? ` - ${escapeAssignmentText(teacher.subject)}` : ''}</option>`
+                `<option value="${escapeAssignmentText(teacher.id)}" data-campus="${escapeAssignmentText(teacher.campusName || teacher.branchName || teacher.campus || '')}">${escapeAssignmentText(teacher.fullName || 'Teacher')}${teacher.subject ? ` - ${escapeAssignmentText(teacher.subject)}` : ''}${teacher.campusName ? ` - ${escapeAssignmentText(teacher.campusName)}` : ''}</option>`
             )).join('');
             classAssignmentClass.innerHTML = '<option value="">Select Class</option>' + classes.map((className) => (
                 `<option value="${escapeAssignmentText(className)}">${escapeAssignmentText(className)}</option>`
+            )).join('');
+            classAssignmentCampus.innerHTML = '<option value="">Select Campus</option>' + campuses.map((campusName) => (
+                `<option value="${escapeAssignmentText(campusName)}">${escapeAssignmentText(campusName)}</option>`
             )).join('');
         }
 
@@ -248,8 +269,9 @@
             const teachers = assignmentData('eduCore_teachers');
             const teacher = teachers.find((item) => String(item.id) === String(classAssignmentTeacher.value));
             const classGrade = classAssignmentClass.value;
-            if (!teacher || !classGrade) {
-                showAppAlert('Select a teacher and class first.', 'Missing Assignment');
+            const campusName = classAssignmentCampus.value.trim();
+            if (!teacher || !classGrade || !campusName) {
+                showAppAlert('Select teacher, campus, and class first.', 'Missing Assignment');
                 return;
             }
 
@@ -259,12 +281,13 @@
                 id: editId || `CLASS-ASG-${Date.now()}`,
                 teacherId: teacher.id,
                 teacherName: teacher.fullName || 'Teacher',
+                teacherCampusName: teacher.campusName || teacher.branchName || teacher.campus || '',
                 classGrade,
-                campusName: classAssignmentCampus.value.trim() || teacher.campusName || 'Main Campus',
+                campusName,
                 note: classAssignmentNote.value.trim(),
                 updatedAt: new Date().toISOString()
             };
-            const duplicateIndex = assignments.findIndex((item) => String(item.classGrade || '').toLowerCase() === classGrade.toLowerCase() && String(item.id) !== String(editId));
+            const duplicateIndex = assignments.findIndex((item) => String(item.classGrade || '').toLowerCase() === classGrade.toLowerCase() && String(item.campusName || '').toLowerCase() === campusName.toLowerCase() && String(item.id) !== String(editId));
             if (duplicateIndex >= 0) {
                 assignments[duplicateIndex] = { ...assignments[duplicateIndex], ...assignment, id: assignments[duplicateIndex].id };
             } else {
