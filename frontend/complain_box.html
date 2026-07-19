@@ -113,6 +113,27 @@
         };
         function readComplaints() { try { return JSON.parse(localStorage.getItem(COMPLAINT_KEY) || '[]'); } catch (_e) { return []; } }
         function saveComplaints(items) { localStorage.setItem(COMPLAINT_KEY, JSON.stringify(items)); }
+        async function loadComplaintsFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/complaints`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Complaints could not be loaded.');
+                if (Array.isArray(result.complaints)) saveComplaints(result.complaints);
+            } catch (error) {
+                console.warn('Complaints API load failed:', error.message);
+            }
+        }
+        async function syncComplaintToApi(id, payload) {
+            const response = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Complaint update could not be saved.');
+            if (Array.isArray(result.complaints)) saveComplaints(result.complaints);
+            return result;
+        }
         function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
         function sanitizeFileName(fileName) {
             return String(fileName || 'complaint-file').trim().replace(/[\\/:*?"<>|]+/g, '-') || 'complaint-file';
@@ -195,7 +216,7 @@
             }).join('');
             if (window.lucide) window.lucide.createIcons();
         }
-        function updateComplaint(id) {
+        async function updateComplaint(id) {
             const items = readComplaints();
             const index = items.findIndex((item) => item.id === id);
             if (index < 0) return;
@@ -216,7 +237,7 @@
             if (canReply && reply) {
                 thread.push({ role: 'Admin', name: 'Admin', message: reply, createdAt: now });
             }
-            items[index] = {
+            const updated = {
                 ...items[index],
                 ...(canReply && reply ? { reply, repliedAt: now } : {}),
                 ...(canReply ? { thread } : {}),
@@ -224,7 +245,21 @@
                 status: selectedStatus,
                 updatedAt: now
             };
+            items[index] = updated;
             saveComplaints(items);
+            try {
+                await syncComplaintToApi(id, {
+                    reply,
+                    replyRole: 'Admin',
+                    replyName: 'Admin',
+                    actionTaken,
+                    ...(actionTaken ? { actionAt: now } : {}),
+                    status: selectedStatus,
+                    thread
+                });
+            } catch (error) {
+                showAppAlert(`Complaint saved locally, but API sync failed: ${error.message}`, 'API Sync Failed');
+            }
             renderComplaints();
             showAppAlert('Complaint update saved.', 'Update Saved');
         }
@@ -232,6 +267,7 @@
             const confirmed = await showAppConfirm('Delete this complaint?', 'Delete Complaint');
             if (!confirmed) return;
             saveComplaints(readComplaints().filter((item) => item.id !== id));
+            try { await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (_error) {}
             renderComplaints();
         }
         function applyComplaintFilter(filter) {
@@ -273,6 +309,7 @@
         });
         applyComplaintHashFilter();
         if (!complaintHashFilters[String(window.location.hash || '').toLowerCase()]) renderComplaints();
+        loadComplaintsFromApi().then(renderComplaints);
         window.addEventListener('hashchange', applyComplaintHashFilter);
         if (window.lucide) window.lucide.createIcons();
     </script>

@@ -3562,6 +3562,13 @@
                             localStorage.setItem(STUDENT_QUIZ_KEY, JSON.stringify(result.quizzes));
                         }
                     }),
+                fetch(`${API_BASE_URL}/complaints?role=Student`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.complaints)) {
+                            localStorage.setItem(COMPLAINT_KEY, JSON.stringify(result.complaints));
+                        }
+                    }),
                 fetch(`${API_BASE_URL}/student-assignments`, {
                     headers: { Authorization: `Bearer ${authToken}` }
                 })
@@ -4089,6 +4096,20 @@
             return thread.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
         }
 
+        function normalizeComplaintStatusLabel(status = 'Pending') {
+            const value = String(status || 'Pending').trim().toLowerCase();
+            if (value === 'in progress' || value === 'in-progress') return 'In Progress';
+            if (value === 'reply' || value === 'replied') return 'Replied';
+            if (value === 'resolve' || value === 'resolved' || value === 'action taken') return 'Resolved';
+            if (value === 'closed') return 'Closed';
+            return 'Pending';
+        }
+
+        function isComplaintChatEnded(item = {}) {
+            const status = normalizeComplaintStatusLabel(item.status);
+            return status !== 'Pending' || Boolean(String(item.actionTaken || '').trim());
+        }
+
         function renderStudentComplaints(student = {}) {
             const list = document.getElementById('studentComplaintHistory');
             const empty = document.getElementById('studentComplaintEmpty');
@@ -4100,32 +4121,43 @@
                 return;
             }
             empty.style.display = 'none';
-            list.innerHTML = complaints.map((item) => `
-                <article class="portal-content-card">
-                    <h4>${escapeHtml(item.subject || 'Complaint')}</h4>
-                    <div class="portal-content-meta">${escapeHtml(item.status || 'Pending')} - ${escapeHtml(item.createdAt ? new Date(item.createdAt).toLocaleString() : '')}</div>
-                    <p>${escapeHtml(item.message || '-')}</p>
-                    ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalDataUrl('${item.file.dataUrl}', '${escapeHtml(item.file.name || 'complaint-file')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
-                    ${getComplaintThread(item).map((entry) => `<div class="empty-note"><strong>${escapeHtml(entry.role || 'Reply')} ${entry.name ? `- ${escapeHtml(entry.name)}` : ''}:</strong><br>${escapeHtml(entry.message || '-')}<div class="portal-content-meta">${escapeHtml(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '')}</div></div>`).join('')}
-                    ${item.actionTaken ? `<div class="empty-note"><strong>Action Taken:</strong><br>${escapeHtml(item.actionTaken)}<div class="portal-content-meta">${escapeHtml(item.actionAt ? new Date(item.actionAt).toLocaleString() : '')}</div></div>` : ''}
-                    <div class="portal-field" style="margin-top:.85rem;">
-                        <label for="studentComplaintReply-${escapeHtml(item.id || '')}">Reply</label>
-                        <textarea id="studentComplaintReply-${escapeHtml(item.id || '')}" class="form-control" rows="3" placeholder="Write your reply"></textarea>
-                    </div>
-                    <div class="portal-action-row">
-                        <button type="button" class="btn btn-secondary" onclick="replyStudentComplaint('${escapeHtml(item.id || '')}')"><i data-lucide="send" width="16"></i> Reply</button>
-                    </div>
-                </article>
-            `).join('');
+            list.innerHTML = complaints.map((item) => {
+                const status = normalizeComplaintStatusLabel(item.status);
+                const chatEnded = isComplaintChatEnded(item);
+                return `
+                    <article class="portal-content-card">
+                        <h4>${escapeHtml(item.subject || 'Complaint')}</h4>
+                        <div class="portal-content-meta">${escapeHtml(status)} - ${escapeHtml(item.updatedAt || item.actionAt ? new Date(item.updatedAt || item.actionAt).toLocaleString() : (item.createdAt ? new Date(item.createdAt).toLocaleString() : ''))}</div>
+                        <p>${escapeHtml(item.message || '-')}</p>
+                        ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalDataUrl('${item.file.dataUrl}', '${escapeHtml(item.file.name || 'complaint-file')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'File')}</button>` : ''}
+                        ${getComplaintThread(item).map((entry) => `<div class="empty-note"><strong>${escapeHtml(entry.role || 'Reply')} ${entry.name ? `- ${escapeHtml(entry.name)}` : ''}:</strong><br>${escapeHtml(entry.message || '-')}<div class="portal-content-meta">${escapeHtml(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '')}</div></div>`).join('')}
+                        ${item.actionTaken ? `<div class="empty-note"><strong>Action Taken:</strong><br>${escapeHtml(item.actionTaken)}<div class="portal-content-meta">${escapeHtml(item.actionAt ? new Date(item.actionAt).toLocaleString() : '')}</div></div>` : ''}
+                        ${chatEnded
+                            ? `<span class="student-fee-status-pill paid" style="display:inline-flex; margin-top:.85rem;">Status: ${escapeHtml(status)} - Chat ended</span>`
+                            : `<div class="portal-field" style="margin-top:.85rem;">
+                                <label for="studentComplaintReply-${escapeHtml(item.id || '')}">Reply</label>
+                                <textarea id="studentComplaintReply-${escapeHtml(item.id || '')}" class="form-control" rows="3" placeholder="Write your reply"></textarea>
+                            </div>
+                            <div class="portal-action-row">
+                                <button type="button" class="btn btn-secondary" onclick="replyStudentComplaint('${escapeHtml(item.id || '')}')"><i data-lucide="send" width="16"></i> Reply</button>
+                            </div>`}
+                    </article>
+                `;
+            }).join('');
             if (window.lucide) window.lucide.createIcons();
         }
 
-        function replyStudentComplaint(id) {
+        async function replyStudentComplaint(id) {
             const student = getCurrentPortalStudent();
             const complaints = getPortalData(COMPLAINT_KEY);
             const index = complaints.findIndex((item) => item.id === id && item.senderRole === 'Student');
             if (index < 0) {
                 showAppAlert('Complaint was not found.', 'Reply Failed');
+                return;
+            }
+            if (isComplaintChatEnded(complaints[index])) {
+                showAppAlert('This complaint has been closed by admin.', 'Chat Ended');
+                renderStudentComplaints(student);
                 return;
             }
             const reply = document.getElementById(`studentComplaintReply-${id}`)?.value.trim() || '';
@@ -4138,6 +4170,23 @@
             thread.push({ role: 'Student', name: student.fullName || loggedInUser?.fullName || 'Student', message: reply, createdAt: now });
             complaints[index] = { ...complaints[index], thread, status: 'Pending', updatedAt: now };
             localStorage.setItem(COMPLAINT_KEY, JSON.stringify(complaints));
+            try {
+                const response = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reply,
+                        replyRole: 'Student',
+                        replyName: student.fullName || loggedInUser?.fullName || 'Student',
+                        status: 'Pending'
+                    })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Reply could not be synced.');
+                if (Array.isArray(result.complaints)) localStorage.setItem(COMPLAINT_KEY, JSON.stringify(result.complaints));
+            } catch (error) {
+                console.warn('Complaint reply API sync failed:', error.message);
+            }
             renderStudentComplaints(student);
             showAppAlert('Your reply has been sent.', 'Reply Sent');
         }
@@ -4211,6 +4260,18 @@
             } catch (_error) {
                 showAppAlert('Complaint could not be saved. The attached file may be too large.', 'Storage Full');
                 return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/complaints`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(complaints[complaints.length - 1])
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Complaint could not be synced.');
+                if (Array.isArray(result.complaints)) localStorage.setItem(COMPLAINT_KEY, JSON.stringify(result.complaints));
+            } catch (error) {
+                console.warn('Complaint API sync failed:', error.message);
             }
             event.target.reset();
             updateStudentComplaintFileLabel();
