@@ -34,6 +34,7 @@ const PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions.json');
 const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json');
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
 const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json');
+const TEACHER_CLASS_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'teacher_class_assignments.json');
 const UPLOADED_LECTURES_FILE = path.join(DATA_DIR, 'uploaded_lectures.json');
 const STUDENT_COURSES_FILE = path.join(DATA_DIR, 'student_courses.json');
 const STUDENT_QUIZZES_FILE = path.join(DATA_DIR, 'student_quizzes.json');
@@ -1075,6 +1076,21 @@ function normalizeStudentAssignmentSubmission(raw = {}) {
     };
 }
 
+function normalizeTeacherClassAssignment(raw = {}) {
+    const now = new Date().toISOString();
+    return {
+        id: String(raw.id || `CLASS-ASG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        teacherId: String(raw.teacherId || '').trim(),
+        teacherName: String(raw.teacherName || '').trim(),
+        teacherCampusName: String(raw.teacherCampusName || '').trim(),
+        classGrade: String(raw.classGrade || raw.className || raw.class || '').trim(),
+        campusName: String(raw.campusName || '').trim(),
+        note: String(raw.note || '').trim(),
+        createdAt: raw.createdAt || now,
+        updatedAt: raw.updatedAt || now
+    };
+}
+
 function readJsonArrayFile(filePath, normalizer) {
     try {
         if (!fs.existsSync(filePath)) return [];
@@ -1225,6 +1241,26 @@ app.post('/api/uploaded-assignments', (req, res) => {
 app.delete('/api/uploaded-assignments', (req, res) => {
     const id = String(req.query.id || '');
     const assignments = writeJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment).filter((entry) => String(entry.id) !== id), normalizeUploadedAssignment);
+    res.json({ success: true, assignments });
+});
+
+app.get('/api/teacher-class-assignments', (req, res) => {
+    res.json({ success: true, assignments: readJsonArrayFile(TEACHER_CLASS_ASSIGNMENTS_FILE, normalizeTeacherClassAssignment) });
+});
+
+app.post('/api/teacher-class-assignments', (req, res) => {
+    const item = normalizeTeacherClassAssignment(req.body || {});
+    if (!item.teacherId || !item.classGrade || !item.campusName) {
+        return res.status(400).json({ success: false, message: 'Teacher, class, and campus are required.' });
+    }
+    const existing = readJsonArrayFile(TEACHER_CLASS_ASSIGNMENTS_FILE, normalizeTeacherClassAssignment);
+    const assignments = writeJsonArrayFile(TEACHER_CLASS_ASSIGNMENTS_FILE, [item, ...existing.filter((entry) => String(entry.id) !== String(item.id))], normalizeTeacherClassAssignment);
+    res.json({ success: true, assignment: item, assignments });
+});
+
+app.delete('/api/teacher-class-assignments', (req, res) => {
+    const id = String(req.query.id || '');
+    const assignments = writeJsonArrayFile(TEACHER_CLASS_ASSIGNMENTS_FILE, readJsonArrayFile(TEACHER_CLASS_ASSIGNMENTS_FILE, normalizeTeacherClassAssignment).filter((entry) => String(entry.id) !== id), normalizeTeacherClassAssignment);
     res.json({ success: true, assignments });
 });
 

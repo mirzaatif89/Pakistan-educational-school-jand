@@ -1418,10 +1418,12 @@
         const COMPLAINT_KEY = 'eduCore_complaints';
         const TEACHER_LEAVE_KEY = 'eduCore_teacher_leave_requests';
         const TEACHER_SALARY_KEY = 'eduCore_teacher_salaries';
+        const CLASS_ASSIGNMENT_KEY = 'eduCore_teacher_class_assignments';
         const TEACHER_THEME_KEY = 'eduCore_teacher_portal_theme';
         const TEACHER_PORTAL_DISMISSED_ADS_KEY = 'eduCore_teacher_portal_dismissed_ads';
         let currentTeacherProfile = null;
         let remoteTeacherLeaveRequests = null;
+        let remoteTeacherClassAssignments = null;
 
         function syncThemeMenu() {
             const isDark = document.body.classList.contains('portal-dark');
@@ -1596,6 +1598,10 @@
             return String(teacher?.id || teacher?.employeeCode || loggedInUser?.id || loggedInUser?.username || '').trim();
         }
 
+        function normalizeTeacherIdentity(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/^teacher_/, '');
+        }
+
         function getTeacherSalaryPayment(month = monthKey()) {
             const teacherId = getTeacherIdentity();
             const records = readLocal(TEACHER_SALARY_KEY);
@@ -1607,6 +1613,15 @@
             return normalizeSchedule(currentTeacherProfile?.schedule);
         }
 
+        function isClassInchargeScheduleItem(item) {
+            return String(item?.type || '').toLowerCase() === 'classincharge'
+                || String(item?.id || '').startsWith('CLASS-INCHARGE-');
+        }
+
+        function getTeachingSchedule() {
+            return getSchedule().filter((item) => !isClassInchargeScheduleItem(item));
+        }
+
         function uniqueClasses(schedule = getSchedule()) {
             const classes = new Map();
             schedule.forEach((item) => {
@@ -1616,6 +1631,37 @@
                 if (!classes.has(key)) classes.set(key, className);
             });
             return Array.from(classes.values());
+        }
+
+        function getTeacherClassAssignments() {
+            const teacherId = normalizeTeacherIdentity(getTeacherIdentity());
+            const source = Array.isArray(remoteTeacherClassAssignments)
+                ? remoteTeacherClassAssignments
+                : readLocal(CLASS_ASSIGNMENT_KEY);
+            return source.filter((item) => normalizeTeacherIdentity(item.teacherId) === teacherId);
+        }
+
+        function getAssignedClassRows() {
+            const rows = new Map();
+            uniqueClasses().forEach((className) => {
+                rows.set(className.toLowerCase(), {
+                    classGrade: className,
+                    campusName: '',
+                    note: '',
+                    status: 'Assigned'
+                });
+            });
+            getTeacherClassAssignments().forEach((item) => {
+                const className = item.classGrade || item.className || item.class || '';
+                if (!className) return;
+                rows.set(className.toLowerCase(), {
+                    classGrade: className,
+                    campusName: item.campusName || '',
+                    note: item.note || '',
+                    status: 'Class Incharge'
+                });
+            });
+            return Array.from(rows.values());
         }
 
         function getTeacherAttendanceMonth(attendanceStore, teacherId, month = monthKey()) {
@@ -1727,7 +1773,7 @@
         }
 
         function renderTimeTable() {
-            const schedule = getSchedule();
+            const schedule = getTeachingSchedule();
             const host = document.getElementById('teacherTimeTable');
             if (!host) return;
             if (!schedule.length) {
@@ -1829,16 +1875,34 @@
         }
 
         function renderAssignedClasses() {
-            const classes = uniqueClasses();
-            renderPortalList('teacherAssignedClasses', classes, 'No classes have been assigned yet.', (className) => `
+            const classes = getAssignedClassRows();
+            renderPortalList('teacherAssignedClasses', classes, 'No classes have been assigned yet.', (item) => `
                 <div class="list-item">
-                    <div class="list-item-top"><span>${escapeHtml(className)}</span><span>Assigned</span></div>
+                    <div class="list-item-top"><span>${escapeHtml(item.classGrade)}</span><span>${escapeHtml(item.status)}</span></div>
+                    ${item.campusName || item.note ? `<div class="muted">${escapeHtml([item.campusName, item.note].filter(Boolean).join(' | '))}</div>` : ''}
                 </div>
             `);
         }
 
+        async function loadTeacherClassAssignments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-class-assignments`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false || !Array.isArray(result.assignments)) {
+                    throw new Error(result?.message || 'Class assignments could not be loaded.');
+                }
+                remoteTeacherClassAssignments = result.assignments;
+                localStorage.setItem(CLASS_ASSIGNMENT_KEY, JSON.stringify(result.assignments));
+            } catch (_error) {
+                remoteTeacherClassAssignments = null;
+            }
+            renderAssignedClasses();
+        }
+
         function renderAssignedLectures() {
-            const schedule = getSchedule();
+            const schedule = getTeachingSchedule();
             renderPortalList('teacherAssignedLectures', schedule, 'No lectures have been assigned yet.', (item) => `
                 <div class="list-item">
                     <div class="list-item-top">
@@ -2279,12 +2343,14 @@
                 if (!response.ok) throw new Error('Unable to load teacher profile.');
                 const teacher = await response.json();
                 applyTeacherData(teacher);
+                await loadTeacherClassAssignments();
                 await loadTeacherMessages();
                 await loadTeacherLeaveRequests();
             } catch (_error) {
                 const fallback = getTeacherFallback();
                 if (fallback) {
                     applyTeacherData(fallback);
+                    await loadTeacherClassAssignments();
                     await loadTeacherMessages();
                     await loadTeacherLeaveRequests();
                     return;

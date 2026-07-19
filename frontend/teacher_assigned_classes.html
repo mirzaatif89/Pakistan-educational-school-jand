@@ -147,6 +147,135 @@
             localStorage.setItem(CLASS_ASSIGNMENT_KEY, JSON.stringify(assignments));
         }
 
+        function parseTeacherSchedule(rawSchedule) {
+            if (Array.isArray(rawSchedule)) return rawSchedule;
+            if (!rawSchedule) return [];
+            try {
+                const parsed = JSON.parse(rawSchedule);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_error) {
+                return [];
+            }
+        }
+
+        function buildClassInchargeScheduleRow(assignment) {
+            return {
+                id: `CLASS-INCHARGE-${assignment.id}`,
+                assignmentId: assignment.id,
+                type: 'classIncharge',
+                campusName: assignment.campusName || '',
+                classGrade: assignment.classGrade || '',
+                subject: 'Class Incharge',
+                note: assignment.note || '',
+                updatedAt: assignment.updatedAt || new Date().toISOString()
+            };
+        }
+
+        async function persistTeachers(teachers) {
+            localStorage.setItem('eduCore_teachers', JSON.stringify(teachers));
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(teachers)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && result?.success !== false && Array.isArray(result.teachers)) {
+                    localStorage.setItem('eduCore_teachers', JSON.stringify(result.teachers));
+                }
+            } catch (_error) {
+                // The local teacher cache is still updated for offline use.
+            }
+        }
+
+        async function syncTeacherScheduleForClassAssignment(assignment, previousAssignment = null) {
+            const teachers = assignmentData('eduCore_teachers');
+            const touchedTeacherIds = new Set([assignment.teacherId, previousAssignment?.teacherId].filter(Boolean).map(String));
+
+            touchedTeacherIds.forEach((teacherId) => {
+                const teacher = teachers.find((item) => String(item.id) === String(teacherId));
+                if (!teacher) return;
+                let schedule = parseTeacherSchedule(teacher.schedule)
+                    .filter((item) => String(item.assignmentId || '') !== String(assignment.id))
+                    .filter((item) => String(item.id || '') !== `CLASS-INCHARGE-${assignment.id}`);
+                if (String(teacher.id) === String(assignment.teacherId)) {
+                    schedule = [buildClassInchargeScheduleRow(assignment), ...schedule];
+                }
+                teacher.schedule = schedule;
+            });
+
+            await persistTeachers(teachers);
+        }
+
+        async function removeClassAssignmentFromTeacherSchedule(assignment) {
+            if (!assignment?.id) return;
+            const teachers = assignmentData('eduCore_teachers');
+            teachers.forEach((teacher) => {
+                teacher.schedule = parseTeacherSchedule(teacher.schedule)
+                    .filter((item) => String(item.assignmentId || '') !== String(assignment.id))
+                    .filter((item) => String(item.id || '') !== `CLASS-INCHARGE-${assignment.id}`);
+            });
+            await persistTeachers(teachers);
+        }
+
+        async function syncAllClassAssignmentsToTeacherSchedules() {
+            const assignments = assignmentData(CLASS_ASSIGNMENT_KEY);
+            if (!assignments.length) return;
+
+            const teachers = assignmentData('eduCore_teachers');
+            const assignmentIds = new Set(assignments.map((item) => String(item.id || '')).filter(Boolean));
+            teachers.forEach((teacher) => {
+                let schedule = parseTeacherSchedule(teacher.schedule)
+                    .filter((item) => !assignmentIds.has(String(item.assignmentId || '')))
+                    .filter((item) => !String(item.id || '').startsWith('CLASS-INCHARGE-'));
+                assignments
+                    .filter((assignment) => String(assignment.teacherId) === String(teacher.id))
+                    .forEach((assignment) => {
+                        schedule = [buildClassInchargeScheduleRow(assignment), ...schedule];
+                    });
+                teacher.schedule = schedule;
+            });
+
+            await persistTeachers(teachers);
+        }
+
+        async function loadClassAssignments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-class-assignments`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false || !Array.isArray(result.assignments)) {
+                    throw new Error(result?.message || 'Class assignments could not be loaded.');
+                }
+                saveAssignments(result.assignments);
+            } catch (_error) {
+                // Keep using local cache if the server is unavailable.
+            }
+            await syncAllClassAssignmentsToTeacherSchedules();
+            renderClassAssignments();
+        }
+
+        async function saveClassAssignmentToServer(assignment) {
+            const localAssignments = assignmentData(CLASS_ASSIGNMENT_KEY);
+            const localNext = [assignment, ...localAssignments.filter((item) => String(item.id) !== String(assignment.id))];
+            saveAssignments(localNext);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-class-assignments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(assignment)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) {
+                    throw new Error(result?.message || 'Class assignment could not be saved.');
+                }
+                if (Array.isArray(result.assignments)) saveAssignments(result.assignments);
+                return true;
+            } catch (_error) {
+                return false;
+            }
+        }
+
         function escapeAssignmentText(value) {
             return String(value ?? '').replace(/[&<>"']/g, (char) => ({
                 '&': '&amp;',
@@ -259,12 +388,23 @@
             if (window.lucide) window.lucide.createIcons();
         }
 
-        function deleteClassAssignment(id) {
+        async function deleteClassAssignment(id) {
+            const existing = assignmentData(CLASS_ASSIGNMENT_KEY).find((item) => String(item.id) === String(id));
             saveAssignments(assignmentData(CLASS_ASSIGNMENT_KEY).filter((item) => String(item.id) !== String(id)));
+            await removeClassAssignmentFromTeacherSchedule(existing);
+            try {
+                const response = await fetch(`${API_BASE_URL}/teacher-class-assignments?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && result?.success !== false && Array.isArray(result.assignments)) {
+                    saveAssignments(result.assignments);
+                }
+            } catch (_error) {
+                // Local delete has already been applied.
+            }
             renderClassAssignments();
         }
 
-        classAssignmentForm.addEventListener('submit', (event) => {
+        classAssignmentForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const teachers = assignmentData('eduCore_teachers');
             const teacher = teachers.find((item) => String(item.id) === String(classAssignmentTeacher.value));
@@ -277,7 +417,10 @@
 
             const assignments = assignmentData(CLASS_ASSIGNMENT_KEY);
             const editId = classAssignmentEditId.value;
-            const assignment = {
+            let previousAssignment = editId
+                ? assignments.find((item) => String(item.id) === String(editId))
+                : null;
+            let assignment = {
                 id: editId || `CLASS-ASG-${Date.now()}`,
                 teacherId: teacher.id,
                 teacherName: teacher.fullName || 'Teacher',
@@ -285,24 +428,32 @@
                 classGrade,
                 campusName,
                 note: classAssignmentNote.value.trim(),
+                createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
             const duplicateIndex = assignments.findIndex((item) => String(item.classGrade || '').toLowerCase() === classGrade.toLowerCase() && String(item.campusName || '').toLowerCase() === campusName.toLowerCase() && String(item.id) !== String(editId));
             if (duplicateIndex >= 0) {
-                assignments[duplicateIndex] = { ...assignments[duplicateIndex], ...assignment, id: assignments[duplicateIndex].id };
+                previousAssignment = assignments[duplicateIndex];
+                assignment = { ...assignments[duplicateIndex], ...assignment, id: assignments[duplicateIndex].id, createdAt: assignments[duplicateIndex].createdAt || assignment.createdAt };
+                assignments[duplicateIndex] = assignment;
             } else {
                 const editIndex = assignments.findIndex((item) => String(item.id) === String(editId));
-                if (editIndex >= 0) assignments[editIndex] = assignment;
+                if (editIndex >= 0) {
+                    assignment = { ...assignments[editIndex], ...assignment, createdAt: assignments[editIndex].createdAt || assignment.createdAt };
+                    assignments[editIndex] = assignment;
+                }
                 else assignments.push(assignment);
             }
             saveAssignments(assignments);
+            await syncTeacherScheduleForClassAssignment(assignment, previousAssignment);
+            await saveClassAssignmentToServer(assignment);
             resetClassAssignmentForm();
             renderClassAssignments();
             showSuccessModal('Class Assigned!', `${assignment.teacherName} is assigned as class incharge for ${assignment.classGrade}.`);
         });
 
         populateClassAssignmentOptions();
-        renderClassAssignments();
+        loadClassAssignments();
         if (window.lucide) window.lucide.createIcons();
     </script>
 </body>
