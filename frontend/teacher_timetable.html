@@ -311,6 +311,39 @@
             }
         }
 
+        function isClassInchargeScheduleItem(item) {
+            return String(item?.type || '').toLowerCase() === 'classincharge'
+                || String(item?.id || '').startsWith('CLASS-INCHARGE-');
+        }
+
+        async function persistTeacherSchedulesToServer(teachers) {
+            saveTeachers(teachers);
+            try {
+                const token = sessionStorage.getItem('eduCore_token') || '';
+                const response = await fetch(`${API_BASE_URL}/teachers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify(teachers)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && result?.success !== false && Array.isArray(result.teachers)) {
+                    saveTeachers(result.teachers);
+                }
+                return response.ok && result?.success !== false;
+            } catch (_error) {
+                return false;
+            }
+        }
+
+        async function migrateLocalTeacherSchedulesToServer() {
+            const teachers = getScheduleData('eduCore_teachers');
+            if (!teachers.some((teacher) => parseSchedule(teacher.schedule).length)) return;
+            await persistTeacherSchedulesToServer(teachers);
+        }
+
         function populateTeacherSchedulingOptions() {
             const teacherSelect = document.getElementById('teacherScheduleTeacher');
             const campusSelect = document.getElementById('teacherScheduleCampus');
@@ -324,7 +357,7 @@
 
         function getAllTeacherScheduleRows() {
             return getScheduleData('eduCore_teachers').flatMap((teacher) => {
-                return parseSchedule(teacher.schedule).map((item) => ({
+                return parseSchedule(teacher.schedule).filter((item) => !isClassInchargeScheduleItem(item)).map((item) => ({
                     ...item,
                     teacherId: teacher.id,
                     teacherName: teacher.fullName || 'Teacher',
@@ -375,12 +408,12 @@
             setScheduleData('eduCore_teachers', teachers);
         }
 
-        function deleteTeacherScheduleRow(teacherId, scheduleId) {
+        async function deleteTeacherScheduleRow(teacherId, scheduleId) {
             const teachers = getScheduleData('eduCore_teachers');
             const teacher = teachers.find((item) => String(item.id) === String(teacherId));
             if (!teacher) return;
             teacher.schedule = parseSchedule(teacher.schedule).filter((item) => item.id !== scheduleId);
-            saveTeachers(teachers);
+            await persistTeacherSchedulesToServer(teachers);
             renderTeacherSchedules();
         }
 
@@ -407,7 +440,7 @@
             if (window.lucide) window.lucide.createIcons();
         }
 
-        document.getElementById('teacherSchedulePageForm').addEventListener('submit', (event) => {
+        document.getElementById('teacherSchedulePageForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             const teachers = getScheduleData('eduCore_teachers');
             const teacherId = document.getElementById('teacherScheduleTeacher').value;
@@ -442,7 +475,7 @@
                 scheduleRows.push(schedule);
             }
             teacher.schedule = scheduleRows;
-            saveTeachers(teachers);
+            await persistTeacherSchedulesToServer(teachers);
             event.target.reset();
             document.getElementById('teacherScheduleEditId').value = '';
             document.querySelector('#teacherSchedulePageForm button[type="submit"]').innerHTML = '<i data-lucide="save"></i> Save Schedule';
@@ -461,6 +494,7 @@
         });
         populateTeacherSchedulingOptions();
         applyTeacherScheduleMode();
+        migrateLocalTeacherSchedulesToServer();
         renderTeacherSchedules();
         window.addEventListener('hashchange', applyTeacherScheduleMode);
         if (window.lucide) window.lucide.createIcons();
