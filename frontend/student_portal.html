@@ -2862,7 +2862,10 @@
         <section class="panel-card student-portal-section" id="studentMessagesSection" style="display:none; margin-bottom: 1.25rem;">
             <h3>Messages</h3>
             <div class="portal-content-list" id="studentMessageList"></div>
-            <div class="empty-note" id="studentMessageEmpty">No messages received yet.</div>
+            <div class="empty-note" id="studentMessageEmpty">No active chats.</div>
+            <h4 style="margin-top:1.25rem;">Chat History</h4>
+            <div class="portal-content-list" id="studentMessageHistoryList"></div>
+            <div class="empty-note" id="studentMessageHistoryEmpty">No ended chats yet.</div>
         </section>
 
         <section class="panel-card student-portal-section complaint-panel-card" id="studentComplaintSection" style="display:none; margin-bottom: 1.25rem;">
@@ -5834,14 +5837,12 @@
         function renderStudentMessages(messages = []) {
             const list = document.getElementById('studentMessageList');
             const empty = document.getElementById('studentMessageEmpty');
-            if (!list || !empty) return;
-            if (!messages.length) {
-                list.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
-            empty.style.display = 'none';
-            list.innerHTML = messages.map((item) => `
+            const historyList = document.getElementById('studentMessageHistoryList');
+            const historyEmpty = document.getElementById('studentMessageHistoryEmpty');
+            if (!list || !empty || !historyList || !historyEmpty) return;
+            const activeMessages = messages.filter((item) => item.chatStatus !== 'ended');
+            const endedMessages = messages.filter((item) => item.chatStatus === 'ended');
+            const renderCards = (items) => items.map((item) => `
                 <div class="portal-content-item">
                     <div class="portal-content-meta">${escapeHtml(item.createdAtLabel || '')}${item.senderName ? ` - ${escapeHtml(item.senderName)}` : ''}</div>
                     <div class="portal-content-title">${escapeHtml(item.subject || 'Message')}</div>
@@ -5861,6 +5862,21 @@
                         </div>`}
                 </div>
             `).join('');
+
+            if (!activeMessages.length) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+            } else {
+                empty.style.display = 'none';
+                list.innerHTML = renderCards(activeMessages);
+            }
+            if (!endedMessages.length) {
+                historyList.innerHTML = '';
+                historyEmpty.style.display = 'block';
+            } else {
+                historyEmpty.style.display = 'none';
+                historyList.innerHTML = renderCards(endedMessages);
+            }
             if (window.lucide) window.lucide.createIcons();
         }
 
