@@ -3665,18 +3665,22 @@
             }
 
             empty.style.display = 'none';
-            list.innerHTML = assignments.map((item) => `
-                <article class="portal-content-card">
-                    <h4>${escapeHtml(item.file?.name || 'Assignment File')}</h4>
-                    <div class="portal-content-meta">
-                        Start: ${escapeHtml(item.startDate || '-')} | Due: ${escapeHtml(item.dueDate || '-')}
-                    </div>
-                    <div class="portal-action-row" style="justify-content:flex-start; margin-top:.9rem;">
-                        ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${STUDENT_UPLOADED_ASSIGNMENT_KEY}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download Assignment</button>` : ''}
-                        <button type="button" class="portal-download-btn" onclick="openAssignmentSubmission('${escapeHtml(item.id || '')}')"><i data-lucide="upload" width="16"></i> Upload Assignment</button>
-                    </div>
-                </article>
-            `).join('');
+            const submissions = getStudentAssignmentSubmissions(student);
+            list.innerHTML = assignments.map((item) => {
+                const submitted = submissions.some((entry) => String(entry.sourceAssignmentId || '') === String(item.id || ''));
+                return `
+                    <article class="portal-content-card">
+                        <h4>${escapeHtml(item.file?.name || 'Assignment File')}</h4>
+                        <div class="portal-content-meta">
+                            Start: ${escapeHtml(item.startDate || '-')} | Due: ${escapeHtml(item.dueDate || '-')}
+                        </div>
+                        <div class="portal-action-row" style="justify-content:flex-start; margin-top:.9rem;">
+                            ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${STUDENT_UPLOADED_ASSIGNMENT_KEY}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download Assignment</button>` : ''}
+                            ${submitted ? '<span class="student-fee-status-pill paid">Status: Submitted</span>' : `<button type="button" class="portal-download-btn" onclick="openAssignmentSubmission('${escapeHtml(item.id || '')}')"><i data-lucide="upload" width="16"></i> Upload Assignment</button>`}
+                        </div>
+                    </article>
+                `;
+            }).join('');
             if (window.lucide) window.lucide.createIcons();
         }
 
@@ -3787,6 +3791,7 @@
             delete titleInput.dataset.assignmentPassMarks;
             updateStudentAssignmentFileLabel();
             renderStudentAssignmentSubmissions(student);
+            renderStudentUploadedAssignments(student);
             updateStudentNotifications(student);
             showAppAlert('Your assignment has been submitted.', 'Assignment Submitted');
         }
