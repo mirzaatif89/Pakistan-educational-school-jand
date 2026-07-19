@@ -2822,16 +2822,17 @@
         </section>
 
         <section class="panel-card student-portal-section" id="studentAssignmentSection" style="display:none; margin-bottom: 1.25rem;">
-            <h3>Submitted Assignments</h3>
+            <h3>Assignments</h3>
+            <h4>Assignments To Solve</h4>
+            <div class="portal-content-list" id="studentAssignedAssignmentList"></div>
+            <div class="empty-note" id="studentAssignedAssignmentEmpty">No assignment has been uploaded for your class yet.</div>
+            <h4 style="margin-top:1.25rem;">Submitted Assignments</h4>
             <div class="portal-content-list" id="studentAssignmentHistory"></div>
             <div class="empty-note" id="studentAssignmentEmpty">You have not submitted any assignment yet.</div>
         </section>
 
         <section class="panel-card student-portal-section" id="studentSubmitAssignmentSection" style="display:none; margin-bottom: 1.25rem;">
             <h3>Submit Assignment</h3>
-            <h4>Assignments To Solve</h4>
-            <div class="portal-content-list" id="studentAssignedAssignmentList"></div>
-            <div class="empty-note" id="studentAssignedAssignmentEmpty">No assignment has been uploaded for your class yet.</div>
             <form id="studentAssignmentForm">
                 <div class="result-filter-grid complaint-form-grid">
                     <div class="portal-field">
@@ -3532,7 +3533,8 @@
                     const classMatches = normalizeClassName(item.classGrade) === studentClass;
                     if (!classMatches) return false;
                     const itemCampus = normalizeLoose(item.campusName || item.branchName || item.campus || '');
-                    return !itemCampus || !studentCampus || itemCampus === studentCampus;
+                    return !itemCampus || !studentCampus || itemCampus === studentCampus ||
+                        itemCampus.includes(studentCampus) || studentCampus.includes(itemCampus);
                 })
                 .sort((a, b) => String(b.date || b.updatedAt || b.createdAt || '').localeCompare(String(a.date || a.updatedAt || a.createdAt || '')));
         }
