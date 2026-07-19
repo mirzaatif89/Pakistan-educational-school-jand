@@ -755,7 +755,6 @@ document.addEventListener('DOMContentLoaded', () => {
     [
         ensureBranchRegistrationNav,
         ensureBannersNav,
-        ensureSchedulingNav,
         ensureAdminRecordsNav,
         ensureFacilityNav,
         ensureAdminSidebarCompleteness,
@@ -3451,7 +3450,34 @@ function renderAdminSidebarSequence() {
     });
 
     if (window.lucide) window.lucide.createIcons();
+    dedupeSidebarLinks(navLinks);
     keepActiveSidebarItemVisible(navLinks);
+}
+
+function dedupeSidebarLinks(navLinks = document.querySelector('.nav-links')) {
+    if (!navLinks) return;
+    const seen = new Set();
+    const removableWrappers = new Set();
+    Array.from(navLinks.querySelectorAll('a[href]')).forEach((link) => {
+        const href = String(link.getAttribute('href') || '').trim();
+        if (!href || href === '#') return;
+        const page = normalizeClientPageName(href);
+        const label = String(link.textContent || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const key = `${page}|${label}`;
+        const forcedSchedulingDuplicate = ['quiz_uploading.html', 'lecture_uploading.html'].includes(page)
+            && !link.closest('.nav-dropdown');
+        if (seen.has(key) || forcedSchedulingDuplicate) {
+            const schedulingWrapper = link.closest('[data-scheduling-nav]');
+            if (schedulingWrapper) {
+                removableWrappers.add(schedulingWrapper);
+            } else {
+                link.remove();
+            }
+            return;
+        }
+        seen.add(key);
+    });
+    removableWrappers.forEach((wrapper) => wrapper.remove());
 }
 
 function ensureSchedulingNav() {
