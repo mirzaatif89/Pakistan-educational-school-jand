@@ -205,6 +205,8 @@ function defineMessageModel(db) {
         recipientId: { type: DataTypes.STRING, allowNull: true },
         recipientName: { type: DataTypes.STRING, allowNull: true },
         senderName: { type: DataTypes.STRING, allowNull: true },
+        thread: { type: DataTypes.TEXT('long'), allowNull: true },
+        chatStatus: { type: DataTypes.STRING, defaultValue: 'open' },
         createdAtLabel: DataTypes.STRING
     });
 }
@@ -343,6 +345,8 @@ async function ensureLegacySchema(db) {
         recipientId: { type: DataTypes.STRING, allowNull: true },
         recipientName: { type: DataTypes.STRING, allowNull: true },
         senderName: { type: DataTypes.STRING, allowNull: true },
+        thread: { type: DataTypes.TEXT('long'), allowNull: true },
+        chatStatus: { type: DataTypes.STRING, allowNull: true },
         createdAtLabel: { type: DataTypes.STRING, allowNull: true }
     });
 

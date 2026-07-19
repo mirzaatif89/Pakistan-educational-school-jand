@@ -21,10 +21,18 @@ function normalizeComparable(value) {
 
 function formatMessageRecord(record) {
     const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
+    let thread = [];
+    try {
+        thread = Array.isArray(raw?.thread) ? raw.thread : JSON.parse(raw?.thread || '[]');
+    } catch (_error) {
+        thread = [];
+    }
     return {
         ...raw,
         targetRole: normalizeMessageRole(raw?.targetRole),
-        targetScope: normalizeMessageScope(raw?.targetScope) || 'all'
+        targetScope: normalizeMessageScope(raw?.targetScope) || 'all',
+        thread: Array.isArray(thread) ? thread : [],
+        chatStatus: raw?.chatStatus || 'open'
     };
 }
 
@@ -103,6 +111,65 @@ module.exports = createHandler({
     },
     POST: async ({ req, res, db, body }) => {
         const user = authenticateToken(req);
+        const action = String(body?.action || '').trim().toLowerCase();
+        if (action === 'reply' || action === 'end') {
+            const id = String(body?.id || body?.messageId || '').trim();
+            const record = id ? await db.models.Message.findByPk(id) : null;
+            if (!record) {
+                const error = new Error('Message not found.');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            const message = formatMessageRecord(record);
+            if (action === 'end') {
+                if (!['Admin', 'Principal'].includes(String(user.role || ''))) {
+                    const error = new Error('Admin access required.');
+                    error.statusCode = 403;
+                    throw error;
+                }
+                await record.update({ chatStatus: 'ended' });
+            } else {
+                if (message.chatStatus === 'ended') {
+                    const error = new Error('This chat has ended.');
+                    error.statusCode = 400;
+                    throw error;
+                }
+                if (!['Admin', 'Principal'].includes(String(user.role || ''))) {
+                    const profile = await getUserMessageProfile(db, user);
+                    if (!messageMatchesProfile(message, profile)) {
+                        const error = new Error('You cannot reply to this message.');
+                        error.statusCode = 403;
+                        throw error;
+                    }
+                }
+                const replyText = String(body?.reply || body?.body || '').trim();
+                if (!replyText) {
+                    const error = new Error('Reply is required.');
+                    error.statusCode = 400;
+                    throw error;
+                }
+                const nextThread = [
+                    ...message.thread,
+                    {
+                        role: ['Admin', 'Principal'].includes(String(user.role || '')) ? 'Admin' : String(user.role || 'User'),
+                        name: user.fullName || user.username || user.role || 'User',
+                        message: replyText,
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                await record.update({ thread: JSON.stringify(nextThread), chatStatus: 'open' });
+            }
+
+            const records = await db.models.Message.findAll({ order: [['createdAt', 'DESC']] });
+            sendJson(res, 200, {
+                success: true,
+                message: formatMessageRecord(await db.models.Message.findByPk(id)),
+                messages: records.map(formatMessageRecord)
+            });
+            return;
+        }
+
         if (!['Admin', 'Principal'].includes(String(user.role || ''))) {
             const error = new Error('Admin access required.');
             error.statusCode = 403;
@@ -149,6 +216,8 @@ module.exports = createHandler({
             recipientId: recipientId || null,
             recipientName: String(body?.recipientName || '').trim() || null,
             senderName: user.fullName || user.username || 'Admin',
+            thread: JSON.stringify([]),
+            chatStatus: 'open',
             createdAtLabel: new Date().toLocaleString('en-GB')
         };
 

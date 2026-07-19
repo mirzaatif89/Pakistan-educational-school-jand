@@ -100,6 +100,77 @@
             overflow-wrap: anywhere;
         }
 
+        .message-thread {
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .message-thread-item {
+            border: 1px solid #d8eee9;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 0.7rem 0.8rem;
+            white-space: pre-wrap;
+        }
+
+        .message-thread-meta {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .message-reply-box {
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .message-reply-box textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 0.85rem;
+            font: inherit;
+            resize: vertical;
+        }
+
+        .recipient-preview {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 0.85rem 0.95rem;
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .recipient-preview-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: var(--text-secondary);
+        }
+
+        .recipient-preview-list {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .recipient-preview-item {
+            border: 1px solid #d8eee9;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 0.65rem 0.75rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .recipient-preview-meta {
+            display: block;
+            margin-top: 0.2rem;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
         @media (max-width: 980px) {
             .message-layout,
             .message-grid {
@@ -189,6 +260,14 @@
                             <select id="recipientId"></select>
                         </div>
 
+                        <div class="message-field" id="recipientPreviewField" style="display:none;">
+                            <label id="recipientPreviewLabel">Recipients</label>
+                            <div class="recipient-preview">
+                                <div class="recipient-preview-title" id="recipientPreviewTitle">Selected recipients</div>
+                                <div class="recipient-preview-list" id="recipientPreviewList"></div>
+                            </div>
+                        </div>
+
                         <div class="message-field">
                             <label for="messageSubject">Subject</label>
                             <input type="text" id="messageSubject" placeholder="Message subject" required>
@@ -257,6 +336,13 @@
             return String(person.fullName || person.name || person.username || getPersonId(person) || 'Unnamed').trim();
         }
 
+        function extractRecords(payload, key) {
+            if (Array.isArray(payload)) return payload;
+            if (Array.isArray(payload?.[key])) return payload[key];
+            if (Array.isArray(payload?.records)) return payload.records;
+            return [];
+        }
+
         function setOptions(select, options, placeholder) {
             if (!select) return;
             select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options.map((option) => {
@@ -266,12 +352,65 @@
             }).join('');
         }
 
+        function syncTargetScopeOptions() {
+            const roleSelect = document.getElementById('targetRole');
+            const scopeSelect = document.getElementById('targetScope');
+            const classOption = [...(scopeSelect?.options || [])].find((option) => option.value === 'class');
+            if (!roleSelect || !scopeSelect || !classOption) return;
+
+            classOption.disabled = roleSelect.value !== 'Student';
+            if (classOption.disabled && scopeSelect.value === 'class') {
+                scopeSelect.value = 'campus';
+            }
+        }
+
+        function getFilteredPeople(role, scope, selectedCampus, selectedClass) {
+            const records = getRoleRecords(role);
+            return records.filter((item) => {
+                const campusMatches = !selectedCampus || normalize(item.campusName) === normalize(selectedCampus);
+                if (scope === 'class') {
+                    return campusMatches && normalize(item.classGrade) === normalize(selectedClass);
+                }
+                if (scope === 'campus' || scope === 'individual') {
+                    return campusMatches;
+                }
+                return true;
+            });
+        }
+
+        function renderRecipientPreview(role, scope, selectedCampus, people) {
+            const field = document.getElementById('recipientPreviewField');
+            const label = document.getElementById('recipientPreviewLabel');
+            const title = document.getElementById('recipientPreviewTitle');
+            const list = document.getElementById('recipientPreviewList');
+            if (!field || !label || !title || !list) return;
+
+            const shouldShow = ['campus', 'individual'].includes(scope) && selectedCampus && role !== 'Student';
+            field.style.display = shouldShow ? 'block' : 'none';
+            if (!shouldShow) {
+                list.innerHTML = '';
+                return;
+            }
+
+            const roleLabel = role === 'Teacher' ? 'Teachers' : 'Staff';
+            label.textContent = `${roleLabel} in Campus`;
+            title.textContent = people.length
+                ? `${people.length} ${roleLabel.toLowerCase()} found in ${selectedCampus}`
+                : `No ${roleLabel.toLowerCase()} found in ${selectedCampus}`;
+            list.innerHTML = people.length
+                ? people.map((item) => `
+                    <div class="recipient-preview-item">
+                        ${escapeHtml(getPersonName(item))}
+                        <span class="recipient-preview-meta">${escapeHtml([item.employeeCode, item.designation || item.subject, item.phone].filter(Boolean).join(' | ') || 'Portal user')}</span>
+                    </div>
+                `).join('')
+                : '<div class="empty-note">No records found for this campus.</div>';
+        }
+
         function hydrateFilters() {
             const roleSelect = document.getElementById('targetRole');
             const scopeSelect = document.getElementById('targetScope');
-            if (scopeSelect.value === 'class' && roleSelect.value !== 'Student') {
-                roleSelect.value = 'Student';
-            }
+            syncTargetScopeOptions();
             const role = roleSelect.value;
             const scope = scopeSelect.value;
             const records = getRoleRecords(role);
@@ -281,17 +420,8 @@
             const selectedRecipient = document.getElementById('recipientId').value;
             const classRecords = students.filter((student) => !selectedCampus || normalize(student.campusName) === normalize(selectedCampus));
             const classes = uniqueSorted(classRecords.map((student) => student.classGrade));
-            const people = records
-                .filter((item) => {
-                    if (scope === 'class') {
-                        return normalize(item.campusName) === normalize(selectedCampus)
-                            && normalize(item.classGrade) === normalize(document.getElementById('classGrade').value);
-                    }
-                    if (scope === 'campus') {
-                        return !selectedCampus || normalize(item.campusName) === normalize(selectedCampus);
-                    }
-                    return true;
-                })
+            const filteredPeople = getFilteredPeople(role, scope, selectedCampus, selectedClass);
+            const people = filteredPeople
                 .map((item) => ({
                     value: getPersonId(item),
                     label: `${getPersonName(item)}${item.classGrade ? ` - ${item.classGrade}` : ''}${item.campusName ? ` - ${item.campusName}` : ''}`
@@ -307,6 +437,7 @@
             document.getElementById('campusField').style.display = ['campus', 'class', 'individual'].includes(scope) ? 'block' : 'none';
             document.getElementById('classField').style.display = role === 'Student' && (scope === 'class' || scope === 'individual') ? 'block' : 'none';
             document.getElementById('recipientField').style.display = scope === 'individual' ? 'block' : 'none';
+            renderRecipientPreview(role, scope, selectedCampus, filteredPeople);
         }
 
         function applyMessagePrefillFromUrl() {
@@ -418,9 +549,9 @@
                 fetchJson('/staff'),
                 fetchJson('/messages')
             ]);
-            students = Array.isArray(studentData) ? studentData : [];
-            teachers = Array.isArray(teacherData) ? teacherData : [];
-            staffMembers = Array.isArray(staffData) ? staffData : [];
+            students = extractRecords(studentData, 'students');
+            teachers = extractRecords(teacherData, 'teachers');
+            staffMembers = extractRecords(staffData, 'staff');
             sentMessages = messageData?.messages || [];
             hydrateFilters();
             applyMessagePrefillFromUrl();
@@ -448,8 +579,69 @@
                         ${item.recipientName ? `<span class="message-pill">${escapeHtml(item.recipientName)}</span>` : ''}
                     </div>
                     <div class="message-body">${escapeHtml(item.body || '')}</div>
+                    ${(Array.isArray(item.thread) ? item.thread : []).length ? `
+                        <div class="message-thread">
+                            ${(Array.isArray(item.thread) ? item.thread : []).map((entry) => `
+                                <div class="message-thread-item">
+                                    <div class="message-thread-meta">${escapeHtml(entry.name || entry.role || 'Reply')} ${entry.createdAt ? `- ${escapeHtml(new Date(entry.createdAt).toLocaleString())}` : ''}</div>
+                                    ${escapeHtml(entry.message || '')}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${item.chatStatus === 'ended' ? '<span class="message-pill" style="width:max-content;">Chat ended</span>' : ''}
+                    ${canSendMessages && item.chatStatus !== 'ended' ? `
+                        <div class="message-reply-box">
+                            <textarea id="adminMessageReply-${escapeHtml(item.id || '')}" rows="2" placeholder="Write admin reply..."></textarea>
+                            <div class="message-pill-row">
+                                <button type="button" class="btn btn-secondary" onclick="replyAdminMessage('${escapeHtml(item.id || '')}')"><i data-lucide="send" width="16"></i> Reply</button>
+                                <button type="button" class="btn btn-outline" onclick="endAdminMessageChat('${escapeHtml(item.id || '')}')"><i data-lucide="x-circle" width="16"></i> End Chat</button>
+                            </div>
+                        </div>
+                    ` : ''}
                 </article>
             `).join('');
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        async function postMessageAction(payload) {
+            const response = await fetch(`${API_BASE_URL}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.success) throw new Error(result.message || 'Message action failed.');
+            sentMessages = result.messages || [];
+            renderMessages();
+            return result;
+        }
+
+        async function replyAdminMessage(id) {
+            const reply = document.getElementById(`adminMessageReply-${id}`)?.value.trim() || '';
+            if (!reply) {
+                await showAppAlert('Reply message is required.', 'Missing Reply');
+                return;
+            }
+            try {
+                await postMessageAction({ action: 'reply', id, reply });
+                await showAppAlert('Reply sent.', 'Reply Sent');
+            } catch (error) {
+                await showAppAlert(error.message || 'Reply could not be sent.', 'Reply Failed');
+            }
+        }
+
+        async function endAdminMessageChat(id) {
+            if (!(await showAppConfirm('End this chat? Student will not be able to reply after this.'))) return;
+            try {
+                await postMessageAction({ action: 'end', id });
+                await showAppAlert('Chat ended.', 'Chat Ended');
+            } catch (error) {
+                await showAppAlert(error.message || 'Chat could not be ended.', 'End Chat Failed');
+            }
         }
 
         async function submitMessage(event) {
@@ -457,13 +649,15 @@
             const role = document.getElementById('targetRole').value;
             const scope = document.getElementById('targetScope').value;
             const recipientSelect = document.getElementById('recipientId');
+            const campusName = document.getElementById('campusName').value;
+            const classGrade = document.getElementById('classGrade').value;
             const payload = {
                 targetRole: role,
                 targetScope: scope,
-                campusName: document.getElementById('campusName').value,
-                classGrade: document.getElementById('classGrade').value,
-                recipientId: recipientSelect.value,
-                recipientName: recipientSelect.options[recipientSelect.selectedIndex]?.textContent || '',
+                campusName: ['campus', 'class', 'individual'].includes(scope) ? campusName : '',
+                classGrade: scope === 'class' ? classGrade : '',
+                recipientId: scope === 'individual' ? recipientSelect.value : '',
+                recipientName: scope === 'individual' ? (recipientSelect.options[recipientSelect.selectedIndex]?.textContent || '') : '',
                 subject: document.getElementById('messageSubject').value.trim(),
                 body: document.getElementById('messageBody').value.trim()
             };

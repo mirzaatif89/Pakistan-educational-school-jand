@@ -5846,8 +5846,22 @@
                     <div class="portal-content-meta">${escapeHtml(item.createdAtLabel || '')}${item.senderName ? ` - ${escapeHtml(item.senderName)}` : ''}</div>
                     <div class="portal-content-title">${escapeHtml(item.subject || 'Message')}</div>
                     <p>${escapeHtml(item.body || '')}</p>
+                    ${(Array.isArray(item.thread) ? item.thread : []).map((entry) => `
+                        <div class="empty-note" style="margin-top:.75rem;">
+                            <strong>${escapeHtml(entry.name || entry.role || 'Reply')}:</strong><br>
+                            ${escapeHtml(entry.message || '')}
+                            <div class="portal-content-meta">${escapeHtml(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '')}</div>
+                        </div>
+                    `).join('')}
+                    ${item.chatStatus === 'ended'
+                        ? '<div class="student-fee-status-pill pending" style="display:inline-flex; margin-top:.75rem;">Chat ended</div>'
+                        : `<div class="portal-field" style="margin-top:.85rem;">
+                            <textarea id="studentMessageReply-${escapeHtml(item.id || '')}" class="form-control" rows="3" placeholder="Write your reply"></textarea>
+                            <button type="button" class="btn btn-secondary" style="margin-top:.6rem;" onclick="replyStudentMessage('${escapeHtml(item.id || '')}')"><i data-lucide="send" width="16"></i> Reply</button>
+                        </div>`}
                 </div>
             `).join('');
+            if (window.lucide) window.lucide.createIcons();
         }
 
         async function loadStudentMessages() {
@@ -5863,6 +5877,30 @@
             } catch (error) {
                 console.warn('Student messages could not be loaded:', error.message);
                 renderStudentMessages([]);
+            }
+        }
+
+        async function replyStudentMessage(id) {
+            const reply = document.getElementById(`studentMessageReply-${id}`)?.value.trim() || '';
+            if (!reply) {
+                await showAppAlert('Reply message is required.', 'Missing Reply');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ action: 'reply', id, reply })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Reply could not be sent.');
+                await loadStudentMessages();
+                await showAppAlert('Your reply has been sent.', 'Reply Sent');
+            } catch (error) {
+                await showAppAlert(error.message || 'Reply could not be sent.', 'Reply Failed');
             }
         }
 

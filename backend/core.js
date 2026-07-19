@@ -1586,10 +1586,18 @@ function normalizeComparable(value) {
 
 function formatMessageRecord(record) {
     const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
+    let thread = [];
+    try {
+        thread = Array.isArray(raw?.thread) ? raw.thread : JSON.parse(raw?.thread || '[]');
+    } catch (_error) {
+        thread = [];
+    }
     return {
         ...raw,
         targetRole: normalizeMessageRole(raw?.targetRole),
-        targetScope: normalizeMessageScope(raw?.targetScope) || 'all'
+        targetScope: normalizeMessageScope(raw?.targetScope) || 'all',
+        thread: Array.isArray(thread) ? thread : [],
+        chatStatus: raw?.chatStatus || 'open'
     };
 }
 
@@ -1674,12 +1682,55 @@ app.get('/api/messages', authenticateToken, async (req, res) => {
 
 app.post('/api/messages', authenticateToken, async (req, res) => {
     if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
-    if (!['Admin', 'Principal'].includes(String(req.user?.role || ''))) {
-        return res.status(403).json({ success: false, message: 'Admin access required.' });
-    }
 
     try {
         const payload = req.body || {};
+        const action = String(payload.action || '').trim().toLowerCase();
+        if (action === 'reply' || action === 'end') {
+            const id = String(payload.id || payload.messageId || '').trim();
+            const record = id ? await sequelize.models.Message.findByPk(id) : null;
+            if (!record) return res.status(404).json({ success: false, message: 'Message not found.' });
+
+            const message = formatMessageRecord(record);
+            if (action === 'end') {
+                if (!['Admin', 'Principal'].includes(String(req.user?.role || ''))) {
+                    return res.status(403).json({ success: false, message: 'Admin access required.' });
+                }
+                await record.update({ chatStatus: 'ended' });
+            } else {
+                if (message.chatStatus === 'ended') {
+                    return res.status(400).json({ success: false, message: 'This chat has ended.' });
+                }
+                if (!['Admin', 'Principal'].includes(String(req.user?.role || ''))) {
+                    const profile = await getUserMessageProfile(req.user);
+                    if (!messageMatchesProfile(message, profile)) {
+                        return res.status(403).json({ success: false, message: 'You cannot reply to this message.' });
+                    }
+                }
+                const replyText = String(payload.reply || payload.body || '').trim();
+                if (!replyText) return res.status(400).json({ success: false, message: 'Reply is required.' });
+                const nextThread = [
+                    ...message.thread,
+                    {
+                        role: ['Admin', 'Principal'].includes(String(req.user?.role || '')) ? 'Admin' : String(req.user?.role || 'User'),
+                        name: req.user.fullName || req.user.username || req.user.role || 'User',
+                        message: replyText,
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                await record.update({ thread: JSON.stringify(nextThread), chatStatus: 'open' });
+            }
+
+            const records = await sequelize.models.Message.findAll({ order: [['createdAt', 'DESC']] });
+            const messages = records.map(formatMessageRecord);
+            io.emit('messages_update', messages);
+            return res.json({ success: true, message: formatMessageRecord(await sequelize.models.Message.findByPk(id)), messages });
+        }
+
+        if (!['Admin', 'Principal'].includes(String(req.user?.role || ''))) {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
         const targetRole = normalizeMessageRole(payload.targetRole);
         const targetScope = normalizeMessageScope(payload.targetScope);
         const subject = String(payload.subject || '').trim();
@@ -1712,6 +1763,8 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
             recipientId: recipientId || null,
             recipientName: String(payload.recipientName || '').trim() || null,
             senderName: req.user.fullName || req.user.username || 'Admin',
+            thread: JSON.stringify([]),
+            chatStatus: 'open',
             createdAtLabel: new Date().toLocaleString('en-GB')
         };
 
@@ -3800,6 +3853,8 @@ function defineMessageModel(db) {
         recipientId: { type: DataTypes.STRING, allowNull: true },
         recipientName: { type: DataTypes.STRING, allowNull: true },
         senderName: { type: DataTypes.STRING, allowNull: true },
+        thread: { type: DataTypes.TEXT('long'), allowNull: true },
+        chatStatus: { type: DataTypes.STRING, defaultValue: 'open' },
         createdAtLabel: DataTypes.STRING
     });
 }
@@ -4145,6 +4200,8 @@ async function ensureLegacySchema() {
         recipientId: { type: DataTypes.STRING, allowNull: true },
         recipientName: { type: DataTypes.STRING, allowNull: true },
         senderName: { type: DataTypes.STRING, allowNull: true },
+        thread: { type: DataTypes.TEXT('long'), allowNull: true },
+        chatStatus: { type: DataTypes.STRING, allowNull: true },
         createdAtLabel: { type: DataTypes.STRING, allowNull: true }
     });
 
