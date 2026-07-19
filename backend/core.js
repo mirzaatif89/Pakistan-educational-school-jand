@@ -36,6 +36,7 @@ const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
 const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json');
 const UPLOADED_LECTURES_FILE = path.join(DATA_DIR, 'uploaded_lectures.json');
 const STUDENT_COURSES_FILE = path.join(DATA_DIR, 'student_courses.json');
+const STUDENT_QUIZZES_FILE = path.join(DATA_DIR, 'student_quizzes.json');
 const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
 const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
@@ -1003,6 +1004,29 @@ function normalizeStudentCourse(raw = {}) {
     };
 }
 
+function normalizeStudentQuiz(raw = {}) {
+    return {
+        id: String(raw.id || `QUIZ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        campusName: String(raw.campusName || raw.branchName || raw.campus || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        title: String(raw.title || '').trim(),
+        totalMarks: String(raw.totalMarks || '').trim(),
+        passMarks: String(raw.passMarks || '').trim(),
+        dueDate: String(raw.dueDate || '').trim(),
+        details: String(raw.details || '').trim(),
+        questions: Array.isArray(raw.questions) ? raw.questions : [],
+        file: raw.file && typeof raw.file === 'object' ? {
+            name: String(raw.file.name || '').trim(),
+            type: String(raw.file.type || '').trim(),
+            dataUrl: String(raw.file.dataUrl || '').trim(),
+            url: String(raw.file.url || '').trim(),
+            size: Number(raw.file.size || 0) || 0
+        } : null,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+}
+
 function sanitizeUploadFileName(name = 'lecture-file') {
     const ext = path.extname(String(name || '')).replace(/[^a-z0-9.]/gi, '').slice(0, 16);
     const base = path.basename(String(name || 'lecture-file'), path.extname(String(name || '')))
@@ -1291,6 +1315,34 @@ app.delete('/api/student-courses', (req, res) => {
     const id = String(req.query.id || '');
     const courses = writeJsonArrayFile(STUDENT_COURSES_FILE, readJsonArrayFile(STUDENT_COURSES_FILE, normalizeStudentCourse).filter((entry) => String(entry.id) !== id), normalizeStudentCourse);
     res.json({ success: true, courses });
+});
+
+app.get('/api/student-quizzes', (req, res) => {
+    const campus = String(req.query.campus || '').trim().toLowerCase();
+    const classGrade = String(req.query.classGrade || req.query.class || '').trim().toLowerCase();
+    let quizzes = readJsonArrayFile(STUDENT_QUIZZES_FILE, normalizeStudentQuiz);
+    if (campus) quizzes = quizzes.filter((item) => String(item.campusName || '').trim().toLowerCase() === campus);
+    if (classGrade) quizzes = quizzes.filter((item) => String(item.classGrade || '').trim().toLowerCase() === classGrade);
+    res.json({ success: true, quizzes });
+});
+
+app.post('/api/student-quizzes', (req, res) => {
+    const item = normalizeStudentQuiz(req.body || {});
+    if (!item.campusName || !item.classGrade || !item.title || !item.totalMarks || !item.passMarks) {
+        return res.status(400).json({ success: false, message: 'Campus, class, title, total marks, and pass marks are required.' });
+    }
+    if (!item.questions.length && !item.file?.dataUrl && !item.file?.url) {
+        return res.status(400).json({ success: false, message: 'Add quiz questions or attach a quiz file.' });
+    }
+    const existing = readJsonArrayFile(STUDENT_QUIZZES_FILE, normalizeStudentQuiz);
+    const quizzes = writeJsonArrayFile(STUDENT_QUIZZES_FILE, [item, ...existing.filter((entry) => String(entry.id) !== String(item.id))], normalizeStudentQuiz);
+    res.json({ success: true, quiz: item, quizzes });
+});
+
+app.delete('/api/student-quizzes', (req, res) => {
+    const id = String(req.query.id || '');
+    const quizzes = writeJsonArrayFile(STUDENT_QUIZZES_FILE, readJsonArrayFile(STUDENT_QUIZZES_FILE, normalizeStudentQuiz).filter((entry) => String(entry.id) !== id), normalizeStudentQuiz);
+    res.json({ success: true, quizzes });
 });
 
 app.get('/api/student-diaries', (req, res) => {

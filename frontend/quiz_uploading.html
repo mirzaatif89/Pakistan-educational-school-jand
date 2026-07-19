@@ -77,6 +77,7 @@
                 <form id="quizUploadForm">
                     <input type="hidden" id="quizUploadId">
                     <div class="upload-grid">
+                        <div><label>Campus</label><select id="quizCampus" required></select></div>
                         <div><label>Class</label><select id="quizClass" required></select></div>
                         <div><label>Quiz Title</label><input type="text" id="quizTitle" required placeholder="e.g. Algebra Quiz"></div>
                         <div><label>Total Marks</label><input type="number" id="quizTotalMarks" min="1" required placeholder="e.g. 20"></div>
@@ -209,6 +210,9 @@
         function getQuizItemClass(item = {}) {
             return String(item.classGrade || '').trim();
         }
+        function getQuizItemCampus(item = {}) {
+            return String(item.campusName || item.branchName || item.campus || '').trim();
+        }
         function getQuizSubmissionKey(item = {}) {
             return String(item.quizId || '') + '|' + String(item.studentKey || item.studentId || item.studentCode || item.rollNo || '').trim();
         }
@@ -258,7 +262,13 @@
             quizzes.forEach((quiz) => {
                 const quizId = String(quiz.id || '').trim();
                 const quizClass = getQuizItemClass(quiz);
-                const classStudents = students.filter((student) => normalizeQuizFilterValue(student.classGrade) === normalizeQuizFilterValue(quizClass));
+                const quizCampus = getQuizItemCampus(quiz);
+                const classStudents = students.filter((student) => {
+                    const classMatches = normalizeQuizFilterValue(student.classGrade) === normalizeQuizFilterValue(quizClass);
+                    const studentCampus = normalizeQuizFilterValue(student.campusName || student.branchName || student.campus || '');
+                    const campusMatches = !quizCampus || !studentCampus || normalizeQuizFilterValue(quizCampus) === studentCampus;
+                    return classMatches && campusMatches;
+                });
                 classStudents.forEach((student) => {
                     const studentKey = getQuizStudentKey(student);
                     const submission = submissionMap.get(`${quizId}|${studentKey}`)
@@ -318,6 +328,53 @@
             const classes = data('eduCore_classes');
             const names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
             quizClass.innerHTML = '<option value="">Select Class</option>' + names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+        }
+        async function populateCampuses() {
+            const campusMap = new Map();
+            const addCampus = (value) => {
+                const campus = String(value || '').trim();
+                if (!campus) return;
+                const key = campus.toLowerCase();
+                if (!campusMap.has(key)) campusMap.set(key, campus);
+            };
+            if (typeof DEFAULT_CAMPUS_NAMES !== 'undefined' && Array.isArray(DEFAULT_CAMPUS_NAMES)) DEFAULT_CAMPUS_NAMES.forEach(addCampus);
+            if (typeof loadRegisteredCampusNames === 'function') {
+                try { (await loadRegisteredCampusNames()).forEach(addCampus); } catch (_error) {}
+            }
+            data('eduCore_branches').forEach((item) => addCampus(item?.campusName || item?.branchName || item?.name));
+            data('eduCore_students').forEach((student) => addCampus(student?.campusName || student?.branchName || student?.campus));
+            data('eduCore_teachers').forEach((teacher) => addCampus(teacher?.campusName || teacher?.branchName || teacher?.campus));
+            data('eduCore_staff').forEach((staff) => addCampus(staff?.campusName || staff?.branchName || staff?.campus));
+            const campuses = Array.from(campusMap.values()).sort();
+            if (!campuses.length) campuses.push('Main Campus');
+            quizCampus.innerHTML = '<option value="">Select Campus</option>' + campuses.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+            const globalCampus = typeof getGlobalCampusFilterForCurrentUser === 'function' ? getGlobalCampusFilterForCurrentUser() : '';
+            if (globalCampus && globalCampus !== 'all' && campuses.some((name) => name.toLowerCase() === String(globalCampus).toLowerCase())) {
+                quizCampus.value = globalCampus;
+            }
+        }
+        async function loadQuizzesFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/student-quizzes`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Quizzes could not be loaded.');
+                if (Array.isArray(result.quizzes)) localStorage.setItem(QUIZ_KEY, JSON.stringify(result.quizzes));
+            } catch (error) {
+                console.warn('Student quizzes API load failed:', error.message);
+            }
+        }
+        async function saveQuizToApi(item) {
+            const response = await fetch(`${API_BASE_URL}/student-quizzes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Quiz could not be saved.');
+            if (Array.isArray(result.quizzes)) {
+                try { localStorage.setItem(QUIZ_KEY, JSON.stringify(result.quizzes)); } catch (_error) {}
+            }
+            return result;
         }
         function readFile(input) {
             const file = input.files?.[0];
@@ -398,6 +455,7 @@
             const passMarks = Math.min(totalMarks, Math.max(1, Number(quizPassMarks.value || Math.ceil(totalMarks / 2))));
             return {
                 id: quizUploadId.value,
+                campusName: quizCampus.value,
                 classGrade: quizClass.value,
                 title: quizTitle.value.trim(),
                 totalMarks,
@@ -408,8 +466,8 @@
         }
         function validateQuizMeta() {
             const meta = getQuizMeta();
-            if (!meta.classGrade || !meta.title || !meta.totalMarks || !meta.passMarks) {
-                showAppAlert('Select class, enter quiz title, total marks, and pass marks first.', 'Missing Quiz Details');
+            if (!meta.campusName || !meta.classGrade || !meta.title || !meta.totalMarks || !meta.passMarks) {
+                showAppAlert('Select campus, class, enter quiz title, total marks, and pass marks first.', 'Missing Quiz Details');
                 return null;
             }
             return meta;
@@ -419,7 +477,7 @@
             if (!meta) return;
             if (!questionDrafts.length) questionDrafts = [createEmptyQuestion()];
             renderQuestionBuilder();
-            quizModalSubtitle.textContent = `${meta.classGrade} - ${meta.title} | Total: ${meta.totalMarks}, Pass: ${meta.passMarks}`;
+            quizModalSubtitle.textContent = `${meta.campusName} - ${meta.classGrade} - ${meta.title} | Total: ${meta.totalMarks}, Pass: ${meta.passMarks}`;
             quizQuestionModal.classList.add('active');
             quizQuestionModal.setAttribute('aria-hidden', 'false');
             setTimeout(() => quizQuestionList.querySelector('textarea, input, select')?.focus(), 0);
@@ -432,7 +490,7 @@
         function render() {
             const items = data(QUIZ_KEY).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
             if (!items.length) { quizUploadList.innerHTML = '<div class="empty-note">No quiz uploaded yet.</div>'; renderSubmissions(); return; }
-            quizUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Class</th><th>Quiz</th><th>Marks</th><th>Pass Marks</th><th>Questions</th><th>Due</th><th>File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.details || '-')}</td><td>${esc(item.totalMarks || '-')}</td><td>${esc(item.passMarks || '-')}</td><td>${esc(Array.isArray(item.questions) ? item.questions.length : 0)}</td><td>${esc(item.dueDate || '-')}</td><td>${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'quiz-file')}">${esc(item.file.name || 'Download')}</a>` : '-'}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
+            quizUploadList.innerHTML = `<table class="upload-table"><thead><tr><th>Campus</th><th>Class</th><th>Quiz</th><th>Marks</th><th>Pass Marks</th><th>Questions</th><th>Due</th><th>File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade)}</td><td><strong>${esc(item.title)}</strong><br>${esc(item.details || '-')}</td><td>${esc(item.totalMarks || '-')}</td><td>${esc(item.passMarks || '-')}</td><td>${esc(Array.isArray(item.questions) ? item.questions.length : 0)}</td><td>${esc(item.dueDate || '-')}</td><td>${item.file?.dataUrl ? `<a href="${item.file.dataUrl}" download="${esc(item.file.name || 'quiz-file')}">${esc(item.file.name || 'Download')}</a>` : '-'}</td><td><div class="action-row"><button class="mini-btn edit" onclick="editItem('${item.id}')"><i data-lucide="edit-2" width="14"></i> Edit</button><button class="mini-btn delete" onclick="deleteItem('${item.id}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
             renderSubmissions();
             if (window.lucide) lucide.createIcons();
         }
@@ -519,7 +577,7 @@
         function editItem(id) {
             const item = data(QUIZ_KEY).find((entry) => entry.id === id);
             if (!item) return;
-            quizUploadId.value = item.id; quizClass.value = item.classGrade || ''; quizTitle.value = item.title || ''; quizTotalMarks.value = item.totalMarks || ''; quizPassMarks.value = item.passMarks || ''; quizDueDate.value = item.dueDate || ''; quizDetails.value = item.details || '';
+            quizUploadId.value = item.id; quizCampus.value = item.campusName || item.branchName || item.campus || ''; quizClass.value = item.classGrade || ''; quizTitle.value = item.title || ''; quizTotalMarks.value = item.totalMarks || ''; quizPassMarks.value = item.passMarks || ''; quizDueDate.value = item.dueDate || ''; quizDetails.value = item.details || '';
             questionDrafts = Array.isArray(item.questions) && item.questions.length ? item.questions.map((question) => ({ text: question.text || '', options: Array.isArray(question.options) ? [...question.options, '', '', '', ''].slice(0, 4) : ['', '', '', ''], correctIndex: Number(question.correctIndex || 0), marks: Math.max(1, Number(question.marks || 1)) })) : [createEmptyQuestion()];
             renderQuestionBuilder();
             quizSaveBtn.innerHTML = '<i data-lucide="arrow-right"></i> Update Questions';
@@ -527,7 +585,11 @@
             openQuestionModal();
             if (window.lucide) lucide.createIcons();
         }
-        function deleteItem(id) { save(QUIZ_KEY, data(QUIZ_KEY).filter((item) => item.id !== id)); render(); renderSubmissions(); }
+        async function deleteItem(id) {
+            save(QUIZ_KEY, data(QUIZ_KEY).filter((item) => item.id !== id));
+            try { await fetch(`${API_BASE_URL}/student-quizzes?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (_error) {}
+            render(); renderSubmissions();
+        }
         quizUploadForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             openQuestionModal();
@@ -539,11 +601,16 @@
             const existing = data(QUIZ_KEY).find((item) => item.id === editId);
             const file = await readFile(quizFile);
             const questions = getValidQuestions();
-            const item = { id: editId || `QUIZ-${Date.now()}`, classGrade: meta.classGrade, title: meta.title, totalMarks: meta.totalMarks, passMarks: meta.passMarks, dueDate: meta.dueDate, details: meta.details, questions, file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+            const item = { id: editId || `QUIZ-${Date.now()}`, campusName: meta.campusName, classGrade: meta.classGrade, title: meta.title, totalMarks: meta.totalMarks, passMarks: meta.passMarks, dueDate: meta.dueDate, details: meta.details, questions, file: file || existing?.file || null, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
             if (!item.questions.length && !item.file?.dataUrl) { showAppAlert('Add at least one complete typed question or attach a quiz file.', 'Missing Quiz Questions'); return; }
             const items = data(QUIZ_KEY); const index = items.findIndex((entry) => entry.id === editId);
             if (index >= 0) items[index] = item; else items.push(item);
-            if (!save(QUIZ_KEY, items)) return;
+            save(QUIZ_KEY, items);
+            try {
+                await saveQuizToApi(item);
+            } catch (error) {
+                showAppAlert(`Quiz saved locally, but API sync failed: ${error.message}`, 'API Sync Failed');
+            }
             quizUploadForm.reset(); quizUploadId.value = ''; questionDrafts = [createEmptyQuestion()]; renderQuestionBuilder(); closeQuestionModal(); quizSaveBtn.innerHTML = '<i data-lucide="arrow-right"></i> Enter Quiz Questions'; render(); showSuccessModal(editId ? 'Quiz Updated!' : 'Quiz Uploaded!', 'Quiz is visible in student portal.');
         }
         document.getElementById('quizResultCampusFilter')?.addEventListener('change', renderSubmissions);
@@ -553,7 +620,7 @@
             renderSubmissions();
         });
         document.getElementById('printQuizResultsBtn')?.addEventListener('click', printQuizResultsList);
-        setupQuizResultDropdowns(); updateQuizResultStatusSummary(); populateClasses(); questionDrafts = [createEmptyQuestion()]; renderQuestionBuilder(); render(); renderSubmissions(); if (window.lucide) lucide.createIcons();
+        setupQuizResultDropdowns(); updateQuizResultStatusSummary(); populateCampuses(); populateClasses(); loadQuizzesFromApi().then(() => { render(); renderSubmissions(); }); questionDrafts = [createEmptyQuestion()]; renderQuestionBuilder(); if (window.lucide) lucide.createIcons();
     </script>
 </body>
 

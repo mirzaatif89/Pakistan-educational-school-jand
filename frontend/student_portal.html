@@ -3555,6 +3555,13 @@
                             localStorage.setItem(STUDENT_COURSE_KEY, JSON.stringify(result.courses));
                         }
                     }),
+                fetch(`${API_BASE_URL}/student-quizzes`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.quizzes)) {
+                            localStorage.setItem(STUDENT_QUIZ_KEY, JSON.stringify(result.quizzes));
+                        }
+                    }),
                 fetch(`${API_BASE_URL}/student-assignments`, {
                     headers: { Authorization: `Bearer ${authToken}` }
                 })
@@ -3894,10 +3901,10 @@
                     <article class="portal-content-card">
                         <h4>${escapeHtml(item.title || 'Quiz')}</h4>
                         <div class="portal-content-meta">
-                            ${escapeHtml(item.dueDate ? `Due Date: ${item.dueDate}` : item.classGrade || '-')} - ${escapeHtml(totalMarks)} Marks - Pass Marks: ${escapeHtml(passMarks)}
+                            ${escapeHtml(item.campusName || '-')} | ${escapeHtml(item.classGrade || '-')} | ${escapeHtml(item.dueDate ? `Due Date: ${item.dueDate}` : 'No due date')} - ${escapeHtml(totalMarks)} Marks - Pass Marks: ${escapeHtml(passMarks)}
                         </div>
                         <p>${escapeHtml(item.details || '-')}</p>
-                        ${item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(STUDENT_QUIZ_KEY)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'Quiz File')}</button>` : ''}
+                        ${item.file?.url || item.file?.dataUrl ? `<button type="button" class="portal-download-btn" onclick="downloadPortalAttachment('${escapeHtml(STUDENT_QUIZ_KEY)}', '${escapeHtml(item.id || '')}')"><i data-lucide="download" width="16"></i> Download ${escapeHtml(item.file.name || 'Quiz File')}</button>` : ''}
                         ${questions.length ? `
                             <div class="portal-quiz-start-row">
                                 <span>${escapeHtml(questions.length)} question${questions.length === 1 ? '' : 's'} available. Start when you are ready.</span>
@@ -4017,6 +4024,7 @@
                 id: duplicateIndex >= 0 ? submissions[duplicateIndex].id : `QSUB-${Date.now()}`,
                 quizId,
                 quizTitle: quiz.title || 'Quiz',
+                campusName: student.campusName || student.branchName || student.campus || quiz.campusName || '',
                 classGrade: student.classGrade || quiz.classGrade || '',
                 studentKey,
                 studentId: student.studentCode || student.id || loggedInUser?.id || '',
