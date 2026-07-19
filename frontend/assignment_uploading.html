@@ -41,7 +41,7 @@
                         <div><label>Due Date</label><input type="date" id="assignmentDueDate" required></div>
                         <div><label>Assignment File</label><input type="file" id="assignmentUploadFile" required accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.txt"></div>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="margin-top:1rem;"><i data-lucide="send"></i> Submit Assignment</button>
+                    <button type="submit" class="btn btn-primary" style="margin-top:1rem;"><i data-lucide="upload"></i> Upload Assignment</button>
                 </form>
             </section>
             <section class="schedule-panel"><h3 style="margin-bottom:1rem;">Uploaded Assignments</h3><div id="assignmentUploadList"></div></section>
@@ -128,7 +128,7 @@
             if (!save(items)) return;
             event.target.reset();
             render();
-            showSuccessModal('Assignment Submitted!', 'Students in the selected class can download this assignment in their portal.');
+            showSuccessModal('Assignment Uploaded!', 'Students in the selected class can download this assignment in their portal.');
         });
         populateCampuses(); populateClasses(); render(); if (window.lucide) window.lucide.createIcons();
     </script>
