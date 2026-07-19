@@ -60,6 +60,29 @@
             try { localStorage.setItem(STUDENT_UPLOADED_ASSIGNMENT_KEY, JSON.stringify(items)); return true; }
             catch (_error) { showAppAlert('Assignment file is too large to save.', 'Storage Full'); return false; }
         }
+        async function loadUploadedAssignmentsFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/uploaded-assignments`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Assignments could not be loaded.');
+                const items = Array.isArray(result.assignments) ? result.assignments : [];
+                localStorage.setItem(STUDENT_UPLOADED_ASSIGNMENT_KEY, JSON.stringify(items));
+                return items;
+            } catch (_error) {
+                return data(STUDENT_UPLOADED_ASSIGNMENT_KEY);
+            }
+        }
+        async function saveUploadedAssignmentToApi(item) {
+            const response = await fetch(`${API_BASE_URL}/uploaded-assignments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Assignment could not be uploaded.');
+            if (Array.isArray(result.assignments)) localStorage.setItem(STUDENT_UPLOADED_ASSIGNMENT_KEY, JSON.stringify(result.assignments));
+            return result;
+        }
         function populateClasses() {
             const students = data('eduCore_students');
             const classes = data('eduCore_classes');
@@ -105,8 +128,11 @@
             assignmentUploadList.innerHTML = `<table class="schedule-table"><thead><tr><th>Campus</th><th>Class</th><th>Start</th><th>Due</th><th>Marks</th><th>File</th><th>Action</th></tr></thead><tbody>${items.map((item) => `<tr><td>${esc(item.campusName || '-')}</td><td>${esc(item.classGrade || '-')}</td><td>${esc(item.startDate || '-')}</td><td>${esc(item.dueDate || '-')}</td><td>${esc(item.totalMarks || '-')} / Pass ${esc(item.passMarks || '-')}</td><td>${item.file?.dataUrl ? `<a class="assignment-file-name" href="${item.file.dataUrl}" download="${esc(item.file.name || 'assignment')}">${esc(item.file.name || 'Download')}</a>` : '-'}</td><td><div class="schedule-actions"><button type="button" class="schedule-action-btn delete" onclick="deleteAssignment('${esc(item.id)}')"><i data-lucide="trash-2" width="14"></i> Delete</button></div></td></tr>`).join('')}</tbody></table>`;
             if (window.lucide) window.lucide.createIcons();
         }
-        function deleteAssignment(id) {
+        async function deleteAssignment(id) {
             save(data(STUDENT_UPLOADED_ASSIGNMENT_KEY).filter((item) => item.id !== id));
+            try {
+                await fetch(`${API_BASE_URL}/uploaded-assignments?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            } catch (_error) {}
             render();
         }
         assignmentUploadForm.addEventListener('submit', async (event) => {
@@ -131,11 +157,16 @@
             const items = data(STUDENT_UPLOADED_ASSIGNMENT_KEY);
             items.unshift(item);
             if (!save(items)) return;
+            try {
+                await saveUploadedAssignmentToApi(item);
+            } catch (error) {
+                showAppAlert(`Assignment saved locally, but API upload failed: ${error.message}`, 'API Sync Failed');
+            }
             event.target.reset();
             render();
             showSuccessModal('Assignment Uploaded!', 'Students in the selected class can download this assignment in their portal.');
         });
-        populateCampuses(); populateClasses(); render(); if (window.lucide) window.lucide.createIcons();
+        populateCampuses(); populateClasses(); loadUploadedAssignmentsFromApi().then(render); if (window.lucide) window.lucide.createIcons();
     </script>
 </body>
 

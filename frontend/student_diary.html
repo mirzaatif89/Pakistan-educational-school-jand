@@ -250,6 +250,29 @@
         function data(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (_e) { return []; } }
         function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_e) { showAppAlert('Diary data is too large to save.', 'Storage Full'); return false; } }
         function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
+        async function loadDiariesFromApi() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/student-diaries`);
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result?.success === false) throw new Error(result?.message || 'Diaries could not be loaded.');
+                const items = Array.isArray(result.diaries) ? result.diaries : [];
+                localStorage.setItem(STUDENT_DIARY_KEY, JSON.stringify(items));
+                return items;
+            } catch (_error) {
+                return data(STUDENT_DIARY_KEY);
+            }
+        }
+        async function saveDiariesToApi(items) {
+            const response = await fetch(`${API_BASE_URL}/student-diaries`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result?.success === false) throw new Error(result?.message || 'Diary could not be saved.');
+            if (Array.isArray(result.diaries)) localStorage.setItem(STUDENT_DIARY_KEY, JSON.stringify(result.diaries));
+            return result;
+        }
 
         function populateClasses() {
             const students = data('eduCore_students');
@@ -398,8 +421,11 @@
             openDiaryBuilder(true);
         }
 
-        function deleteDiary(id) {
+        async function deleteDiary(id) {
             save(STUDENT_DIARY_KEY, data(STUDENT_DIARY_KEY).filter((item) => item.id !== id));
+            try {
+                await fetch(`${API_BASE_URL}/student-diaries?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            } catch (_error) {}
             render();
         }
 
@@ -426,7 +452,7 @@
             if (window.lucide) window.lucide.createIcons();
         }
 
-        function saveDiaryDrafts() {
+        async function saveDiaryDrafts() {
             if (!studentDiaryCampus.value || !studentDiaryDate.value || !studentDiaryClass.value) {
                 showAppAlert('Please select campus, diary date, and class first.', 'Missing Diary Info');
                 return;
@@ -438,6 +464,7 @@
 
             const now = new Date().toISOString();
             const items = data(STUDENT_DIARY_KEY);
+            const changedItems = [];
             if (diaryEditId) {
                 const index = items.findIndex((entry) => entry.id === diaryEditId);
                 if (index >= 0) {
@@ -451,10 +478,11 @@
                         file: null,
                         updatedAt: now
                     };
+                    changedItems.push(items[index]);
                 }
             } else {
                 diaryDrafts.forEach((entry, index) => {
-                    items.push({
+                    const item = {
                         id: `DIARY-${Date.now()}-${index}`,
                         campusName: studentDiaryCampus.value,
                         classGrade: studentDiaryClass.value,
@@ -464,11 +492,18 @@
                         file: null,
                         createdAt: now,
                         updatedAt: now
-                    });
+                    };
+                    items.push(item);
+                    changedItems.push(item);
                 });
             }
 
             if (!save(STUDENT_DIARY_KEY, items)) return;
+            try {
+                await saveDiariesToApi(changedItems);
+            } catch (error) {
+                showAppAlert(`Diary saved locally, but API sync failed: ${error.message}`, 'API Sync Failed');
+            }
             diaryDrafts = [];
             diaryEditId = '';
             studentDiaryId.value = '';
@@ -492,7 +527,7 @@
 
         populateCampuses();
         populateClasses();
-        render();
+        loadDiariesFromApi().then(render);
         if (window.lucide) window.lucide.createIcons();
     </script>
 </body>

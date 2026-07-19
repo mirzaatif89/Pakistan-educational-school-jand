@@ -33,6 +33,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'eduCore_secret_key_2026';
 const PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions.json');
 const DETAILED_PERMISSIONS_FILE = path.join(DATA_DIR, 'permissions-detailed.json');
 const DATE_SHEET_FILE = path.join(DATA_DIR, 'date_sheet.json');
+const UPLOADED_ASSIGNMENTS_FILE = path.join(DATA_DIR, 'uploaded_assignments.json');
+const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
+const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
 const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
 const ONLINE_ADMISSIONS_FILE = path.join(MOBILE_STORE_DIR, 'online_admissions.json');
 const COMPLAINTS_FILE = path.join(MOBILE_STORE_DIR, 'complaints.json');
@@ -935,6 +938,80 @@ function writeDateSheet(data) {
     return normalized;
 }
 
+function normalizeUploadedAssignment(raw = {}) {
+    return {
+        id: String(raw.id || `UPLOADED-ASG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        campusName: String(raw.campusName || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        startDate: String(raw.startDate || '').trim(),
+        dueDate: String(raw.dueDate || '').trim(),
+        totalMarks: String(raw.totalMarks || '').trim(),
+        passMarks: String(raw.passMarks || '').trim(),
+        file: raw.file && typeof raw.file === 'object' ? {
+            name: String(raw.file.name || '').trim(),
+            type: String(raw.file.type || '').trim(),
+            dataUrl: String(raw.file.dataUrl || '').trim()
+        } : null,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+}
+
+function normalizeStudentDiary(raw = {}) {
+    return {
+        id: String(raw.id || `DIARY-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        campusName: String(raw.campusName || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        date: String(raw.date || '').trim(),
+        title: String(raw.title || '').trim(),
+        details: String(raw.details || '').trim(),
+        file: raw.file || null,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+}
+
+function normalizeStudentAssignmentSubmission(raw = {}) {
+    return {
+        id: String(raw.id || `ASG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        studentId: String(raw.studentId || '').trim(),
+        studentCode: String(raw.studentCode || '').trim(),
+        studentName: String(raw.studentName || 'Student').trim(),
+        rollNo: String(raw.rollNo || '').trim(),
+        campusName: String(raw.campusName || '').trim(),
+        classGrade: String(raw.classGrade || '').trim(),
+        sourceAssignmentId: String(raw.sourceAssignmentId || '').trim(),
+        assignmentTitle: String(raw.assignmentTitle || '').trim(),
+        subject: String(raw.subject || '').trim(),
+        note: String(raw.note || '').trim(),
+        fileName: String(raw.fileName || raw.file?.name || '').trim(),
+        fileType: String(raw.fileType || raw.file?.type || '').trim(),
+        fileData: String(raw.fileData || raw.file?.dataUrl || '').trim(),
+        totalMarks: String(raw.totalMarks || '').trim(),
+        passMarks: String(raw.passMarks || '').trim(),
+        obtainedMarks: String(raw.obtainedMarks || '').trim(),
+        resultStatus: String(raw.resultStatus || '').trim(),
+        submittedAt: raw.submittedAt || new Date().toISOString(),
+        status: String(raw.status || raw.resultStatus || 'Submitted').trim()
+    };
+}
+
+function readJsonArrayFile(filePath, normalizer) {
+    try {
+        if (!fs.existsSync(filePath)) return [];
+        const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        return Array.isArray(parsed) ? parsed.map(normalizer) : [];
+    } catch (_error) {
+        return [];
+    }
+}
+
+function writeJsonArrayFile(filePath, items, normalizer) {
+    const normalized = (Array.isArray(items) ? items : []).map(normalizer);
+    fs.writeFileSync(filePath, JSON.stringify(normalized, null, 2), 'utf8');
+    return normalized;
+}
+
 function readOnlineAdmissions() {
     try {
         if (!fs.existsSync(ONLINE_ADMISSIONS_FILE)) return [];
@@ -1050,6 +1127,65 @@ app.post('/api/date-sheet', (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: 'Date sheet could not be executed.' });
     }
+});
+
+app.get('/api/uploaded-assignments', (req, res) => {
+    res.json({ success: true, assignments: readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment) });
+});
+
+app.post('/api/uploaded-assignments', (req, res) => {
+    const item = normalizeUploadedAssignment(req.body || {});
+    if (!item.campusName || !item.classGrade || !item.startDate || !item.dueDate || !item.totalMarks || !item.passMarks || !item.file?.dataUrl) {
+        return res.status(400).json({ success: false, message: 'Campus, class, dates, marks, and file are required.' });
+    }
+    const existing = readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment);
+    const assignments = writeJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, [item, ...existing.filter((entry) => String(entry.id) !== String(item.id))], normalizeUploadedAssignment);
+    res.json({ success: true, assignment: item, assignments });
+});
+
+app.delete('/api/uploaded-assignments', (req, res) => {
+    const id = String(req.query.id || '');
+    const assignments = writeJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, readJsonArrayFile(UPLOADED_ASSIGNMENTS_FILE, normalizeUploadedAssignment).filter((entry) => String(entry.id) !== id), normalizeUploadedAssignment);
+    res.json({ success: true, assignments });
+});
+
+app.get('/api/student-diaries', (req, res) => {
+    res.json({ success: true, diaries: readJsonArrayFile(STUDENT_DIARIES_FILE, normalizeStudentDiary) });
+});
+
+app.post('/api/student-diaries', (req, res) => {
+    const incoming = Array.isArray(req.body?.items) ? req.body.items : [req.body].filter(Boolean);
+    const records = incoming.map(normalizeStudentDiary).filter((item) => item.campusName && item.classGrade && item.date && item.title && item.details);
+    if (!records.length) {
+        return res.status(400).json({ success: false, message: 'Campus, class, date, subject, and diary details are required.' });
+    }
+    const existing = readJsonArrayFile(STUDENT_DIARIES_FILE, normalizeStudentDiary);
+    const ids = new Set(records.map((item) => String(item.id)));
+    const diaries = writeJsonArrayFile(STUDENT_DIARIES_FILE, [...records, ...existing.filter((entry) => !ids.has(String(entry.id)))], normalizeStudentDiary);
+    res.json({ success: true, diaries, saved: records });
+});
+
+app.delete('/api/student-diaries', (req, res) => {
+    const id = String(req.query.id || '');
+    const diaries = writeJsonArrayFile(STUDENT_DIARIES_FILE, readJsonArrayFile(STUDENT_DIARIES_FILE, normalizeStudentDiary).filter((entry) => String(entry.id) !== id), normalizeStudentDiary);
+    res.json({ success: true, diaries });
+});
+
+app.get('/api/student-assignments', (req, res) => {
+    const assignments = readJsonArrayFile(STUDENT_ASSIGNMENT_SUBMISSIONS_FILE, normalizeStudentAssignmentSubmission)
+        .sort((a, b) => String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')));
+    res.json({ success: true, assignments });
+});
+
+app.post('/api/student-assignments', (req, res) => {
+    const record = normalizeStudentAssignmentSubmission(req.body || {});
+    if (!record.assignmentTitle) {
+        return res.status(400).json({ success: false, message: 'Assignment title is required.' });
+    }
+    const existing = readJsonArrayFile(STUDENT_ASSIGNMENT_SUBMISSIONS_FILE, normalizeStudentAssignmentSubmission);
+    const assignments = writeJsonArrayFile(STUDENT_ASSIGNMENT_SUBMISSIONS_FILE, [record, ...existing.filter((entry) => String(entry.id) !== String(record.id))], normalizeStudentAssignmentSubmission)
+        .sort((a, b) => String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')));
+    res.json({ success: true, assignment: record, assignments });
 });
 
 app.get('/api/online-admissions', (req, res) => {

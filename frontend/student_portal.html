@@ -3525,6 +3525,35 @@
             }
         }
 
+        async function loadPortalSchedulingData() {
+            const loaders = [
+                fetch(`${API_BASE_URL}/student-diaries`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.diaries)) {
+                            localStorage.setItem(STUDENT_DIARY_KEY, JSON.stringify(result.diaries));
+                        }
+                    }),
+                fetch(`${API_BASE_URL}/student-assignments`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                })
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.assignments)) {
+                            localStorage.setItem(STUDENT_ASSIGNMENT_SUBMISSION_KEY, JSON.stringify(result.assignments));
+                        }
+                    }),
+                fetch(`${API_BASE_URL}/uploaded-assignments`)
+                    .then((response) => response.json().then((result) => ({ response, result })))
+                    .then(({ response, result }) => {
+                        if (response.ok && result?.success !== false && Array.isArray(result.assignments)) {
+                            localStorage.setItem(STUDENT_UPLOADED_ASSIGNMENT_KEY, JSON.stringify(result.assignments));
+                        }
+                    })
+            ];
+            await Promise.allSettled(loaders);
+        }
+
         function getClassWiseItems(key, student = {}) {
             const studentClass = normalizeClassName(student.classGrade);
             const studentCampus = normalizeLoose(student.campusName || student.branchName || student.campus || '');
@@ -4416,6 +4445,13 @@
                         const student = getCurrentPortalStudent();
                         await loadExecutedDateSheet();
                         applyDateSheet(student);
+                    }
+                    if (targetId === 'studentDiarySection' || targetId === 'studentAssignmentSection') {
+                        const student = getCurrentPortalStudent();
+                        await loadPortalSchedulingData();
+                        applyStudentDiary(student);
+                        renderStudentUploadedAssignments(student);
+                        updateStudentNotifications(student);
                     }
                     const target = document.getElementById(targetId);
                     if (target) {
@@ -5845,6 +5881,7 @@
                 const student = await response.json();
                 await loadStudentAttendanceForPortal();
                 await loadExecutedDateSheet();
+                await loadPortalSchedulingData();
                 await mergeStudentFeePaymentsIntoMonthlyStore();
                 applyStudentData(student);
                 await loadStudentMessages();
@@ -5857,6 +5894,7 @@
                 if (fallbackStudent) {
                     await loadStudentAttendanceForPortal();
                     await loadExecutedDateSheet();
+                    await loadPortalSchedulingData();
                     await mergeStudentFeePaymentsIntoMonthlyStore();
                     applyStudentData(fallbackStudent);
                     await loadStudentMessages();
