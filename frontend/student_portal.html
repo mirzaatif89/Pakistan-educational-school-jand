@@ -5431,6 +5431,21 @@
             return classMatches || dateSheetMatchesStudentCampus(state.dateSheetCampus, student);
         }
 
+        function getDateSheetPublishedDate(state = {}) {
+            return state.executedAt || state.updatedAt || state.createdAt || '';
+        }
+
+        function buildDateSheetFallbackRow(state = {}, student = {}) {
+            return {
+                subject: state.dateSheetExamTitle || 'Date Sheet',
+                className: state.dateSheetClassGroup || student.classGrade || '-',
+                examDate: getDateSheetPublishedDate(state),
+                startTime: '',
+                endTime: '',
+                timingLabel: 'Published'
+            };
+        }
+
         function compareLectureRows(a, b) {
             const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
             const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -5506,29 +5521,33 @@
             const table = document.getElementById('studentDateSheetTable');
             const fileNote = document.getElementById('studentDateSheetFileNote');
             const uploadedFile = state.uploadedDateSheetFile || {};
+            const isPublished = state.status === 'executed';
             const filteredRows = getStudentDateSheetRows(state, student);
-            const canSeePublishedFile = studentCanSeeDateSheet(state, student);
-            const hasUploadedFile = Boolean(canSeePublishedFile && uploadedFile.name && uploadedFile.dataUrl);
+            const hasUploadedFile = Boolean(isPublished && uploadedFile.name);
+            const displayRows = filteredRows.length
+                ? filteredRows
+                : (isPublished ? [buildDateSheetFallbackRow(state, student)] : []);
 
-            if (!filteredRows.length) {
+            if (!displayRows.length) {
                 tbody.innerHTML = '';
                 table.style.display = 'none';
             } else {
-                tbody.innerHTML = filteredRows.map((row) => `
+                tbody.innerHTML = displayRows.map((row) => `
                     <tr>
-                        <td>${row.subject || '-'}</td>
-                        <td>${row.className || '-'}</td>
+                        <td>${escapeHtml(row.subject || 'Date Sheet')}</td>
+                        <td>${escapeHtml(row.className || state.dateSheetClassGroup || student.classGrade || '-')}</td>
                         <td>${formatScheduleDate(row.examDate)}</td>
-                        <td>${formatScheduleTime(row.startTime)} - ${formatScheduleTime(row.endTime)}</td>
+                        <td>${escapeHtml(row.timingLabel || `${formatScheduleTime(row.startTime)} - ${formatScheduleTime(row.endTime)}`)}</td>
                     </tr>
                 `).join('');
                 table.style.display = '';
             }
 
-            fileNote.textContent = hasUploadedFile
-                ? `Published file: ${uploadedFile.name}`
+            const publishedDate = getDateSheetPublishedDate(state);
+            fileNote.textContent = isPublished
+                ? `${formatScheduleDate(publishedDate)} - Date sheet${hasUploadedFile ? `: ${uploadedFile.name}` : ' published'}`
                 : '';
-            emptyState.style.display = filteredRows.length || hasUploadedFile ? 'none' : 'block';
+            emptyState.style.display = displayRows.length || hasUploadedFile ? 'none' : 'block';
         }
 
         function downloadDateSheet() {
@@ -5536,11 +5555,14 @@
             const student = getCurrentPortalStudent();
             const rows = getStudentDateSheetRows(state, student);
             const uploadedFile = state.uploadedDateSheetFile || {};
-            if (studentCanSeeDateSheet(state, student) && uploadedFile.dataUrl) {
+            if (state.status === 'executed' && uploadedFile.dataUrl) {
                 downloadPortalDataUrl(uploadedFile.dataUrl, uploadedFile.name || 'date-sheet');
                 return;
             }
-            if (!rows.length) {
+            const printableRows = rows.length
+                ? rows
+                : (state.status === 'executed' ? [buildDateSheetFallbackRow(state, student)] : []);
+            if (!printableRows.length) {
                 alert('No date sheet is available to download yet.');
                 return;
             }
@@ -5548,13 +5570,13 @@
             const printable = window.open('', '_blank');
             if (!printable) return;
 
-            const tableRows = rows.map((row) => `
+            const tableRows = printableRows.map((row) => `
                 <tr>
-                    <td>${row.subject || '-'}</td>
-                    <td>${row.className || '-'}</td>
+                    <td>${escapeHtml(row.subject || 'Date Sheet')}</td>
+                    <td>${escapeHtml(row.className || state.dateSheetClassGroup || student.classGrade || '-')}</td>
                     <td>${formatScheduleDate(row.examDate)}</td>
-                    <td>${formatScheduleTime(row.startTime)}</td>
-                    <td>${formatScheduleTime(row.endTime)}</td>
+                    <td>${escapeHtml(row.timingLabel || formatScheduleTime(row.startTime))}</td>
+                    <td>${escapeHtml(row.timingLabel ? '-' : formatScheduleTime(row.endTime))}</td>
                 </tr>
             `).join('');
             const branding = getPortalBrandingSettings();
