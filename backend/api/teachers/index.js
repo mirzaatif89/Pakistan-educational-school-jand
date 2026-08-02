@@ -12,7 +12,7 @@ const teacherAttributes = [
     'id', 'employeeCode', 'fullName', 'profileImage', 'fingerprintData', 'fatherName', 'dob', 'cnic', 'phone',
     'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
     'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-    'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword',
+    'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password',
     'employmentStatus', 'stuckOffAt', 'stuckOffNote', 'role', 'groupKey'
 ];
 

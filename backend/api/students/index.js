@@ -11,7 +11,9 @@ const { Op } = require('../_lib/db');
 
 module.exports = createHandler({
     GET: async ({ res, db }) => {
-        const students = await db.models.Student.findAll();
+        const students = await db.models.Student.findAll({
+            attributes: { exclude: ['plainPassword'] }
+        });
         sendJson(res, 200, students);
     },
     POST: async ({ res, db, body }) => {

@@ -1738,7 +1738,9 @@ app.get('/api/students', async (req, res) => {
     if (!sequelize) return res.status(503).json({ error: 'Database offline' });
 
     try {
-        const students = await sequelize.models.Student.findAll();
+        const students = await sequelize.models.Student.findAll({
+            attributes: { exclude: ['plainPassword'] }
+        });
         res.json(students);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -3370,7 +3372,7 @@ app.get('/api/teachers', async (req, res) => {
                 'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
                 'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
                 'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
+                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'role', 'groupKey'
             ]
         });
         res.json(teachers);
@@ -3454,7 +3456,7 @@ app.post('/api/teachers', authenticateToken, async (req, res) => {
                 'id', 'employeeCode', 'fullName', 'profileImage', 'fatherName', 'dob', 'cnic', 'phone',
                 'email', 'address', 'qualification', 'campusName', 'gender', 'designation', 'subject', 'salary',
                 'idCardFront', 'idCardBack', 'cvFile', 'bankName', 'bankAccountTitle',
-                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'plainPassword', 'role', 'groupKey'
+                'bankAccountNumber', 'bankBranch', 'schedule', 'username', 'password', 'role', 'groupKey'
             ]
         });
         io.emit('teachers_update', allTeachers);
