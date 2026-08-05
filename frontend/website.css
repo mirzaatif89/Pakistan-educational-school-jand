@@ -326,6 +326,27 @@ svg {
     display: block;
 }
 
+.banner-hero {
+    width: 100vw;
+    margin: 0;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    overflow: hidden;
+    border-top: 1px solid rgba(111, 29, 37, 0.18);
+    border-bottom: 1px solid rgba(111, 29, 37, 0.18);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+}
+
+.banner-hero img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+}
+
 .admission-spotlight {
     position: relative;
     z-index: 3;
@@ -1192,6 +1213,12 @@ svg {
     .admission-spotlight,
     .website-banner-section {
         width: calc(100% - 24px);
+    }
+
+    .banner-hero {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
     }
 
     .site-footer {
