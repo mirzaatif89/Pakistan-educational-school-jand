@@ -618,7 +618,7 @@ These files exist in the project but are not automatically mounted by root `app.
 | Method | Endpoint | Purpose |
 |---|---|---|
 | GET/POST | `/api/student/me` | Student profile; POST updates student profile image |
-| GET/POST | `/api/student-assignments` | Assignment submissions |
+| GET/POST | `/api/student-assignments` | Student assignment submissions |
 | POST | `/api/fees/fine-charge` | Add fine payment |
 | PUT/DELETE | `/api/fees/payments/:challanNumber` | Update/delete fee payment |
 | POST | `/api/fees/send-pending-reminders` | Send pending fee reminders |
@@ -695,6 +695,7 @@ Content-Type: application/json
   "studentName": "Student Name",
   "rollNo": "1",
   "classGrade": "Class 1",
+  "sourceAssignmentId": "ASG-101",
   "assignmentTitle": "Math Homework",
   "subject": "Math",
   "note": "Completed",
@@ -709,6 +710,27 @@ Required:
 ```text
 assignmentTitle
 ```
+
+Response:
+
+```json
+{
+  "success": true,
+  "assignment": {
+    "id": "ASG-...",
+    "studentId": "STU-1",
+    "assignmentTitle": "Math Homework",
+    "status": "Submitted"
+  },
+  "assignments": []
+}
+```
+
+Notes:
+
+- `fileData` can be sent directly as a `dataUrl` string or inside a nested `file.dataUrl` object, depending on the mobile client structure.
+- The current Express route in `backend/core.js` accepts the request body and stores the submission as JSON.
+- This route currently validates only `assignmentTitle`, so the app can submit even if file fields are omitted.
 
 ### Profile Image Update
 
@@ -826,7 +848,7 @@ Complaints: GET/POST /api/complaints
 Notices: GET /api/special-notices?portal=student
 Date sheet: GET /api/date-sheet
 Leave: /api/leave-requests if exposed from backend/api
-Assignments: /api/student-assignments if exposed from backend/api
+Assignments: POST /api/student-assignments
 ```
 
 Teacher app:

@@ -325,6 +325,20 @@
             min-height: 28px;
         }
 
+        .challan-bank-details {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px 12px;
+            align-items: start;
+            font-size: 11px;
+            line-height: 1.25;
+            padding: 4px 0 2px;
+        }
+
+        .challan-bank-details strong {
+            color: #0f172a;
+        }
+
         .challan-terminated-banner {
             background: #fee2e2;
             color: #991b1b;
@@ -975,20 +989,15 @@
             }
 
             .challan-bulk-group {
-                height: 143mm;
-                max-height: 143mm;
+                height: calc(90mm * 3);
+                max-height: calc(90mm * 3);
                 display: grid;
-                grid-template-rows: 1fr;
+                grid-template-rows: repeat(3, 90mm);
                 gap: 0;
                 margin: 0;
                 overflow: hidden;
                 break-inside: avoid;
                 page-break-inside: avoid;
-                break-after: auto;
-                page-break-after: auto;
-            }
-
-            .challan-bulk-group:nth-child(2n) {
                 break-after: page;
                 page-break-after: always;
             }
@@ -1010,18 +1019,22 @@
                 flex-direction: column;
                 width: 100%;
                 min-height: 0;
+                transform: scale(0.63);
+                transform-origin: top left;
+                width: 158.73%;
+                height: 158.73%;
             }
 
             .challan-copy-label {
                 font-size: 8px;
                 line-height: 1;
-                margin-bottom: 0.75mm;
+                margin-bottom: 0.5mm;
                 color: #334155;
             }
 
             .challan-table {
-                font-size: 9px;
-                line-height: 1.18;
+                font-size: 8.8px;
+                line-height: 1.12;
                 flex: 1 1 0;
                 min-height: 0;
                 border: 1px solid #475569;
@@ -1030,7 +1043,7 @@
             .challan-table td,
             .challan-table th {
                 border-color: #64748b;
-                padding: 0.85mm 1mm;
+                padding: 0.7mm 0.9mm;
                 white-space: normal;
                 vertical-align: middle;
             }
@@ -1041,15 +1054,15 @@
             }
 
             .challan-school-header {
-                min-height: 14mm;
-                gap: 2.5mm;
+                min-height: 12mm;
+                gap: 2mm;
             }
 
             .challan-school-logo {
-                width: 12mm;
-                height: 12mm;
-                max-width: 12mm;
-                max-height: 12mm;
+                width: 11mm;
+                height: 11mm;
+                max-width: 11mm;
+                max-height: 11mm;
                 object-fit: contain;
             }
 
@@ -1059,13 +1072,13 @@
             }
 
             .challan-school-title {
-                font-size: 13px;
+                font-size: 12px;
                 line-height: 1.08;
                 letter-spacing: 0.03em;
             }
 
             .challan-school-subtitle {
-                font-size: 8px;
+                font-size: 7.8px;
                 line-height: 1.12;
             }
 
@@ -1073,6 +1086,19 @@
                 font-size: 7.6px;
                 line-height: 1.12;
                 min-height: 0;
+            }
+
+            .challan-bank-details {
+                grid-template-columns: 1fr;
+                gap: 0.5mm;
+                font-size: 7.1px;
+                line-height: 1.1;
+                padding: 0.5mm 0 0;
+            }
+
+            .challan-bank-details strong {
+                display: inline-block;
+                min-width: 22mm;
             }
 
             .challan-label {
@@ -1117,10 +1143,10 @@
             }
 
             .challan-footer {
-                gap: 4px;
-                font-size: 7.2px;
+                gap: 3px;
+                font-size: 7px;
                 line-height: 1.1;
-                padding: 1mm 0.5mm 0;
+                padding: 0.8mm 0.5mm 0;
                 flex: 0 0 auto;
             }
         }
@@ -1451,7 +1477,12 @@
         };
         const challanFormFields = ['challanNumber', 'challanStudent', 'studentSid', 'studentAdmNo', 'studentClass', 'studentRollNo', 'fatherName', 'fatherMobile', 'challanSession', 'challanMonth', 'feeMonth', 'dueDate', 'baseAmount', 'payNowAmount', 'additionalCharges', 'discountValue', 'particulars', 'schoolName', 'schoolAddress', 'urduNote', 'challanNotes'];
         const DEFAULT_CHALLAN_SCHOOL_NAME = 'Pakistan Educational School System Jand';
-        const printCopies = ['Student Copy'];
+        const CHALLAN_BANK_DETAILS = {
+            bankName: 'Meezan Bank Limited',
+            accountHolderName: 'Sadia Tabassum',
+            accountNumber: '12470110378051'
+        };
+        const printCopies = ['Student Copy', 'School Copy', 'Bank Copy'];
         const CHALLAN_MONTHLY_FEES_KEY = 'eduCore_monthly_fees';
         const CHALLAN_PAYMENT_DETAILS_KEY = 'eduCore_payment_details';
         const CHALLAN_MONTHS = [
@@ -3224,6 +3255,15 @@
                             </tr>
                             <tr>
                                 <td colspan="6" class="challan-urdu-note">${escapeHtml(data.urduNote || data.notes)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="6">
+                                    <div class="challan-bank-details">
+                                        <div><strong>Bank Name:</strong> ${escapeHtml(CHALLAN_BANK_DETAILS.bankName)}</div>
+                                        <div><strong>Account Holder:</strong> ${escapeHtml(CHALLAN_BANK_DETAILS.accountHolderName)}</div>
+                                        <div><strong>Account No.:</strong> ${escapeHtml(CHALLAN_BANK_DETAILS.accountNumber)}</div>
+                                    </div>
+                                </td>
                             </tr>
                             ${terminated ? `
                             <tr>
