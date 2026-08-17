@@ -1053,6 +1053,13 @@
             const menu = document.getElementById('feeFineMenu');
             if (!dropdown || !trigger || !menu) return;
 
+            const canManageFine = typeof canCurrentUserPerformAction !== 'function' ||
+                canCurrentUserPerformAction('fees', 'manage');
+            if (!canManageFine) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
             hydrateFeeFineRuleFields();
             trigger.addEventListener('click', (event) => {
                 event.stopPropagation();
@@ -1067,6 +1074,11 @@
         }
 
         function saveFeeFineRule() {
+            if (typeof canCurrentUserPerformAction === 'function' &&
+                !canCurrentUserPerformAction('fees', 'manage')) {
+                writeFeeFineStatus('You do not have permission to manage fee fines.');
+                return;
+            }
             const frequency = String(document.getElementById('feeFineFrequency')?.value || 'day');
             const amount = Math.max(Number(document.getElementById('feeFineAmount')?.value || 0), 0);
             const targetDay = parseInt(document.getElementById('feeFineTargetDay')?.value || 0, 10);

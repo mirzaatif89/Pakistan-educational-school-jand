@@ -1221,9 +1221,20 @@ async function loadRegisteredCampusNames() {
         if (!response.ok || !Array.isArray(result)) {
             throw new Error('Branches could not be loaded.');
         }
-        return getUniqueCampusNames(result.map((branch) => branch.campusName));
+        // Campus selectors must represent registered branches only. Do not add
+        // defaults or campuses inferred from students/teachers here.
+        const campusMap = new Map();
+        result.forEach((branch) => {
+            const campusName = String(branch?.campusName || '').trim();
+            if (!campusName) return;
+            const key = campusName.toLowerCase();
+            if (!campusMap.has(key)) campusMap.set(key, campusName);
+        });
+        return Array.from(campusMap.values()).sort((a, b) => a.localeCompare(b));
     } catch (error) {
-        return getUniqueCampusNames();
+        // Never expose locally inferred/default campuses when registration data
+        // is unavailable; showing them makes unregistered campuses selectable.
+        return [];
     }
 }
 
