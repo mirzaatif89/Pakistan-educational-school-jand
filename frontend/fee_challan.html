@@ -1485,6 +1485,8 @@
         const printCopies = ['Student Copy', 'School Copy', 'Bank Copy'];
         const CHALLAN_MONTHLY_FEES_KEY = 'eduCore_monthly_fees';
         const CHALLAN_PAYMENT_DETAILS_KEY = 'eduCore_payment_details';
+        const CHALLAN_LATE_FEE_DAY = 10;
+        const CHALLAN_LATE_FEE_AMOUNT = 100;
         const CHALLAN_MONTHS = [
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
@@ -1503,7 +1505,6 @@
         let classPopupSelectedStudentIds = new Set();
         let classPopupLastVisibleStudentIds = [];
         let challanSelectedFeeMonths = [];
-        const CHALLAN_FALLBACK_CAMPUSES = ['Main Campus', 'Ali campus', 'Fatima Campus'];
         const CHALLAN_FALLBACK_CLASSES = [
             'Play Group', 'KG1', 'KG2',
             'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
@@ -1712,7 +1713,7 @@
 
         function getAvailableChallanCampuses() {
             const campusMap = new Map();
-            [...CHALLAN_FALLBACK_CAMPUSES, ...challanStudents.map((student) => String(student?.campusName || '').trim())]
+            challanStudents.map((student) => String(student?.campusName || '').trim())
                 .forEach((campusName) => {
                     const normalized = String(campusName || '').trim();
                     if (!normalized) return;
@@ -2223,23 +2224,31 @@
             const normalizedCampus = String(campusName || '').trim().toLowerCase();
             if (normalizedCampus.includes('ali')) return CHALLAN_BRANCH_CONTACTS.ali;
             if (normalizedCampus.includes('fatima')) return CHALLAN_BRANCH_CONTACTS.fatima;
-            return CHALLAN_BRANCH_CONTACTS.main;
+            if (!normalizedCampus || normalizedCampus.includes('main')) return CHALLAN_BRANCH_CONTACTS.main;
+            return { campusLabel: String(campusName || '').trim(), addressLine: '' };
         }
 
         function applyBranchDetailsToChallan(campusName) {
             const branchDetails = getChallanBranchContactDetails(campusName);
-            document.getElementById('schoolAddress').value = `${branchDetails.campusLabel} - ${branchDetails.addressLine}`;
+            document.getElementById('schoolAddress').value = [branchDetails.campusLabel, branchDetails.addressLine]
+                .filter(Boolean)
+                .join(' - ');
+        }
+
+        function getDefaultChallanLateFee(now = new Date()) {
+            return now.getDate() > CHALLAN_LATE_FEE_DAY ? CHALLAN_LATE_FEE_AMOUNT : 0;
         }
 
         function setChallanDefaults() {
             const now = new Date();
             const currentYear = now.getFullYear();
             document.getElementById('challanNumber').value = `CH-${String(currentYear).slice(-2)}-${String(Date.now()).slice(-3)}`;
-            document.getElementById('dueDate').value = new Date(currentYear, now.getMonth(), 7).toISOString().split('T')[0];
+            document.getElementById('dueDate').value = new Date(currentYear, now.getMonth(), CHALLAN_LATE_FEE_DAY).toISOString().split('T')[0];
             document.getElementById('challanSession').value = `${currentYear}-${currentYear + 1}`;
             document.getElementById('challanMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
             document.getElementById('feeMonth').value = now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).replace(' ', ', ');
             document.getElementById('particulars').value = 'Tuition Fee';
+            document.getElementById('additionalCharges').value = getDefaultChallanLateFee(now);
             document.getElementById('schoolName').value = DEFAULT_CHALLAN_SCHOOL_NAME;
             applyBranchDetailsToChallan('Main branch');
             document.getElementById('urduNote').value = 'Note: Fees will not be accepted after the due date.';
@@ -2319,7 +2328,7 @@
             }
             if (!terminated) {
                 if (isPaid) document.getElementById('payNowAmount').value = 0;
-                document.getElementById('additionalCharges').value = isPaid ? 0 : Number(document.getElementById('additionalCharges').value || 0);
+                document.getElementById('additionalCharges').value = isPaid ? 0 : getDefaultChallanLateFee();
                 document.getElementById('discountValue').value = isPaid ? '0' : document.getElementById('discountValue').value;
                 document.getElementById('particulars').value = isPaid
                     ? 'Fee Already Paid'
@@ -2865,7 +2874,7 @@
             document.getElementById('fatherMobile').value = '';
             document.getElementById('baseAmount').value = '';
             document.getElementById('payNowAmount').value = '';
-            document.getElementById('additionalCharges').value = 0;
+            document.getElementById('additionalCharges').value = getDefaultChallanLateFee();
             document.getElementById('studentFeeSnapshot').textContent = 'Select a student or enter roll number to view pending fee details.';
             challanSelectedFeeMonths = [];
             const pickerGrid = document.getElementById('feeMonthPickerGrid');
