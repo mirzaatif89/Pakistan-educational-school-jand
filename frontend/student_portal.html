@@ -2772,7 +2772,7 @@
         </section>
 
         <section class="panel-card student-portal-section" id="studentCourseSection" style="display:none; margin-bottom: 1.25rem;">
-            <h3>Class Course</h3>
+            <h3>Syllabus / Class Course</h3>
             <div class="portal-content-list" id="studentCourseList"></div>
             <div class="empty-note" id="studentCourseEmpty">No course has been added for your class yet.</div>
         </section>
@@ -3311,7 +3311,8 @@
         }
 
         function normalizeClassName(value = '') {
-            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const words = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' };
+            return String(value || '').trim().toLowerCase().replace(/^class\s+/, '').replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/g, (word) => words[word]).replace(/\s+/g, ' ');
         }
 
         function getStudentClassSchedules(student = {}) {
@@ -3540,6 +3541,24 @@
         }
 
         async function loadPortalSchedulingData() {
+            // One authenticated request guarantees that the server applies the
+            // logged-in student's campus/class and prevents stale browser data
+            // from hiding Diary, Syllabus or Quiz records.
+            try {
+                const response = await fetch(`${API_BASE_URL}/student-portal/content`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && result?.success !== false) {
+                    if (Array.isArray(result.diaries)) localStorage.setItem(STUDENT_DIARY_KEY, JSON.stringify(result.diaries));
+                    if (Array.isArray(result.courses)) localStorage.setItem(STUDENT_COURSE_KEY, JSON.stringify(result.courses));
+                    if (Array.isArray(result.quizzes)) localStorage.setItem(STUDENT_QUIZ_KEY, JSON.stringify(result.quizzes));
+                    return;
+                }
+                throw new Error(result?.message || 'Student content could not be loaded.');
+            } catch (error) {
+                console.warn('Student content feed unavailable; using compatibility loaders:', error.message);
+            }
             const loaders = [
                 fetch(`${API_BASE_URL}/student-diaries`)
                     .then((response) => response.json().then((result) => ({ response, result })))
@@ -3597,11 +3616,12 @@
         }
 
         function getClassWiseItems(key, student = {}) {
-            const studentClass = normalizeClassName(student.classGrade);
+            const studentClass = normalizeClassName(student.classGrade).replace(/^class\s+/, '');
             const studentCampus = normalizeLoose(student.campusName || student.branchName || student.campus || '');
             return getPortalData(key)
                 .filter((item) => {
-                    const classMatches = normalizeClassName(item.classGrade) === studentClass;
+                    const itemClass = normalizeClassName(item.classGrade).replace(/^class\s+/, '');
+                    const classMatches = itemClass === studentClass;
                     if (!classMatches) return false;
                     const itemCampus = normalizeLoose(item.campusName || item.branchName || item.campus || '');
                     return !itemCampus || !studentCampus || itemCampus === studentCampus ||
@@ -4550,8 +4570,17 @@
                         renderStudentUploadedAssignments(student);
                         updateStudentNotifications(student);
                     }
-                    const target = document.getElementById(targetId);
+                    // Admin manages syllabus from Class Course, so the
+                    // Syllabus tile opens the live course/syllabus section.
+                    const resolvedTargetId = targetId === 'studentSyllabusSection'
+                        ? 'studentCourseSection'
+                        : targetId;
+                    const target = document.getElementById(resolvedTargetId);
                     if (target) {
+                        if (resolvedTargetId === 'studentCourseSection') {
+                            await loadPortalSchedulingData();
+                            applyStudentCourse(getCurrentPortalStudent());
+                        }
                         openStudentPortalScreen(target);
                         return;
                     }

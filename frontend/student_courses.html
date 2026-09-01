@@ -92,10 +92,19 @@
                 studentCourseCampus.value = globalCampus;
             }
         }
-        function populateClasses() {
+        async function populateClasses() {
             const students = data('eduCore_students');
             const classes = data('eduCore_classes');
-            const names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
+            let names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
+            try {
+                const campus = studentCourseCampus.value.trim();
+                const response = await fetch(`${API_BASE_URL}/class-options${campus ? `?campus=${encodeURIComponent(campus)}` : ''}`);
+                const result = await response.json().catch(() => ({}));
+                // Do not erase locally registered classes when the database has
+                // no students yet (common during first setup).
+                if (response.ok && Array.isArray(result.classes) && result.classes.length) names = result.classes;
+            } catch (error) { console.warn('Class options API load failed:', error.message); }
+            if (!names.length) names = ['Play Group','KG1','KG2','Class One','Class Two','Class Three','Class Four','Class Five','Class Six','Class Seven','Class Eight','Class Nine','Class Ten','Graduate'];
             studentCourseClass.innerHTML = '<option value="">Select Class</option>' + names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
         }
         async function loadCoursesFromApi() {
@@ -183,7 +192,7 @@
             }
             event.target.reset(); studentCourseId.value = ''; document.querySelector('#studentCourseForm button[type="submit"]').innerHTML = '<i data-lucide="save"></i> Save Course'; render(); showSuccessModal(editId ? 'Course Updated!' : 'Course Saved!', 'Class course is visible in student portal.');
         });
-        populateCampuses(); populateClasses(); loadCoursesFromApi().then(render); lucide.createIcons();
+        populateCampuses().then(populateClasses); studentCourseCampus.addEventListener('change', populateClasses); loadCoursesFromApi().then(render); lucide.createIcons();
     </script>
 </body>
 

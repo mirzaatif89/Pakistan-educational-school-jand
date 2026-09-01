@@ -1107,6 +1107,33 @@ function writeJsonArrayFile(filePath, items, normalizer) {
     return normalized;
 }
 
+// Keep class matching consistent across the admin screens, web portal and mobile app.
+// Class names may be entered as "Class 1", "class   1", or "1" in older records.
+function normalizeClassKey(value = '') {
+    const words = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' };
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/^class\s+/, '')
+        .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/g, (word) => words[word])
+        .replace(/[\s_-]+/g, ' ')
+        .trim();
+}
+
+function normalizeCampusKey(value = '') {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function contentMatchesStudent(item = {}, student = {}) {
+    const itemClass = normalizeClassKey(item.classGrade);
+    const studentClass = normalizeClassKey(student.classGrade);
+    if (!itemClass || !studentClass || itemClass !== studentClass) return false;
+
+    const itemCampus = normalizeCampusKey(item.campusName || item.branchName || item.campus);
+    const studentCampus = normalizeCampusKey(student.campusName || student.branchName || student.campus);
+    return !itemCampus || !studentCampus || itemCampus === studentCampus;
+}
+
 function readOnlineAdmissions() {
     try {
         if (!fs.existsSync(ONLINE_ADMISSIONS_FILE)) return [];
@@ -1747,6 +1774,28 @@ app.get('/api/students', async (req, res) => {
     }
 });
 
+// Server-backed class options.  Scheduling screens must not depend on a
+// particular browser's localStorage because it is empty on a new device.
+app.get('/api/class-options', async (req, res) => {
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const requestedCampus = normalizeCampusKey(req.query.campus);
+        const students = await sequelize.models.Student.findAll({ attributes: ['classGrade', 'campusName'] });
+        const classes = new Map();
+        students.forEach((student) => {
+            if (requestedCampus && normalizeCampusKey(student.campusName) !== requestedCampus) return;
+            const classGrade = String(student.classGrade || '').trim();
+            if (!classGrade) return;
+            const key = normalizeClassKey(classGrade);
+            if (!classes.has(key)) classes.set(key, classGrade);
+        });
+        return res.json({ success: true, classes: Array.from(classes.values()).sort((a, b) => a.localeCompare(b)) });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Class options could not be loaded.' });
+    }
+});
+
 function normalizeClassFeeRecords(records = []) {
     const input = Array.isArray(records) ? records : [];
     const byClass = new Map();
@@ -2352,6 +2401,41 @@ app.get('/api/student/me', authenticateToken, async (req, res) => {
         return res.json(student);
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Mobile-safe, student-scoped feed.  The authenticated student's campus and
+// class are taken from the database, never from query-string values supplied
+// by the client.
+app.get('/api/student-portal/content', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Student') {
+        return res.status(403).json({ success: false, message: 'Student access only.' });
+    }
+    if (!sequelize) return res.status(503).json({ success: false, message: 'Database offline' });
+
+    try {
+        const student = await sequelize.models.Student.findByPk(req.user.id, {
+            attributes: ['id', 'studentCode', 'fullName', 'campusName', 'classGrade']
+        });
+        if (!student) return res.status(404).json({ success: false, message: 'Student record not found.' });
+
+        const profile = student.get({ plain: true });
+        const diaries = readJsonArrayFile(STUDENT_DIARIES_FILE, normalizeStudentDiary)
+            .filter((item) => contentMatchesStudent(item, profile));
+        const courses = readJsonArrayFile(STUDENT_COURSES_FILE, normalizeStudentCourse)
+            .filter((item) => contentMatchesStudent(item, profile));
+        const quizzes = readJsonArrayFile(STUDENT_QUIZZES_FILE, normalizeStudentQuiz)
+            .filter((item) => contentMatchesStudent(item, profile));
+
+        return res.json({
+            success: true,
+            student: profile,
+            diaries,
+            courses,
+            quizzes
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message || 'Student content could not be loaded.' });
     }
 });
 

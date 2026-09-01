@@ -207,6 +207,8 @@ Teacher and student users log in through `/api/login` using the `username` and `
 |---|---|---|---|
 | Login | POST | `/api/login` | Returns token and role |
 | Profile intro | GET | `/api/student/me` | Logged-in student profile |
+| Class options | GET | `/api/class-options?campus=Main%20Campus` | Database-backed class dropdown options |
+| Student content feed | GET | `/api/student-portal/content` | Authenticated student gets only matching Diary, Syllabus/Courses and Quizzes |
 | Profile image update | POST | `/api/student/me` | Update `profileImage` |
 | Attendance | GET | `/api/student-attendance` | Attendance by student |
 | Fee payments | GET | `/api/fees/payments` | Paid and partial payments |

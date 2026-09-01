@@ -274,10 +274,17 @@
             return result;
         }
 
-        function populateClasses() {
+        async function populateClasses() {
             const students = data('eduCore_students');
             const classes = data('eduCore_classes');
-            const names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
+            let names = [...new Set([...classes.map((item) => item?.section ? `${item.name} (${item.section})` : item?.name), ...students.map((student) => student?.classGrade)].map((value) => String(value || '').trim()).filter(Boolean))].sort();
+            try {
+                const campus = studentDiaryCampus.value.trim();
+                const response = await fetch(`${API_BASE_URL}/class-options${campus ? `?campus=${encodeURIComponent(campus)}` : ''}`);
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && Array.isArray(result.classes) && result.classes.length) names = result.classes;
+            } catch (error) { console.warn('Class options API load failed:', error.message); }
+            if (!names.length) names = ['Play Group','KG1','KG2','Class One','Class Two','Class Three','Class Four','Class Five','Class Six','Class Seven','Class Eight','Class Nine','Class Ten','Graduate'];
             studentDiaryClass.innerHTML = '<option value="">Select Class</option>' + names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
         }
 
@@ -525,8 +532,8 @@
             if (event.target === diaryBuilderModal) closeDiaryBuilder();
         });
 
-        populateCampuses();
-        populateClasses();
+        populateCampuses().then(populateClasses);
+        studentDiaryCampus.addEventListener('change', populateClasses);
         loadDiariesFromApi().then(render);
         if (window.lucide) window.lucide.createIcons();
     </script>
