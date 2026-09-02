@@ -1,0 +1,28 @@
+[
+  {
+    "id": "QUIZ-1788246659592",
+    "campusName": "Main Campus",
+    "classGrade": "Play Group",
+    "title": "Islamic Studies",
+    "totalMarks": "20",
+    "passMarks": "20",
+    "dueDate": "2026-09-01",
+    "details": "",
+    "questions": [
+      {
+        "text": "Who is this",
+        "options": [
+          "Ali",
+          "Ahe",
+          "kfhsd",
+          "dfhsdk"
+        ],
+        "correctIndex": 0,
+        "marks": 20
+      }
+    ],
+    "file": null,
+    "createdAt": "2026-09-01T07:10:59.592Z",
+    "updatedAt": "2026-09-01T07:10:59.592Z"
+  }
+]

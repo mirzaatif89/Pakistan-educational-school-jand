@@ -36,6 +36,8 @@ const TRANSIENT_HTTP_STATUSES = new Set([403, 408, 429, 500, 502, 503, 504]);
 let socket;
 let activePortalSessionsCache = [];
 let dashboardActiveSessionsInterval = null;
+let selectedDashboardRevenueMonthKey = '';
+let dashboardRevenueMonthManuallySelected = false;
 let activeSessionsModalEventsBound = false;
 const DASHBOARD_CAMPUS_FILTER_KEY = 'eduCore_dashboard_campus_filter';
 const GLOBAL_CAMPUS_FILTER_KEY = DASHBOARD_CAMPUS_FILTER_KEY;
@@ -4511,6 +4513,15 @@ function getCurrentDashboardFeeMonthKey() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getDashboardMonthMeta(monthKey = selectedDashboardRevenueMonthKey || getCurrentDashboardFeeMonthKey()) {
+    const match = String(monthKey).match(/^(\d{4})-(\d{2})$/);
+    const now = new Date();
+    const year = match ? Number(match[1]) : now.getFullYear();
+    const index = match ? Math.min(Math.max(Number(match[2]) - 1, 0), 11) : now.getMonth();
+    const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return { year, monthName: names[index], monthKey: `${year}-${String(index + 1).padStart(2, '0')}` };
+}
+
 function getDashboardPaymentFallbackYear(fallbackDate = '') {
     const raw = String(fallbackDate || '').trim();
     const slashDate = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
@@ -4604,8 +4615,9 @@ function getDashboardFeeStatusRevenue(students = []) {
 }
 
 async function getDashboardBackendFeeStatusRevenue(students = []) {
-    const currentMonth = getCurrentDashboardFeeMonth();
-    const currentMonthKey = getCurrentDashboardFeeMonthKey();
+    const monthMeta = getDashboardMonthMeta();
+    const currentMonth = monthMeta.monthName;
+    const currentMonthKey = monthMeta.monthKey;
     const studentList = Array.isArray(students) ? students : [];
     const studentMap = new Map(studentList.map((student) => [String(student?.id || ''), student]));
     const rollMap = new Map(studentList
@@ -4617,7 +4629,7 @@ async function getDashboardBackendFeeStatusRevenue(students = []) {
             `${String(student.fullName || '').trim().toLowerCase()}|${String(student.rollNo || '').trim().toLowerCase()}|${String(student.classGrade || '').trim().toLowerCase()}`,
             student
         ]));
-    const summary = { total: 0, paidStudents: 0, month: currentMonth };
+    const summary = { total: 0, paidStudents: 0, month: `${currentMonth} ${monthMeta.year}`, monthKey: currentMonthKey, loaded: false };
     const paidStudentIds = new Set();
 
     try {
@@ -4625,6 +4637,7 @@ async function getDashboardBackendFeeStatusRevenue(students = []) {
         const result = await parseJsonResponse(response, 'Fee payments could not be loaded.');
         if (!response.ok || result?.success === false) throw new Error(result?.message || 'Fee payments could not be loaded.');
         const payments = Array.isArray(result?.payments) ? result.payments : [];
+        summary.loaded = true;
 
         payments.forEach((payment) => {
             if (!isDashboardFeeCollectionPayment(payment)) return;
@@ -4716,7 +4729,7 @@ async function updateDashboardRevenueStats(studentsForDashboard) {
         : getDashboardCampusFilteredRecords(getArrayData(STORAGE_KEY_STUDENTS));
     const localSummary = getDashboardFeeStatusRevenue(students);
     const backendSummary = await getDashboardBackendFeeStatusRevenue(students);
-    const feeSummary = backendSummary && backendSummary.total > 0 ? backendSummary : localSummary;
+    const feeSummary = backendSummary?.loaded ? backendSummary : localSummary;
     const selectedCampus = getSelectedDashboardCampus();
     const campusLabel = selectedCampus === 'all' ? '' : ` in ${selectedCampus}`;
 
@@ -4830,6 +4843,20 @@ async function updateDashboardBannerStats(records) {
 function initializeDashboardHome() {
     const dashStudentCount = document.getElementById('dashStudentCount');
     if (!dashStudentCount) return;
+
+    const monthPicker = document.getElementById('dashboardRevenueMonthPicker');
+    selectedDashboardRevenueMonthKey = monthPicker?.value || getCurrentDashboardFeeMonthKey();
+    if (monthPicker && !monthPicker.dataset.bound) {
+        monthPicker.dataset.bound = 'true';
+        monthPicker.value = selectedDashboardRevenueMonthKey;
+        const handleMonthChange = () => {
+            selectedDashboardRevenueMonthKey = monthPicker.value || getCurrentDashboardFeeMonthKey();
+            dashboardRevenueMonthManuallySelected = true;
+            updateDashboardStats();
+        };
+        monthPicker.addEventListener('change', handleMonthChange);
+        monthPicker.addEventListener('input', handleMonthChange);
+    }
 
     populateDashboardCampusFilter().then(updateDashboardStats).catch(() => updateDashboardStats());
     updateDashboardStats();

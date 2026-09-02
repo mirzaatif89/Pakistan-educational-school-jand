@@ -2222,6 +2222,11 @@
         }
 
         async function saveManualFeePayment(student, month, amount, paymentDate, fullAmount) {
+            const monthIndex = monthsList.indexOf(String(month || '').trim());
+            const paymentDateObj = new Date(paymentDate || new Date());
+            const feeMonth = monthIndex >= 0
+                ? `${monthsList[monthIndex]} ${monthIndex > paymentDateObj.getMonth() ? paymentDateObj.getFullYear() - 1 : paymentDateObj.getFullYear()}`
+                : month;
             const response = await fetch(`${API_BASE_URL}/fees/manual-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2230,8 +2235,8 @@
                     studentName: student.fullName,
                     rollNo: student.rollNo,
                     classGrade: student.classGrade,
-                    feeMonth: month,
-                    feeMonths: [month],
+                    feeMonth,
+                    feeMonths: [feeMonth],
                     session: student.session || '',
                     amount,
                     paymentDate,
