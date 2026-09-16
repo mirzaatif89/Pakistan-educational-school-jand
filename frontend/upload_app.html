@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload School App - PESS JAND</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" href="style.css?v=20260916-app-upload">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .app-upload-wrap { max-width: 850px; display: grid; gap: 1.1rem; }
+        .app-panel { background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:1.25rem; box-shadow:var(--shadow-sm); }
+        .app-panel h2 { margin:0 0 .35rem; } .app-panel p { color:var(--text-secondary); }
+        .app-grid { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1.1rem; }
+        .app-field.full { grid-column:1 / -1; } .app-field label { display:block; font-weight:700; margin-bottom:.4rem; }
+        .app-field input, .app-field textarea { box-sizing:border-box; width:100%; min-height:44px; padding:.7rem; font:inherit; border:1px solid var(--border-color); border-radius:8px; }
+        .app-field textarea { min-height:92px; resize:vertical; }
+        .upload-drop { border:2px dashed #14b8a6; border-radius:10px; background:#f0fdfa; padding:1.1rem; text-align:center; }
+        .upload-drop input { max-width:100%; } .app-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-top:1.1rem; }
+        .app-status { display:none; border-radius:8px; padding:.8rem 1rem; margin-top:1rem; font-weight:600; } .app-status.show { display:block; } .app-status.error { background:#fef2f2; color:#b91c1c; } .app-status.success { background:#ecfdf5; color:#047857; }
+        .published-app { display:none; grid-template-columns:auto 1fr auto; gap:1rem; align-items:center; } .published-app.show { display:grid; }
+        .published-app .icon { width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:#e0f2fe;color:#0369a1; } .published-app h3 { margin:0 0 .25rem; }
+        .published-app small { color:var(--text-secondary); } .muted { color:var(--text-secondary); }
+        @media(max-width:650px) { .app-grid { grid-template-columns:1fr; } .published-app.show { grid-template-columns:auto 1fr; } .published-app .app-actions { grid-column:1 / -1; } }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar"><div class="logo-section"><img class="sidebar-logo-img" src="images/logo.png" alt="PESS JAND logo"></div><nav class="nav-links"></nav></aside>
+        <main class="main-content">
+            <header class="header"><div><h1>Upload School App</h1><p style="color:var(--text-secondary);margin-top:.25rem">Upload the latest Android APK. It will instantly become available through the website’s Download App button.</p></div></header>
+            <div class="app-upload-wrap">
+                <section class="app-panel">
+                    <h2>Publish Android App</h2><p>Only APK files are accepted. Uploading a new app replaces the current public download.</p>
+                    <form id="schoolAppForm">
+                        <div class="app-grid">
+                            <div class="app-field"><label for="appName">App name</label><input id="appName" value="PESS Jand School App" required></div>
+                            <div class="app-field"><label for="appVersion">Version</label><input id="appVersion" placeholder="e.g. 1.0.0"></div>
+                            <div class="app-field full"><label for="appFile">Android APK file</label><div class="upload-drop"><input id="appFile" type="file" accept=".apk,application/vnd.android.package-archive" required><p id="fileHint" class="muted">Choose the APK file to publish.</p></div></div>
+                            <div class="app-field full"><label for="appNotes">What’s new (optional)</label><textarea id="appNotes" placeholder="Brief notes for parents and students..."></textarea></div>
+                        </div>
+                        <div class="app-actions"><button class="btn btn-primary" type="submit" id="publishButton"><i data-lucide="upload-cloud"></i> Upload & Publish App</button></div>
+                        <div class="app-status" id="appStatus" role="status"></div>
+                    </form>
+                </section>
+                <section class="app-panel published-app" id="publishedApp"><div class="icon"><i data-lucide="smartphone"></i></div><div><h3 id="publishedName"></h3><small id="publishedDetails"></small><p id="publishedNotes" class="muted"></p></div><div class="app-actions"><a class="btn btn-outline" href="/download-app" download><i data-lucide="download"></i> Test Download</a><button type="button" class="btn btn-danger" id="removeApp"><i data-lucide="trash-2"></i> Remove</button></div></section>
+                <section class="app-panel" id="noApp"><h2>No app published yet</h2><p>Upload an APK above. Website visitors will then be able to download it from the Download App button.</p></section>
+            </div>
+        </main>
+    </div>
+    <script src="auth.js"></script><script src="script.js?v=20260916-app-upload"></script><script src="sidebar-order.js?v=20260916-app-upload"></script>
+    <script>
+        const appApi = `${API_BASE_URL}/school-app`;
+        const $ = (id) => document.getElementById(id);
+        const formatSize = (bytes) => bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : '';
+        function showStatus(message, type) { const target = $('appStatus'); target.textContent = message; target.className = `app-status show ${type}`; }
+        function renderApp(app) { const hasApp = Boolean(app); $('publishedApp').classList.toggle('show', hasApp); $('noApp').style.display = hasApp ? 'none' : 'block'; if (!hasApp) return; $('publishedName').textContent = app.name || 'School App'; $('publishedDetails').textContent = [app.version && `Version ${app.version}`, app.fileName, formatSize(app.size), app.uploadedAt && `Published ${new Date(app.uploadedAt).toLocaleDateString()}`].filter(Boolean).join(' · '); $('publishedNotes').textContent = app.notes || ''; if (window.lucide) lucide.createIcons(); }
+        async function loadApp() { try { const response = await fetch(appApi); const result = await parseJsonResponse(response, 'App details could not be loaded.'); renderApp(result.app); } catch (_) { renderApp(null); } }
+        $('appFile').addEventListener('change', () => { const file = $('appFile').files[0]; $('fileHint').textContent = file ? `${file.name} (${formatSize(file.size)})` : 'Choose the APK file to publish.'; });
+        $('schoolAppForm').addEventListener('submit', async (event) => { event.preventDefault(); const file = $('appFile').files[0]; if (!file || !file.name.toLowerCase().endsWith('.apk')) return showStatus('Please select an Android APK file.', 'error'); const button = $('publishButton'); button.disabled = true; button.innerHTML = '<i data-lucide="loader-circle"></i> Uploading...'; if(window.lucide) lucide.createIcons(); try { const response = await fetch(`${appApi}/file`, { method:'POST', headers:{ 'Content-Type': file.type || 'application/vnd.android.package-archive', 'X-File-Name': encodeURIComponent(file.name), 'X-App-Name': encodeURIComponent($('appName').value.trim()), 'X-App-Version': encodeURIComponent($('appVersion').value.trim()), 'X-App-Notes': encodeURIComponent($('appNotes').value.trim()) }, body:file }); const result = await parseJsonResponse(response, 'App could not be uploaded.'); if (!response.ok || result.success === false) throw new Error(result.message || 'App could not be uploaded.'); showStatus('App published successfully. The website download button now serves this APK.', 'success'); $('schoolAppForm').reset(); $('fileHint').textContent = 'Choose the APK file to publish.'; $('appName').value = 'PESS Jand School App'; renderApp(result.app); } catch (error) { showStatus(error.message || 'App could not be uploaded.', 'error'); } finally { button.disabled = false; button.innerHTML = '<i data-lucide="upload-cloud"></i> Upload & Publish App'; if(window.lucide) lucide.createIcons(); } });
+        $('removeApp').addEventListener('click', async () => { if (!(await showAppConfirm('Remove the public app download?', 'Remove App'))) return; const response = await fetch(appApi, {method:'DELETE'}); if (!response.ok) return showStatus('App could not be removed.', 'error'); renderApp(null); showStatus('Public app download removed.', 'success'); });
+        loadApp(); if (window.lucide) lucide.createIcons();
+    </script>
+</body></html>

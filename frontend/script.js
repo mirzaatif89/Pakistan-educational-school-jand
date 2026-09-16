@@ -923,7 +923,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                     setTimeout(() => {
-                        window.location.href = toRoutePath(getPermissionHome() || getDefaultRoleHome());
+                        const destination = toRoutePath(getPermissionHome() || getDefaultRoleHome());
+                        // replace() prevents the login form from being revisited/re-submitted when
+                        // a live host redirects legacy *.html URLs to clean routes.
+                        const canonicalDestination = String(destination).replace(/\.html(?=$|[?#])/i, '');
+                        window.location.replace(canonicalDestination);
                     }, 800);
                 } else {
                     throw new Error(result.message || 'Invalid Username or Password');
@@ -3192,6 +3196,7 @@ function ensureFacilityNav() {
     const currentPage = getCurrentPageName();
     const facilityLinks = [
         { page: 'library.html', label: 'Library', icon: 'library' },
+        { page: 'upload_app.html', label: 'Upload App', icon: 'upload-cloud' },
         { page: 'cafe.html', label: 'Cafe', icon: 'coffee' },
         { page: 'transport.html', label: 'Transport', icon: 'bus' }
     ];
@@ -3260,6 +3265,7 @@ function ensureAdminSidebarCompleteness() {
         { page: 'permissions.html', label: 'Permissions', icon: 'shield' },
         { page: 'designation-permissions.html', label: 'Designation Permissions', icon: 'shield-check' },
         { page: 'library.html', label: 'Library', icon: 'library' },
+        { page: 'upload_app.html', label: 'Upload App', icon: 'upload-cloud' },
         { page: 'complain_box.html', label: 'Complain Box', icon: 'message-square' },
         { page: 'branch_registration.html', label: 'Branch Registration', icon: 'building-2' },
         { page: 'visitor_books.html', label: 'Visitor Records', icon: 'clipboard-list' },
@@ -3404,6 +3410,7 @@ function renderAdminSidebarSequence() {
             ]
         },
         { type: 'link', page: 'library.html', label: 'Library', icon: 'library' },
+        { type: 'link', page: 'upload_app.html', label: 'Upload App', icon: 'upload-cloud' },
         { type: 'link', page: 'complain_box.html', label: 'Complain Box', icon: 'message-square' },
         { type: 'link', page: 'branch_registration.html', label: 'Branch Registration', icon: 'building-2' },
         { type: 'link', page: 'visitor_books.html', label: 'Visitor Records', icon: 'clipboard-list' },

@@ -26,6 +26,8 @@ function attachSocketServer(targetServer = server) {
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const FRONTEND_DIR = path.join(PROJECT_ROOT, 'frontend');
+const MOBILE_APP_DIR = path.join(PROJECT_ROOT, 'Mobile_app');
+const SCHOOL_APP_FILE = path.join(MOBILE_APP_DIR, 'pess-jand_app.apk');
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -41,6 +43,8 @@ const STUDENT_QUIZZES_FILE = path.join(DATA_DIR, 'student_quizzes.json');
 const STUDENT_DIARIES_FILE = path.join(DATA_DIR, 'student_diaries.json');
 const STUDENT_ASSIGNMENT_SUBMISSIONS_FILE = path.join(DATA_DIR, 'student_assignment_submissions.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+const SCHOOL_APPS_DIR = path.join(UPLOADS_DIR, 'school_apps');
+const SCHOOL_APP_FILE_RECORD = path.join(DATA_DIR, 'school_app.json');
 const MOBILE_STORE_DIR = path.join(DATA_DIR, 'mobile_api_store');
 const ONLINE_ADMISSIONS_FILE = path.join(MOBILE_STORE_DIR, 'online_admissions.json');
 const COMPLAINTS_FILE = path.join(MOBILE_STORE_DIR, 'complaints.json');
@@ -51,6 +55,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+fs.mkdirSync(SCHOOL_APPS_DIR, { recursive: true });
 
 const corsOptions = {
     origin: true,
@@ -72,6 +77,22 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Public Android app download.  Keeping the APK outside the frontend folder
+// prevents it from being treated as a regular web asset while res.download()
+// prompts the browser to save it with a clear filename.
+app.get('/download-app', (_req, res, next) => {
+    const appInfo = readSchoolApp();
+    if (appInfo?.disabled) {
+        return res.status(404).send('The school app is temporarily unavailable.');
+    }
+    const appPath = appInfo?.storageName ? path.join(SCHOOL_APPS_DIR, appInfo.storageName) : SCHOOL_APP_FILE;
+    const downloadName = appInfo?.fileName || 'PESS-Jand-App.apk';
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('The school app is temporarily unavailable.');
+    }
+    return res.download(appPath, downloadName, next);
+});
 const RESERVED_ROUTE_NAMES = new Set(['api', 'health', 'socket.io']);
 
 function resolvePageFileByRoute(routeName = '') {
@@ -1106,6 +1127,71 @@ function writeJsonArrayFile(filePath, items, normalizer) {
     fs.writeFileSync(filePath, JSON.stringify(normalized, null, 2), 'utf8');
     return normalized;
 }
+
+function readSchoolApp() {
+    try {
+        if (!fs.existsSync(SCHOOL_APP_FILE_RECORD)) return null;
+        const appInfo = JSON.parse(fs.readFileSync(SCHOOL_APP_FILE_RECORD, 'utf8'));
+        return appInfo && typeof appInfo === 'object' ? appInfo : null;
+    } catch (_error) {
+        return null;
+    }
+}
+
+function saveSchoolApp(appInfo = {}) {
+    const saved = {
+        id: String(appInfo.id || `APP-${Date.now()}`),
+        name: String(appInfo.name || 'PESS Jand School App').trim(),
+        version: String(appInfo.version || '').trim(),
+        notes: String(appInfo.notes || '').trim(),
+        fileName: String(appInfo.fileName || 'PESS-Jand-App.apk').trim(),
+        storageName: String(appInfo.storageName || '').trim(),
+        size: Number(appInfo.size || 0),
+        uploadedAt: appInfo.uploadedAt || new Date().toISOString()
+    };
+    fs.writeFileSync(SCHOOL_APP_FILE_RECORD, JSON.stringify(saved, null, 2), 'utf8');
+    return saved;
+}
+
+app.get('/api/school-app', (_req, res) => {
+    const appInfo = readSchoolApp();
+    res.json({ success: true, app: appInfo?.disabled ? null : appInfo });
+});
+
+app.post('/api/school-app/file', express.raw({ type: '*/*', limit: '2048mb' }), (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) {
+        return res.status(400).json({ success: false, message: 'APK file is required.' });
+    }
+
+    const originalName = decodeURIComponent(String(req.headers['x-file-name'] || 'school-app.apk'));
+    if (path.extname(originalName).toLowerCase() !== '.apk') {
+        return res.status(400).json({ success: false, message: 'Please upload an Android APK file only.' });
+    }
+
+    const safeName = sanitizeUploadFileName(originalName);
+    const storageName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+    fs.writeFileSync(path.join(SCHOOL_APPS_DIR, storageName), req.body);
+
+    const app = saveSchoolApp({
+        name: decodeURIComponent(String(req.headers['x-app-name'] || 'PESS Jand School App')),
+        version: decodeURIComponent(String(req.headers['x-app-version'] || '')),
+        notes: decodeURIComponent(String(req.headers['x-app-notes'] || '')),
+        fileName: safeName,
+        storageName,
+        size: req.body.length
+    });
+    res.json({ success: true, app, downloadUrl: '/download-app' });
+});
+
+app.delete('/api/school-app', (_req, res) => {
+    const appInfo = readSchoolApp();
+    if (appInfo?.storageName) {
+        const appPath = path.join(SCHOOL_APPS_DIR, path.basename(appInfo.storageName));
+        if (fs.existsSync(appPath)) fs.unlinkSync(appPath);
+    }
+    fs.writeFileSync(SCHOOL_APP_FILE_RECORD, JSON.stringify({ disabled: true, updatedAt: new Date().toISOString() }, null, 2), 'utf8');
+    res.json({ success: true });
+});
 
 // Keep class matching consistent across the admin screens, web portal and mobile app.
 // Class names may be entered as "Class 1", "class   1", or "1" in older records.

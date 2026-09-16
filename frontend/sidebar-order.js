@@ -104,6 +104,7 @@
             ]
         },
         { type: 'link', page: 'library', label: 'Library', icon: 'library' },
+        { type: 'link', page: 'upload_app', label: 'Upload App', icon: 'upload-cloud' },
         { type: 'link', page: 'complain_box', label: 'Complain Box', icon: 'message-square' },
         { type: 'link', page: 'branch_registration', label: 'Branch Registration', icon: 'building-2' },
         { type: 'link', page: 'visitor_books', label: 'Visitor Records', icon: 'clipboard-list' },

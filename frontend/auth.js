@@ -621,7 +621,11 @@
     }
 
     function redirectToAllowedHome(user, permissions) {
-        window.location.replace(toRoutePath(getHomePage(user, permissions)));
+        const destination = toRoutePath(getHomePage(user, permissions));
+        // Avoid a self-redirect loop when a live deployment normalizes
+        // `/dashboard` and `dashboard.html` to the same protected page.
+        if (normalizePageName(destination) === currentPage) return;
+        window.location.replace(destination);
     }
 
     function forceLoginRedirect() {

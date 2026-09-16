@@ -7,6 +7,7 @@ logs/
 .agents/
 .whatsapp-session/
 My_own_school_Crm/
+Mobile_app/*.apk
 fees-check.png
 S
 deploy-ready/package/

@@ -143,6 +143,19 @@ svg {
     border-radius: 6px;
 }
 
+.nav-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--maroon) !important;
+    font-weight: 800;
+}
+
+.nav-download svg {
+    width: 16px;
+    height: 16px;
+}
+
 .menu-toggle {
     display: none;
     width: 44px;
@@ -309,6 +322,21 @@ svg {
     border: 1px solid rgba(255, 255, 255, 0.74);
     color: #ffffff;
     background: rgba(255, 255, 255, 0.09);
+}
+
+.app-download-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 46px;
+    border: 1px solid #ffffff;
+    border-radius: 999px;
+    padding: 0.78rem 1rem;
+    background: #ffffff;
+    color: var(--maroon);
+    font-family: "Manrope", "Inter", sans-serif;
+    font-weight: 800;
 }
 
 .official-banner {
@@ -1146,6 +1174,7 @@ svg {
 
     .primary-action,
     .secondary-action,
+    .app-download-action,
     .portal-actions a {
         width: 100%;
     }
@@ -1243,6 +1272,7 @@ svg {
 
     .primary-action,
     .secondary-action,
+    .app-download-action,
     .portal-actions a,
     .inquiry-form button {
         min-height: 44px;
