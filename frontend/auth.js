@@ -788,6 +788,7 @@
                     ]
                 },
                 { type: 'link', page: 'library.html', label: 'Library', icon: 'library' },
+                { type: 'link', page: 'upload_app.html', label: 'Upload App', icon: 'upload-cloud' },
                 { type: 'link', page: 'complain_box.html', label: 'Complain Box', icon: 'message-square' },
                 { type: 'link', page: 'branch_registration.html', label: 'Branch Registration', icon: 'building-2' },
                 { type: 'link', page: 'visitor_books.html', label: 'Visitor Records', icon: 'clipboard-list' },
