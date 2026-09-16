@@ -73,6 +73,10 @@ const bootstrapServer = bootstrapApp.listen(PORT, '0.0.0.0', () => {
     setTimeout(loadCrmBackend, BOOTSTRAP_DELAY_MS);
 });
 
+// APK uploads can be tens of megabytes and may take several minutes on a
+// school connection. Keep the Node request alive long enough to finish.
+bootstrapServer.requestTimeout = 20 * 60 * 1000;
+
 bootstrapServer.on('error', (error) => {
     console.error('Server listen failed:', error?.message || error);
     process.exit(1);

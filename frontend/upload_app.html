@@ -17,7 +17,7 @@
         .app-field textarea { min-height:92px; resize:vertical; }
         .upload-drop { border:2px dashed #14b8a6; border-radius:10px; background:#f0fdfa; padding:1.1rem; text-align:center; }
         .upload-drop input { max-width:100%; } .app-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-top:1.1rem; }
-        .app-status { display:none; border-radius:8px; padding:.8rem 1rem; margin-top:1rem; font-weight:600; } .app-status.show { display:block; } .app-status.error { background:#fef2f2; color:#b91c1c; } .app-status.success { background:#ecfdf5; color:#047857; }
+        .app-status { display:none; border-radius:8px; padding:.8rem 1rem; margin-top:1rem; font-weight:600; } .app-status.show { display:block; } .app-status.error { background:#fef2f2; color:#b91c1c; } .app-status.success { background:#ecfdf5; color:#047857; } .app-status.progress { background:#eff6ff; color:#1d4ed8; }
         .published-app { display:none; grid-template-columns:auto 1fr auto; gap:1rem; align-items:center; } .published-app.show { display:grid; }
         .published-app .icon { width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:#e0f2fe;color:#0369a1; } .published-app h3 { margin:0 0 .25rem; }
         .published-app small { color:var(--text-secondary); } .muted { color:var(--text-secondary); }
@@ -48,16 +48,43 @@
             </div>
         </main>
     </div>
-    <script src="auth.js?v=20260916-upload-app-sidebar"></script><script src="script.js?v=20260916-app-upload"></script><script src="sidebar-order.js?v=20260916-app-upload"></script>
+    <script src="auth.js?v=20260916-upload-app-sidebar"></script><script src="script.js?v=20260916-app-upload-progress"></script><script src="sidebar-order.js?v=20260916-app-upload"></script>
     <script>
         const appApi = `${API_BASE_URL}/school-app`;
         const $ = (id) => document.getElementById(id);
         const formatSize = (bytes) => bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : '';
         function showStatus(message, type) { const target = $('appStatus'); target.textContent = message; target.className = `app-status show ${type}`; }
+        function uploadSchoolApp(file, token) {
+            return new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest();
+                request.open('POST', `${appApi}/file`);
+                request.timeout = 600000;
+                request.setRequestHeader('Authorization', `Bearer ${token}`);
+                request.setRequestHeader('Content-Type', file.type || 'application/vnd.android.package-archive');
+                request.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+                request.setRequestHeader('X-App-Name', encodeURIComponent($('appName').value.trim()));
+                request.setRequestHeader('X-App-Version', encodeURIComponent($('appVersion').value.trim()));
+                request.setRequestHeader('X-App-Notes', encodeURIComponent($('appNotes').value.trim()));
+                request.upload.onprogress = (event) => {
+                    if (!event.lengthComputable) return;
+                    const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+                    showStatus(`Uploading APK: ${percent}% (${formatSize(event.loaded)} of ${formatSize(event.total)})`, 'progress');
+                };
+                request.onerror = () => reject(new Error('Upload connection failed. Please check the hosting upload limit and try again.'));
+                request.ontimeout = () => reject(new Error('Upload timed out after 10 minutes. Please check your hosting upload limit or internet connection.'));
+                request.onload = () => {
+                    let result = null;
+                    try { result = request.responseText ? JSON.parse(request.responseText) : null; } catch (_) {}
+                    if (request.status < 200 || request.status >= 300 || !result?.success) return reject(new Error(result?.message || `Upload failed (server error ${request.status}).`));
+                    resolve(result);
+                };
+                request.send(file);
+            });
+        }
         function renderApp(app) { const hasApp = Boolean(app); $('publishedApp').classList.toggle('show', hasApp); $('noApp').style.display = hasApp ? 'none' : 'block'; if (!hasApp) return; $('publishedName').textContent = app.name || 'School App'; $('publishedDetails').textContent = [app.version && `Version ${app.version}`, app.fileName, formatSize(app.size), app.uploadedAt && `Published ${new Date(app.uploadedAt).toLocaleDateString()}`].filter(Boolean).join(' · '); $('publishedNotes').textContent = app.notes || ''; if (window.lucide) lucide.createIcons(); }
         async function loadApp() { try { const response = await fetch(appApi); const result = await parseJsonResponse(response, 'App details could not be loaded.'); renderApp(result.app); } catch (_) { renderApp(null); } }
         $('appFile').addEventListener('change', () => { const file = $('appFile').files[0]; $('fileHint').textContent = file ? `${file.name} (${formatSize(file.size)})` : 'Choose the APK file to publish.'; });
-        $('schoolAppForm').addEventListener('submit', async (event) => { event.preventDefault(); const file = $('appFile').files[0]; const token = sessionStorage.getItem('eduCore_token') || ''; if (!file || !file.name.toLowerCase().endsWith('.apk')) return showStatus('Please select an Android APK file.', 'error'); const button = $('publishButton'); button.disabled = true; button.innerHTML = '<i data-lucide="loader-circle"></i> Uploading...'; if(window.lucide) lucide.createIcons(); try { const response = await fetch(`${appApi}/file`, { method:'POST', headers:{ 'Authorization': `Bearer ${token}`, 'Content-Type': file.type || 'application/vnd.android.package-archive', 'X-File-Name': encodeURIComponent(file.name), 'X-App-Name': encodeURIComponent($('appName').value.trim()), 'X-App-Version': encodeURIComponent($('appVersion').value.trim()), 'X-App-Notes': encodeURIComponent($('appNotes').value.trim()) }, body:file }); const result = await parseJsonResponse(response, 'App could not be uploaded.'); if (!response.ok || result.success === false) throw new Error(result.message || 'App could not be uploaded.'); showStatus('App published successfully. The website download button now serves this APK.', 'success'); $('schoolAppForm').reset(); $('fileHint').textContent = 'Choose the APK file to publish.'; $('appName').value = 'PESS Jand School App'; renderApp(result.app); } catch (error) { showStatus(error.message || 'App could not be uploaded.', 'error'); } finally { button.disabled = false; button.innerHTML = '<i data-lucide="upload-cloud"></i> Upload & Publish App'; if(window.lucide) lucide.createIcons(); } });
+        $('schoolAppForm').addEventListener('submit', async (event) => { event.preventDefault(); const file = $('appFile').files[0]; const token = sessionStorage.getItem('eduCore_token') || ''; if (!file || !file.name.toLowerCase().endsWith('.apk')) return showStatus('Please select an Android APK file.', 'error'); const button = $('publishButton'); button.disabled = true; button.innerHTML = '<i data-lucide="loader-circle"></i> Uploading...'; if(window.lucide) lucide.createIcons(); try { const result = await uploadSchoolApp(file, token); showStatus('App published successfully. The website download button now serves this APK.', 'success'); $('schoolAppForm').reset(); $('fileHint').textContent = 'Choose the APK file to publish.'; $('appName').value = 'PESS Jand School App'; renderApp(result.app); } catch (error) { showStatus(error.message || 'App could not be uploaded.', 'error'); } finally { button.disabled = false; button.innerHTML = '<i data-lucide="upload-cloud"></i> Upload & Publish App'; if(window.lucide) lucide.createIcons(); } });
         $('removeApp').addEventListener('click', async () => { if (!(await showAppConfirm('Remove the public app download?', 'Remove App'))) return; const token = sessionStorage.getItem('eduCore_token') || ''; const response = await fetch(appApi, {method:'DELETE', headers:{ 'Authorization': `Bearer ${token}` }}); if (!response.ok) return showStatus('App could not be removed.', 'error'); renderApp(null); showStatus('Public app download removed.', 'success'); });
         loadApp(); if (window.lucide) lucide.createIcons();
     </script>

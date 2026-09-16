@@ -92,6 +92,7 @@
 # =============================================================================
 
 <IfModule mod_mime.c>
+    AddType application/vnd.android.package-archive .apk
     AddType application/json .json
     AddType application/xml .xml
     AddType image/svg+xml .svg
@@ -100,6 +101,9 @@
     AddType font/woff .woff
     AddType font/woff2 .woff2
 </IfModule>
+
+# Allow the Node.js app's APK upload endpoint to receive large Android packages.
+LimitRequestBody 2147483648
 
 # =============================================================================
 # Error Handling
