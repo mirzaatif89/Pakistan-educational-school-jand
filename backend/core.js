@@ -1158,7 +1158,10 @@ app.get('/api/school-app', (_req, res) => {
     res.json({ success: true, app: appInfo?.disabled ? null : appInfo });
 });
 
-app.post('/api/school-app/file', express.raw({ type: '*/*', limit: '2048mb' }), (req, res) => {
+app.post('/api/school-app/file', authenticateToken, express.raw({ type: '*/*', limit: '2048mb' }), (req, res) => {
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Only an administrator can upload the school app.' });
+    }
     if (!Buffer.isBuffer(req.body) || !req.body.length) {
         return res.status(400).json({ success: false, message: 'APK file is required.' });
     }
@@ -1183,7 +1186,10 @@ app.post('/api/school-app/file', express.raw({ type: '*/*', limit: '2048mb' }), 
     res.json({ success: true, app, downloadUrl: '/download-app' });
 });
 
-app.delete('/api/school-app', (_req, res) => {
+app.delete('/api/school-app', authenticateToken, (req, res) => {
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Only an administrator can remove the school app.' });
+    }
     const appInfo = readSchoolApp();
     if (appInfo?.storageName) {
         const appPath = path.join(SCHOOL_APPS_DIR, path.basename(appInfo.storageName));

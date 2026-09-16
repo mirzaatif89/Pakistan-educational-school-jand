@@ -137,10 +137,14 @@ svg {
 }
 
 .nav-login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: #1c1717 !important;
     background: var(--gold);
     padding: 0.7rem 0.95rem !important;
     border-radius: 6px;
+    white-space: nowrap;
 }
 
 .nav-download {
@@ -149,6 +153,7 @@ svg {
     gap: 0.35rem;
     color: var(--maroon) !important;
     font-weight: 800;
+    white-space: nowrap;
 }
 
 .nav-download svg {
@@ -965,6 +970,15 @@ svg {
         gap: 0.62rem;
         font-size: 0.86rem;
     }
+}
+
+/* Keep the two portal actions as clean, single-line buttons on laptop screens. */
+@media (min-width: 1041px) and (max-width: 1280px) {
+    .main-nav { width: calc(100% - 24px); gap: 0.65rem; }
+    .brand { min-width: 0; max-width: 180px; }
+    .brand span { display: none; }
+    .nav-links { gap: 0.52rem; font-size: 0.84rem; }
+    .nav-login { padding: 0.62rem 0.72rem !important; }
 }
 
 @media (max-width: 1040px) {

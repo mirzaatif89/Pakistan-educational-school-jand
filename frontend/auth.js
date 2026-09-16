@@ -142,6 +142,7 @@
         'fee_logos.html': { moduleKey: 'fees', defaultHome: 'dashboard.html', label: 'Logos', icon: 'image' },
         'bills.html': { moduleKey: 'bills', defaultHome: 'dashboard.html', label: 'Bills', icon: 'receipt' },
         'library.html': { moduleKey: 'library', defaultHome: 'dashboard.html', label: 'Library', icon: 'library' },
+        'upload_app.html': { moduleKey: 'upload_app', defaultHome: 'dashboard.html', label: 'Upload App', icon: 'upload-cloud' },
         'cafe.html': { moduleKey: 'cafe', defaultHome: 'dashboard.html', label: 'Cafe', icon: 'coffee' },
         'transport.html': { moduleKey: 'transport', defaultHome: 'dashboard.html', label: 'Transport', icon: 'bus' },
         'certificate.html': { moduleKey: 'certificate', defaultHome: 'dashboard.html', label: 'Certificate', icon: 'award' },

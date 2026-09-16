@@ -108,6 +108,7 @@ const FALLBACK_ROUTE_TO_PAGE = {
     permissions: 'permissions.html',
     branch_registration: 'branch_registration.html',
     aboutme: 'aboutme.html',
+    upload_app: 'upload_app.html',
     student_portal: 'student_portal.html',
     teacher_portal: 'teacher_portal.html'
 };
